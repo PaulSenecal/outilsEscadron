@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Outils escadron</title>
+<meta name="description" content="Applications web autonomes de l'escadron : éditeur de questionnaires de formation et console CCPG (notes, VMA, VO₂ max, allures).">
+<meta name="theme-color" content="#0B1B33">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@400;600;800&family=Barlow:wght@400;500;600&family=Spline+Sans+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/hub.css">
+</head>
+<body>
+
+<div class="champ" aria-hidden="true"></div>
+
+<header class="tete">
+  <div class="wrap">
+    <div class="fanion">
+      <span class="pastille"></span>
+      <span class="mono" id="horloge">—</span>
+      <span class="sep">/</span>
+      <span class="mono">Pages statiques</span>
+    </div>
+
+    <h1><span class="l1">Outils</span><span class="l2">Escadron</span></h1>
+
+    <p class="lede">Deux applications web autonomes. Rien à installer, rien à envoyer :
+      tout s'exécute dans le navigateur, et continue de fonctionner sans réseau une fois la page chargée.</p>
+  </div>
+</header>
+
+<main class="wrap">
+  <h2 class="rubrique"><span>Applications</span></h2>
+
+  <ul class="fiches">
+
+    <li class="fiche" style="--delai:0ms">
+      <a href="quizzer/">
+        <span class="code mono">QZR</span>
+        <span class="corps">
+          <span class="titre">Quiz&nbsp;Editor</span>
+          <span class="desc">Rédaction et gestion des questionnaires de formation : sujets, aperçu carte, impression et export.</span>
+          <span class="meta mono">Sauvegarde locale dans le navigateur</span>
+        </span>
+        <span class="fleche" aria-hidden="true">→</span>
+      </a>
+    </li>
+
+    <li class="fiche" style="--delai:90ms">
+      <a href="ccpg/">
+        <span class="code mono">CCPG</span>
+        <span class="corps">
+          <span class="titre">Console&nbsp;de&nbsp;piste</span>
+          <span class="desc">Note sur 20 par épreuve et total sur 60, calcul de VMA et de VO₂ max, allures d'entraînement et barèmes complets.</span>
+          <span class="meta mono">Instruction n° 130/ARM/SEO du 12 février 2025</span>
+        </span>
+        <span class="fleche" aria-hidden="true">→</span>
+      </a>
+    </li>
+
+  </ul>
+</main>
+
+<footer class="wrap">
+  <p>Le code de ces pages est public ; les données que vous saisissez restent sur votre appareil et ne sont transmises nulle part.</p>
+</footer>
+
+<script>
+  /* Titre : les deux lignes sont mises à la même largeur, celle de la colonne,
+     quelle que soit la police réellement chargée. Plafond de corps pour les
+     grands écrans, sinon « ESCADRON » deviendrait démesuré. */
+  (function () {
+    var h1 = document.querySelector('h1');
+    var lignes = [].slice.call(h1.querySelectorAll('span'));
+    var CORPS_MAX = 158;
+
+    function ajuste() {
+      var dispo = h1.clientWidth;
+      if (!dispo) return;
+      var naturelles = lignes.map(function (s) {
+        s.style.fontSize = '100px';
+        return s.getBoundingClientRect().width;
+      });
+      var mini = Math.min.apply(null, naturelles);
+      if (!mini) return;
+      var cible = Math.min(dispo, CORPS_MAX * mini / 100);
+      lignes.forEach(function (s, i) {
+        s.style.fontSize = (100 * cible / naturelles[i]).toFixed(2) + 'px';
+      });
+    }
+
+    ajuste();
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(ajuste);
+    var t;
+    addEventListener('resize', function () { clearTimeout(t); t = setTimeout(ajuste, 120); });
+  })();
+
+  (function () {
+    var el = document.getElementById('horloge');
+    var fmt = new Intl.DateTimeFormat('fr-FR', {
+      weekday: 'short', day: '2-digit', month: 'short',
+      hour: '2-digit', minute: '2-digit'
+    });
+    function tic() { el.textContent = fmt.format(new Date()).replace(/\./g, '').toUpperCase(); }
+    tic();
+    setInterval(tic, 15000);
+  })();
+</script>
+</body>
+</html>

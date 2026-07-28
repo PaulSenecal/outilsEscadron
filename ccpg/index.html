@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Console de piste — CCPG, VMA & allures</title>
+<meta name="description" content="Calcul de la note CCPG (instruction n° 130/ARM/SEO du 12 février 2025), de la VMA, du VO2 max et des allures d'entraînement.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --encre:#10233F;      /* bleu marine — texte et traits */
+  --encre-2:#2A4468;
+  --papier:#EDF0F4;     /* gris papier froid */
+  --craie:#FFFFFF;
+  --rouge:#C8102E;      /* aiguille, seuils, signal */
+  --vert:#0F7B52;
+  --ambre:#C98A05;
+  --acier:#5E6E85;
+  --ligne:#C9D2DE;
+  --rayon:10px;
+  --ombre:0 1px 0 rgba(16,35,63,.06), 0 8px 24px -12px rgba(16,35,63,.35);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:74px}
+body{
+  margin:0;background:var(--papier);color:var(--encre);
+  font-family:Barlow,"Segoe UI",system-ui,-apple-system,sans-serif;
+  font-size:16px;line-height:1.5;
+  background-image:linear-gradient(var(--ligne) 1px,transparent 1px),linear-gradient(90deg,var(--ligne) 1px,transparent 1px);
+  background-size:28px 28px;background-position:-1px -1px;
+}
+body::before{content:"";position:fixed;inset:0;background:linear-gradient(180deg,rgba(237,240,244,.72),rgba(237,240,244,.94));pointer-events:none;z-index:0}
+.wrap{position:relative;z-index:1;max-width:1140px;margin:0 auto;padding:0 18px}
+h1,h2,h3,.disp{font-family:Oswald,"Arial Narrow",sans-serif;font-weight:500;letter-spacing:.02em;margin:0}
+.num{font-variant-numeric:tabular-nums}
+
+/* ---------- nav ---------- */
+header.bar{position:sticky;top:0;z-index:20;background:var(--encre);color:var(--craie);border-bottom:3px solid var(--rouge)}
+.bar .wrap{display:flex;align-items:center;gap:18px;height:58px}
+.brand{font-family:Oswald,sans-serif;text-transform:uppercase;letter-spacing:.14em;font-size:15px;white-space:nowrap}
+.brand b{color:var(--rouge);font-weight:500}
+nav{margin-left:auto;display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
+nav::-webkit-scrollbar{display:none}
+nav a{color:#B9C6D8;text-decoration:none;font-size:13px;text-transform:uppercase;letter-spacing:.1em;
+  font-family:Oswald,sans-serif;padding:8px 11px;border-radius:6px;white-space:nowrap}
+nav a:hover,nav a:focus-visible{color:#fff;background:rgba(255,255,255,.08)}
+
+/* ---------- hero ---------- */
+.hero{padding:38px 0 10px}
+.eyebrow{font-family:Oswald,sans-serif;text-transform:uppercase;letter-spacing:.2em;font-size:12px;color:var(--rouge)}
+.hero h1{font-size:clamp(30px,5.2vw,52px);line-height:1.02;text-transform:uppercase;margin:6px 0 10px}
+.hero p{max-width:62ch;color:var(--acier);margin:0}
+
+/* ---------- cartes ---------- */
+section{padding:30px 0 10px;scroll-margin-top:70px}
+.sec-head{display:flex;align-items:baseline;gap:14px;border-bottom:2px solid var(--encre);padding-bottom:6px;margin-bottom:18px}
+.sec-head h2{font-size:24px;text-transform:uppercase}
+.sec-head span{font-size:13px;color:var(--acier)}
+.card{background:var(--craie);border:1px solid var(--ligne);border-radius:var(--rayon);box-shadow:var(--ombre);padding:18px}
+.grid{display:grid;gap:16px}
+.grid>*{min-width:0}
+@media(min-width:860px){.g-2{grid-template-columns:1fr 1fr}.g-3{grid-template-columns:repeat(3,1fr)}.g-side{grid-template-columns:320px 1fr}}
+
+/* ---------- contrôles ---------- */
+label{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--acier);margin-bottom:5px;font-weight:600}
+input[type=number],select,input[type=text]{
+  width:100%;padding:9px 10px;border:1px solid var(--ligne);border-radius:7px;background:#F8FAFC;
+  font:inherit;font-variant-numeric:tabular-nums;color:var(--encre)}
+input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible{outline:3px solid var(--rouge);outline-offset:2px}
+.seg{display:flex;border:1px solid var(--ligne);border-radius:7px;overflow:hidden;background:#F8FAFC}
+.seg button{flex:1;padding:9px 6px;border:0;background:transparent;font:inherit;font-family:Oswald,sans-serif;
+  text-transform:uppercase;letter-spacing:.08em;cursor:pointer;color:var(--acier)}
+.seg button[aria-pressed=true]{background:var(--encre);color:#fff}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chips button{border:1px solid var(--ligne);background:#F8FAFC;border-radius:999px;padding:7px 14px;cursor:pointer;
+  font:inherit;font-size:14px;color:var(--acier)}
+.chips button[aria-pressed=true]{background:var(--encre);border-color:var(--encre);color:#fff}
+.dual{display:flex;gap:8px;align-items:center}
+.dual span{color:var(--acier);font-weight:600}
+.hint{font-size:13px;color:var(--acier);margin:6px 0 0}
+
+/* ---------- épreuve ---------- */
+.epr{border:1px solid var(--ligne);border-radius:var(--rayon);background:var(--craie);padding:16px;display:flex;flex-direction:column;gap:12px}
+.epr-h{display:flex;align-items:center;gap:9px;border-bottom:1px dashed var(--ligne);padding-bottom:9px}
+.epr-h .tag{font-family:Oswald,sans-serif;font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+  background:var(--encre);color:#fff;padding:3px 8px;border-radius:4px}
+.epr-h h3{font-size:17px;text-transform:uppercase}
+.gauge{display:block;margin:0 auto;max-width:230px;width:100%}
+.gauge .needle{transition:transform .55s cubic-bezier(.2,.9,.25,1);transform-origin:100px 100px}
+.next{font-size:13px;color:var(--acier);text-align:center;min-height:20px}
+.next b{color:var(--encre)}
+
+/* ---------- total ---------- */
+.total{display:flex;flex-wrap:wrap;align-items:center;gap:22px}
+.total .big{font-family:Oswald,sans-serif;font-size:64px;line-height:.9;font-variant-numeric:tabular-nums}
+.total .big small{font-size:22px;color:var(--acier)}
+.badge{font-family:Oswald,sans-serif;text-transform:uppercase;letter-spacing:.1em;font-size:13px;
+  padding:5px 12px;border-radius:999px;border:2px solid currentColor}
+.ok{color:var(--vert)}.ko{color:var(--rouge)}
+.bar60{position:relative;flex:1;min-width:260px;height:34px}
+.bar60 .track{position:absolute;inset:10px 0 auto 0;height:14px;background:#E5EAF1;border-radius:7px;overflow:hidden}
+.bar60 .fill{height:100%;width:0;background:var(--encre);transition:width .55s ease}
+.bar60 .fill.ok{background:var(--vert)}
+.bar60 .seuil{position:absolute;top:4px;bottom:6px;left:51.67%;width:2px;background:var(--rouge)}
+.bar60 .seuil::after{content:"31 pts";position:absolute;top:-16px;left:50%;transform:translateX(-50%);
+  font-size:10px;letter-spacing:.08em;color:var(--rouge);font-family:Oswald,sans-serif;white-space:nowrap}
+.scale{display:flex;justify-content:space-between;font-size:11px;color:var(--acier);margin-top:2px}
+
+/* ---------- résultats VMA ---------- */
+.kpi{display:flex;gap:26px;flex-wrap:wrap;align-items:flex-end}
+.kpi .v{font-family:Oswald,sans-serif;font-size:44px;line-height:1;font-variant-numeric:tabular-nums}
+.kpi .u{font-size:15px;color:var(--acier);margin-left:4px}
+.kpi .l{font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--acier)}
+.jauge{margin-top:16px}
+.jauge .rail{display:flex;height:22px;border-radius:6px;overflow:hidden;border:1px solid var(--ligne)}
+.jauge .rail div{flex:1;font-size:10px;display:flex;align-items:center;justify-content:center;
+  color:#fff;font-family:Oswald,sans-serif;letter-spacing:.06em}
+.jauge .cur{margin-top:8px;font-size:14px}
+.jauge .cur b{font-family:Oswald,sans-serif;font-size:17px;text-transform:uppercase;letter-spacing:.06em}
+
+/* ---------- tables ---------- */
+.tbl-wrap{overflow:auto;max-height:560px;border:1px solid var(--ligne);border-radius:var(--rayon);background:var(--craie)}
+table{border-collapse:collapse;width:100%;font-size:14px;font-variant-numeric:tabular-nums}
+th,td{padding:5px 8px;text-align:center;border-bottom:1px solid #EAEEF3;white-space:nowrap}
+thead th{position:sticky;top:0;background:var(--encre);color:#fff;font-family:Oswald,sans-serif;font-weight:400;
+  letter-spacing:.06em;font-size:12px;z-index:2}
+tbody th{position:sticky;left:0;background:#F2F5F9;font-weight:600;z-index:1}
+td.hi{background:#FDECEF;font-weight:700}
+th.hi{background:var(--rouge);color:#fff}
+tr.hi td,tr.hi th{background:#FFF6D6}
+tr.hi td.hi{background:#FBD9DF}
+.lg td:first-child{text-align:left}
+.zones td:first-child,.zones th:first-child{text-align:left}
+
+/* ---------- prose ---------- */
+details{background:var(--craie);border:1px solid var(--ligne);border-radius:var(--rayon);padding:0 16px;margin-bottom:10px}
+details+details{margin-top:0}
+summary{cursor:pointer;padding:13px 0;font-family:Oswald,sans-serif;text-transform:uppercase;letter-spacing:.06em;font-size:15px}
+details[open] summary{border-bottom:1px dashed var(--ligne)}
+details .body{padding:12px 0 16px;font-size:15px}
+details .body p{margin:0 0 10px}
+details .body ul{margin:0 0 10px;padding-left:20px}
+.note-src{font-size:13px;color:var(--acier)}
+footer{margin-top:40px;padding:22px 0 40px;border-top:2px solid var(--encre);font-size:13px;color:var(--acier)}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <div class="wrap">
+    <div class="brand">Console&nbsp;de&nbsp;<b>piste</b></div>
+    <nav>
+      <a href="#fiche">Fiche CCPG</a>
+      <a href="#vma">VMA / VO₂ max</a>
+      <a href="#allures">Allures</a>
+      <a href="#baremes">Barèmes</a>
+      <a href="#protocoles">Protocoles</a>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="hero">
+    <div class="eyebrow">Instruction n° 130/ARM/SEO/DSEO/SDRH/BPM du 12 février 2025</div>
+    <h1>Chronomètre,<br>note, allure.</h1>
+    <p>Saisissez un temps, un palier ou un nombre de pompes : la note sur 20 s'affiche, le total sur 60 se met à jour, et la VMA se traduit en allures d'entraînement. Tout le calcul se fait dans le navigateur.</p>
+  </div>
+
+  <!-- ================= FICHE ================= -->
+  <section id="fiche">
+    <div class="sec-head"><h2>Fiche de notation</h2><span>3 épreuves · 20 points chacune · 60 au total</span></div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr))">
+        <div>
+          <label for="sexe">Sexe</label>
+          <div class="seg" id="sexe" role="group" aria-label="Sexe">
+            <button type="button" data-v="F" aria-pressed="false">Femme</button>
+            <button type="button" data-v="H" aria-pressed="true">Homme</button>
+          </div>
+        </div>
+        <div>
+          <label for="age">Âge au 31 décembre</label>
+          <input type="number" id="age" min="16" max="70" step="1" value="30" inputmode="numeric">
+          <p class="hint">Tranche retenue : <b id="tranche">30-33</b></p>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid g-3">
+      <!-- ECR -->
+      <div class="epr">
+        <div class="epr-h"><span class="tag">ECR</span><h3>Endurance</h3></div>
+        <div>
+          <label for="ecrTest">Test réalisé</label>
+          <select id="ecrTest">
+            <option value="2400">Test du 2400 m</option>
+            <option value="vameval">VAMEVAL</option>
+            <option value="leger">Luc Léger (navette 20 m)</option>
+          </select>
+        </div>
+        <div id="ecrIn"></div>
+        <svg class="gauge" id="gEcr" viewBox="0 0 200 158" role="img" aria-label="Note endurance"></svg>
+        <div class="next" id="nEcr"></div>
+      </div>
+
+      <!-- AA -->
+      <div class="epr">
+        <div class="epr-h"><span class="tag">AA</span><h3>Aisance aquatique</h3></div>
+        <div>
+          <label for="aaCas">Déroulement</label>
+          <select id="aaCas">
+            <option value="ok">15 m d'apnée + 100 m terminés</option>
+            <option value="8">10 à 14 m d'apnée, épreuve terminée</option>
+            <option value="7">5 à 9 m d'apnée, épreuve terminée</option>
+            <option value="6">0 à 4 m d'apnée, épreuve terminée</option>
+            <option value="4">15 m d'apnée, épreuve non terminée</option>
+            <option value="3">10 à 14 m d'apnée, non terminée</option>
+            <option value="2">5 à 9 m d'apnée, non terminée</option>
+            <option value="0">0 à 4 m d'apnée, non terminée</option>
+          </select>
+        </div>
+        <div id="aaIn"></div>
+        <svg class="gauge" id="gAa" viewBox="0 0 200 158" role="img" aria-label="Note aisance aquatique"></svg>
+        <div class="next" id="nAa"></div>
+      </div>
+
+      <!-- CMG -->
+      <div class="epr">
+        <div class="epr-h"><span class="tag">CMG</span><h3>Pompes</h3></div>
+        <div>
+          <label for="cmgVal">Répétitions validées</label>
+          <input type="number" id="cmgVal" min="0" max="80" step="1" value="30" inputmode="numeric">
+          <p class="hint">Poitrine sur cale de 10 cm, bras tendus, corps rectiligne, sans interruption.</p>
+        </div>
+        <svg class="gauge" id="gCmg" viewBox="0 0 200 158" role="img" aria-label="Note pompes"></svg>
+        <div class="next" id="nCmg"></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <div class="total">
+        <div>
+          <div class="l" style="font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--acier)">Total CCPG</div>
+          <div class="big num"><span id="tot">0</span><small>/60</small></div>
+        </div>
+        <div>
+          <div class="l" style="font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--acier)">Classement</div>
+          <div style="margin-top:8px"><span class="badge" id="clsBadge">—</span></div>
+        </div>
+        <div class="bar60">
+          <div class="track"><div class="fill" id="fill60"></div></div>
+          <div class="seuil"></div>
+          <div class="scale"><span>0</span><span>20</span><span>40</span><span>60</span></div>
+        </div>
+      </div>
+      <p class="hint" id="msgSeuil" style="margin-top:12px"></p>
+    </div>
+  </section>
+
+  <!-- ================= VMA ================= -->
+  <section id="vma">
+    <div class="sec-head"><h2>VMA &amp; VO₂ max</h2><span>Vitesse maximale aérobie — estimations</span></div>
+    <div class="grid g-side">
+      <div class="card">
+        <label>Méthode</label>
+        <div class="chips" id="vmaTabs">
+          <button type="button" data-t="cooper" aria-pressed="true">Cooper 12 min</button>
+          <button type="button" data-t="demi" aria-pressed="false">6 min</button>
+          <button type="button" data-t="vameval" aria-pressed="false">VAMEVAL</button>
+          <button type="button" data-t="leger" aria-pressed="false">Luc Léger</button>
+          <button type="button" data-t="prog" aria-pressed="false">Test progressif</button>
+          <button type="button" data-t="course" aria-pressed="false">Temps de course</button>
+        </div>
+        <div id="vmaIn" style="margin-top:16px"></div>
+        <p class="hint" id="vmaFormule"></p>
+      </div>
+
+      <div class="card">
+        <div class="kpi">
+          <div><div class="l">VMA estimée</div><div><span class="v num" id="kVma">—</span><span class="u">km/h</span></div></div>
+          <div><div class="l">VO₂ max estimé</div><div><span class="v num" id="kVo2">—</span><span class="u">ml/kg/min</span></div></div>
+          <div><div class="l">Allure à 100 % VMA</div><div><span class="v num" id="kAll">—</span><span class="u">/km</span></div></div>
+        </div>
+
+        <div class="jauge">
+          <div class="l" style="font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--acier);margin-bottom:6px">
+            Situation pour votre sexe et votre âge</div>
+          <div class="rail" id="railVo2"></div>
+          <div class="cur" id="curVo2">Renseignez une performance ci-contre.</div>
+        </div>
+
+        <div style="margin-top:18px">
+          <div class="l" style="font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--acier);margin-bottom:6px">
+            Équivalences pour cette VMA</div>
+          <div class="tbl-wrap" style="max-height:none">
+            <table class="lg"><tbody id="equiv"></tbody></table>
+          </div>
+          <p class="hint">Conversions indicatives : elles servent à situer un niveau, pas à remplacer un test réel.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= ALLURES ================= -->
+  <section id="allures">
+    <div class="sec-head"><h2>Allures d'entraînement</h2><span>Calculées sur la VMA ci-dessus</span></div>
+    <div class="card">
+      <div class="tbl-wrap" style="max-height:none">
+        <table class="zones">
+          <thead><tr><th>Zone</th><th>% VMA</th><th>Vitesse</th><th>Allure /km</th><th>400 m</th><th>200 m</th><th>Usage</th></tr></thead>
+          <tbody id="zones"><tr><td colspan="7" style="text-align:center;color:var(--acier);padding:18px">Calculez d'abord une VMA.</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= BAREMES ================= -->
+  <section id="baremes">
+    <div class="sec-head"><h2>Barèmes complets</h2><span>Annexe II de l'instruction — votre colonne est surlignée</span></div>
+    <div class="card" style="margin-bottom:16px">
+      <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">
+        <div>
+          <label for="bEpr">Épreuve</label>
+          <select id="bEpr">
+            <option value="2400">2400 m</option>
+            <option value="vameval">VAMEVAL</option>
+            <option value="leger">Luc Léger</option>
+            <option value="aa">Aisance aquatique</option>
+            <option value="cmg">Pompes (CMG)</option>
+          </select>
+        </div>
+        <div>
+          <label>Sexe affiché</label>
+          <div class="seg" id="bSexe" role="group" aria-label="Sexe affiché">
+            <button type="button" data-v="F" aria-pressed="false">Femme</button>
+            <button type="button" data-v="H" aria-pressed="true">Homme</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="grid g-2">
+      <div>
+        <div class="l" style="font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--acier);margin-bottom:8px">Grille complète</div>
+        <div class="tbl-wrap"><table id="tblBar"></table></div>
+      </div>
+      <div>
+        <div class="l" style="font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--acier);margin-bottom:8px">Mes objectifs — <span id="objTitre"></span></div>
+        <div class="tbl-wrap"><table id="tblObj"></table></div>
+        <p class="hint">Performance à réaliser pour décrocher chaque note, dans votre tranche d'âge.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= PROTOCOLES ================= -->
+  <section id="protocoles">
+    <div class="sec-head"><h2>Protocoles &amp; mémo</h2><span>Annexe I de l'instruction et repères d'entraînement</span></div>
+
+    <details open><summary>Les trois épreuves</summary><div class="body">
+      <p><b>Endurance cardio-respiratoire (ECR)</b> — au choix selon les installations : 2400 m, VAMEVAL ou Luc Léger. Tenue de sport, chaussures à pointes interdites, échauffement de 15 à 20 minutes obligatoire.</p>
+      <ul>
+        <li><b>2400 m</b> — marche/course sur terrain plat, le plus vite possible, sans interruption. Départ individuel ou groupé.</li>
+        <li><b>VAMEVAL</b> — piste balisée tous les 20 m. Départ à 8,5 km/h, +0,5 km/h chaque minute, changement de palier signalé par la bande sonore. Il faut se trouver devant la balise au signal. L'épreuve s'arrête dès que le rythme n'est plus tenu.</li>
+        <li><b>Luc Léger</b> — navettes sur 20 m entre deux lignes. Départ à 9 km/h, +0,5 km/h chaque minute. Un pied doit être posé au-delà de la ligne à chaque retour, sans virage en demi-cercle. Retard toléré : 1 à 2 m.</li>
+      </ul>
+      <p><b>Aisance aquatique (AA)</b> — départ plongé ou sauté, puis 15 m en apnée complète sans rompre la surface, enchaînés sans interruption jusqu'à 100 m au total. Eau calme, 24 °C minimum en piscine, 18 °C en plan d'eau. Bonnet, pince-nez, protections auditives et visuelles autorisés ; tout matériel augmentant la flottabilité ou la vitesse est interdit. Si les 15 m d'apnée ne sont pas atteints, l'épreuve se poursuit mais le temps n'est pas pris en compte.</p>
+      <p><b>Capacité musculaire générale (CMG)</b> — pompes. En appui facial, corps en extension : fléchir les bras jusqu'au contact de la poitrine avec une cale de 10 cm, revenir bras complètement tendus, sans interruption. Seules les répétitions correctes, corps rectiligne, sont comptées.</p>
+    </div></details>
+
+    <details><summary>Notation, seuil et classement</summary><div class="body">
+      <ul>
+        <li>Chaque épreuve est notée sur 20, soit 60 points au total. Les trois épreuves sont indépendantes et peuvent être passées lors de séances distinctes.</li>
+        <li>Classement : <b>5</b> = 51 à 60 pts · <b>4</b> = 41 à 50 · <b>3</b> = 31 à 40 · <b>2</b> = 21 à 30 · <b>1</b> = 20 et moins.</li>
+        <li>Tout militaire doit atteindre <b>31 points</b>. En dessous (niveau 1 ou 2), obligation de repasser tout ou partie des tests ; sauf raison de service, le non-respect est pris en compte pour la notation.</li>
+        <li>Contrôle annuel, réalisable du 1<sup>er</sup> janvier au 31 décembre de l'année A-1. La tranche d'âge est celle atteinte au 31 décembre de l'année de notation.</li>
+        <li>Exemption(s) médicale(s) cumulées ≥ 60 jours sur la période → mention « exempt ». Exemption &lt; 60 jours sans passage des épreuves → « non effectué ».</li>
+        <li>L'aptitude médicale doit être vérifiée <b>avant</b> les épreuves ; elle relève du chef d'unité. Le personnel SEO n'est pas soumis au CCPS.</li>
+        <li>Réservistes opérationnels : passage encouragé, notamment pour ceux dont l'activité physique est la plus soutenue.</li>
+      </ul>
+    </div></details>
+
+    <details><summary>Déterminer sa VMA</summary><div class="body">
+      <ul>
+        <li><b>Cooper</b> — courir le plus loin possible en 12 minutes. VMA = distance (m) ÷ 200. Exemple : 3000 m → 15 km/h.</li>
+        <li><b>Demi-Cooper</b> — le plus loin possible en 6 minutes. VMA = distance (m) ÷ 100. C'est ce test de 6 minutes, et non le Luc Léger, qui se calcule ainsi : le Luc Léger est un test navette par paliers sonores.</li>
+        <li><b>Test progressif sur piste</b> — débuter à 8-10 km/h, augmenter de 1 km/h toutes les 2 à 3 minutes, s'arrêter quand le rythme n'est plus tenable. La VMA correspond à la dernière vitesse maintenue.</li>
+        <li><b>À partir d'une course</b> — 5 km : VMA ≈ vitesse du 5 km · 10 km : ≈ vitesse × 1,05 · semi-marathon : ≈ vitesse × 1,15 · marathon : ≈ vitesse × 1,25.</li>
+      </ul>
+      <p><b>Conseils</b> — testez après 15-20 minutes d'échauffement, évitez les conditions météo défavorables, refaites le test toutes les 6 à 8 semaines pour suivre vos progrès. Une VMA de coureur amateur se situe le plus souvent entre 12 et 16 km/h. Une fois la VMA connue, elle sert à calibrer les séances : endurance à 70-80 %, seuil à 85-90 %, VMA à 100 % et plus.</p>
+      <p class="note-src">Le VO₂ max est estimé par la relation usuelle VO₂ max ≈ 3,5 × VMA ; pour le Cooper, la formule de distance (d − 504,9) ÷ 44,73 est aussi affichée. Ce sont des estimations : seul un test en laboratoire mesure réellement le VO₂ max.</p>
+    </div></details>
+
+    <details><summary>Anomalies relevées dans le texte officiel</summary><div class="body">
+      <ul>
+        <li><b>2400 m, femmes 26-29 ans</b> : aucun seuil de 20 n'est publié ; la meilleure note lisible dans la grille est 19, à 10:55.</li>
+        <li><b>Pompes, hommes 42-45 ans</b> : la note 6 apparaît à la fois à 12 et à 13 répétitions, et la note 5 est absente. Valeur reprise telle quelle.</li>
+        <li><b>Pompes</b> : dans plusieurs tranches d'âge, certaines notes sont sautées (ex. femmes de 50 ans et plus : ni 18, ni 16, ni 14). C'est conforme au barème publié.</li>
+        <li>Au-delà du meilleur seuil publié, la page attribue la note maximale de la colonne : une performance supérieure ne peut pas rapporter moins.</li>
+      </ul>
+    </div></details>
+  </section>
+
+  <footer>
+    Source des barèmes : instruction n° 130/ARM/SEO/DSEO/SDRH/BPM du 12 février 2025, annexes I et II, <i>Bulletin officiel des armées</i> n° 15 du 21 février 2025.
+    Les valeurs de VMA, VO₂ max et allures sont des estimations sans valeur réglementaire. Aucune donnée saisie ne quitte votre navigateur.
+  </footer>
+</div>
+
+<script>
+const BAREME={"2400":{"type":"time","floor":0,"F":{"630":{"22-25":20},"645":{"22-25":19},"650":{"30-33":20},"655":{"18-21":20,"26-29":19},"660":{"22-25":18},"665":{"30-33":19,"34-37":20},"675":{"18-21":19,"26-29":18},"680":{"22-25":17},"685":{"30-33":18,"34-37":19},"700":{"18-21":18,"26-29":17,"38-41":20},"705":{"22-25":16},"710":{"30-33":17,"34-37":18},"725":{"18-21":17,"26-29":16,"38-41":19},"730":{"22-25":15,"42-45":20},"735":{"30-33":16,"34-37":17},"740":{"18-21":16,"26-29":15,"38-41":18},"745":{"22-25":14,"42-45":19},"750":{"30-33":15,"34-37":16,"46-49":20},"755":{"18-21":15,"26-29":14,"38-41":17},"760":{"22-25":13,"42-45":18},"765":{"30-33":14,"34-37":15,"46-49":19},"770":{"18-21":14,"26-29":13,"38-41":16,"50+":20},"775":{"22-25":12,"42-45":17},"780":{"30-33":13,"34-37":14,"46-49":18},"785":{"18-21":13,"26-29":12,"38-41":15,"50+":19},"790":{"22-25":11,"42-45":16},"795":{"30-33":12,"34-37":13,"46-49":17},"800":{"18-21":12,"26-29":11,"38-41":14,"50+":18},"805":{"22-25":10,"42-45":15},"810":{"30-33":11,"34-37":12,"46-49":16},"815":{"18-21":11,"26-29":10,"38-41":13,"50+":17},"820":{"22-25":9,"42-45":14},"825":{"30-33":10,"34-37":11,"46-49":15},"830":{"18-21":10,"26-29":9,"38-41":12,"50+":16},"835":{"22-25":8,"42-45":13},"840":{"30-33":9,"34-37":10,"46-49":14},"845":{"18-21":9,"26-29":8,"38-41":11,"50+":15},"850":{"22-25":7,"42-45":12},"855":{"30-33":8,"34-37":9,"46-49":13},"860":{"18-21":8,"26-29":7,"38-41":10,"50+":14},"865":{"22-25":6,"42-45":11},"870":{"30-33":7,"34-37":8,"46-49":12},"875":{"18-21":7,"26-29":6,"38-41":9,"50+":13},"880":{"22-25":5,"42-45":10},"885":{"30-33":6,"34-37":7,"46-49":11},"890":{"18-21":6,"26-29":5,"38-41":8,"50+":12},"895":{"22-25":4,"42-45":9},"900":{"30-33":5,"34-37":6,"46-49":10},"905":{"18-21":5,"26-29":4,"38-41":7,"50+":11},"910":{"22-25":3,"42-45":8},"915":{"30-33":4,"34-37":5,"46-49":9},"920":{"18-21":4,"26-29":3,"38-41":6,"50+":10},"925":{"22-25":2,"42-45":7},"930":{"30-33":3,"34-37":4,"46-49":8},"935":{"18-21":3,"26-29":2,"38-41":5,"50+":9},"940":{"22-25":1,"42-45":6},"945":{"30-33":2,"34-37":3,"46-49":7},"950":{"18-21":2,"26-29":1,"38-41":4,"50+":8},"955":{"42-45":5},"960":{"30-33":1,"34-37":2,"46-49":6},"965":{"18-21":1,"38-41":3,"50+":7},"970":{"42-45":4},"975":{"34-37":1,"46-49":5},"980":{"38-41":2,"50+":6},"985":{"42-45":3},"990":{"46-49":4},"995":{"38-41":1,"50+":5},"1000":{"42-45":2},"1005":{"46-49":3},"1010":{"50+":4},"1015":{"42-45":1},"1020":{"46-49":2},"1025":{"50+":3},"1030":{"46-49":1},"1035":{"50+":2},"1045":{"50+":1}},"H":{"540":{"22-25":20},"550":{"26-29":20},"555":{"22-25":19},"560":{"30-33":20},"565":{"18-21":20,"26-29":19},"570":{"22-25":18},"575":{"30-33":19,"34-37":20},"585":{"18-21":19,"26-29":18},"590":{"22-25":17},"595":{"30-33":18,"34-37":19},"610":{"18-21":18,"26-29":17,"38-41":20},"615":{"22-25":16},"620":{"30-33":17,"34-37":18},"635":{"18-21":17,"26-29":16,"38-41":19},"640":{"22-25":15,"42-45":20},"645":{"30-33":16,"34-37":17},"650":{"18-21":16,"26-29":15,"38-41":18},"655":{"22-25":14,"42-45":19},"660":{"30-33":15,"34-37":16,"46-49":20},"665":{"18-21":15,"26-29":14,"38-41":17},"670":{"22-25":13,"42-45":18},"675":{"30-33":14,"34-37":15,"46-49":19},"680":{"18-21":14,"26-29":13,"38-41":16,"50+":20},"685":{"22-25":12,"42-45":17},"690":{"30-33":13,"34-37":14,"46-49":18},"695":{"18-21":13,"26-29":12,"38-41":15,"50+":19},"700":{"22-25":11,"42-45":16},"705":{"30-33":12,"34-37":13,"46-49":17},"710":{"18-21":12,"26-29":11,"38-41":14,"50+":18},"715":{"22-25":10,"42-45":15},"720":{"30-33":11,"34-37":12,"46-49":16},"725":{"18-21":11,"26-29":10,"38-41":13,"50+":17},"730":{"22-25":9,"42-45":14},"735":{"30-33":10,"34-37":11,"46-49":15},"740":{"18-21":10,"26-29":9,"38-41":12,"50+":16},"745":{"22-25":8,"42-45":13},"750":{"30-33":9,"34-37":10,"46-49":14},"755":{"18-21":9,"26-29":8,"38-41":11,"50+":15},"760":{"22-25":7,"42-45":12},"765":{"30-33":8,"34-37":9,"46-49":13},"770":{"18-21":8,"26-29":7,"38-41":10,"50+":14},"775":{"22-25":6,"42-45":11},"780":{"30-33":7,"34-37":8,"46-49":12},"785":{"18-21":7,"26-29":6,"38-41":9,"50+":13},"790":{"22-25":5,"42-45":10},"795":{"30-33":6,"34-37":7,"46-49":11},"800":{"18-21":6,"26-29":5,"38-41":8,"50+":12},"805":{"22-25":4,"42-45":9},"810":{"30-33":5,"34-37":6,"46-49":10},"815":{"18-21":5,"26-29":4,"38-41":7,"50+":11},"820":{"22-25":3,"42-45":8},"825":{"30-33":4,"34-37":5,"46-49":9},"830":{"18-21":4,"26-29":3,"38-41":6,"50+":10},"835":{"22-25":2,"42-45":7},"840":{"30-33":3,"34-37":4,"46-49":8},"845":{"18-21":3,"26-29":2,"38-41":5,"50+":9},"850":{"22-25":1,"42-45":6},"855":{"30-33":2,"34-37":3,"46-49":7},"860":{"18-21":2,"26-29":1,"38-41":4,"50+":8},"865":{"42-45":5},"870":{"30-33":1,"34-37":2,"46-49":6},"875":{"18-21":1,"38-41":3,"50+":7},"880":{"42-45":4},"885":{"34-37":1,"46-49":5},"890":{"38-41":2,"50+":6},"895":{"42-45":3},"900":{"46-49":4},"905":{"38-41":1,"50+":5},"910":{"42-45":2},"915":{"46-49":3},"920":{"50+":4},"925":{"42-45":1},"930":{"46-49":2},"935":{"50+":3},"940":{"46-49":1},"945":{"50+":2},"955":{"50+":1}}},"vameval":{"type":"num","floor":0,"F":{"2.5":{"50+":1},"2.75":{"50+":2},"3":{"46-49":1,"50+":3},"3.25":{"46-49":2},"3.5":{"42-45":1,"46-49":3,"50+":4},"3.75":{"42-45":2},"4":{"38-41":1,"42-45":3,"46-49":4,"50+":5},"4.25":{"38-41":2},"4.5":{"34-37":1,"38-41":3,"42-45":4,"46-49":5,"50+":6},"4.75":{"18-21":1,"34-37":2},"5":{"18-21":2,"30-33":1,"34-37":3,"38-41":4,"42-45":5,"46-49":6,"50+":7},"5.25":{"18-21":3,"26-29":1,"30-33":2},"5.5":{"22-25":1,"26-29":2,"30-33":3,"34-37":4,"38-41":5,"42-45":6,"46-49":7,"50+":8},"5.75":{"18-21":4},"6":{"22-25":2,"26-29":3,"30-33":4,"34-37":5,"38-41":6,"42-45":7,"46-49":8,"50+":9},"6.25":{"18-21":5},"6.5":{"22-25":3,"26-29":4,"30-33":5,"34-37":6,"38-41":7,"42-45":8,"46-49":9,"50+":10},"6.75":{"18-21":6},"7":{"22-25":4,"26-29":5,"30-33":6,"34-37":7,"38-41":8,"42-45":9,"46-49":10},"7.25":{"18-21":7,"50+":11},"7.5":{"22-25":5,"26-29":6,"30-33":7,"34-37":8,"38-41":9,"42-45":10,"46-49":11},"7.75":{"18-21":8,"50+":12},"8":{"22-25":6,"26-29":7,"30-33":8,"34-37":9,"38-41":10,"42-45":11,"46-49":12},"8.25":{"18-21":9,"50+":13},"8.5":{"22-25":7,"26-29":8,"30-33":9,"34-37":10,"46-49":13},"8.75":{"18-21":10,"38-41":11,"42-45":12,"50+":14},"9":{"22-25":8,"26-29":9,"30-33":10,"34-37":11,"46-49":14},"9.25":{"18-21":11,"42-45":13,"50+":15},"9.5":{"22-25":9,"26-29":10,"30-33":11,"34-37":12,"38-41":12,"46-49":15},"9.75":{"18-21":12,"42-45":14,"50+":16},"10":{"22-25":10,"26-29":11,"30-33":12,"38-41":13},"10.25":{"34-37":13,"42-45":15,"46-49":16,"50+":17},"10.5":{"18-21":13,"22-25":11,"26-29":12,"38-41":14},"10.75":{"30-33":13},"11":{"22-25":12,"34-37":14,"38-41":15,"42-45":16,"46-49":17,"50+":18},"11.25":{"18-21":14,"26-29":13},"11.5":{"30-33":14},"11.75":{"22-25":13,"34-37":15,"38-41":16,"42-45":17,"46-49":18,"50+":19},"12":{"18-21":15,"26-29":14},"12.25":{"30-33":15},"12.5":{"22-25":14,"34-37":16,"38-41":17,"42-45":18,"46-49":19,"50+":20},"12.75":{"18-21":16,"26-29":15},"13":{"30-33":16},"13.25":{"22-25":15,"34-37":17,"38-41":18,"42-45":19,"46-49":20},"13.5":{"18-21":17,"26-29":16},"13.75":{"30-33":17},"14":{"22-25":16,"34-37":18,"38-41":19,"42-45":20},"14.25":{"18-21":18,"26-29":17},"14.5":{"30-33":18},"14.75":{"22-25":17,"34-37":19,"38-41":20},"15":{"18-21":19,"26-29":18},"15.25":{"30-33":19},"15.5":{"22-25":18,"34-37":20},"15.75":{"18-21":20,"26-29":19},"16":{"30-33":20},"16.25":{"22-25":19},"16.5":{"26-29":20},"17":{"22-25":20}},"H":{"5.5":{"50+":1},"5.75":{"50+":2},"6":{"46-49":1,"50+":3},"6.25":{"46-49":2},"6.5":{"42-45":1,"46-49":3,"50+":4},"6.75":{"42-45":2},"7":{"38-41":1,"42-45":3,"46-49":4,"50+":5},"7.25":{"38-41":2},"7.5":{"34-37":1,"38-41":3,"42-45":4,"46-49":5,"50+":6},"7.75":{"18-21":1,"34-37":2},"8":{"18-21":2,"30-33":1,"34-37":3,"38-41":4,"42-45":5,"46-49":6,"50+":7},"8.25":{"18-21":3,"26-29":1,"30-33":2},"8.5":{"22-25":1,"26-29":2,"30-33":3,"34-37":4,"38-41":5,"42-45":6,"46-49":7,"50+":8},"8.75":{"18-21":4},"9":{"22-25":2,"26-29":3,"30-33":4,"34-37":5,"38-41":6,"42-45":7,"46-49":8,"50+":9},"9.25":{"18-21":5},"9.5":{"22-25":3,"26-29":4,"30-33":5,"34-37":6,"38-41":7,"42-45":8,"46-49":9,"50+":10},"9.75":{"18-21":6},"10":{"22-25":4,"26-29":5,"30-33":6,"34-37":7,"38-41":8,"42-45":9,"46-49":10},"10.25":{"18-21":7,"50+":11},"10.5":{"22-25":5,"26-29":6,"30-33":7,"34-37":8,"38-41":9,"42-45":10,"46-49":11},"10.75":{"18-21":8,"50+":12},"11":{"22-25":6,"26-29":7,"30-33":8,"34-37":9,"38-41":10,"42-45":11,"46-49":12},"11.25":{"18-21":9,"50+":13},"11.5":{"22-25":7,"26-29":8,"30-33":9,"34-37":10,"46-49":13},"11.75":{"18-21":10,"38-41":11,"42-45":12,"50+":14},"12":{"22-25":8,"26-29":9,"30-33":10,"34-37":11,"46-49":14},"12.25":{"18-21":11,"42-45":13,"50+":15},"12.5":{"22-25":9,"26-29":10,"30-33":11,"34-37":12,"38-41":12,"46-49":15},"12.75":{"18-21":12,"42-45":14,"50+":16},"13":{"22-25":10,"26-29":11,"30-33":12,"38-41":13},"13.25":{"34-37":13,"42-45":15,"46-49":16,"50+":17},"13.5":{"18-21":13,"22-25":11,"26-29":12,"38-41":14},"13.75":{"30-33":13},"14":{"22-25":12,"34-37":14,"38-41":15,"42-45":16,"46-49":17,"50+":18},"14.25":{"18-21":14,"26-29":13},"14.5":{"30-33":14},"14.75":{"22-25":13,"34-37":15,"38-41":16,"42-45":17,"46-49":18,"50+":19},"15":{"18-21":15,"26-29":14},"15.25":{"30-33":15},"15.5":{"22-25":14,"34-37":16,"38-41":17,"42-45":18,"46-49":19,"50+":20},"15.75":{"18-21":16,"26-29":15},"16":{"30-33":16},"16.25":{"22-25":15,"34-37":17,"38-41":18,"42-45":19,"46-49":20},"16.5":{"18-21":17,"26-29":16},"16.75":{"30-33":17},"17":{"22-25":16,"34-37":18,"38-41":19,"42-45":20},"17.25":{"18-21":18,"26-29":17},"17.5":{"30-33":18},"17.75":{"22-25":17,"34-37":19,"38-41":20},"18":{"18-21":19,"26-29":18},"18.25":{"30-33":19},"18.5":{"22-25":18,"34-37":20},"18.75":{"18-21":20,"26-29":19},"19":{"30-33":20},"19.25":{"22-25":19},"19.5":{"26-29":20},"20":{"22-25":20}}},"leger":{"type":"num","floor":0,"F":{"2":{"50+":1},"2.25":{"46-49":1,"50+":2},"2.5":{"42-45":1,"46-49":2,"50+":3},"2.75":{"38-41":1,"42-45":2,"46-49":3,"50+":4},"3":{"18-21":1,"34-37":1,"38-41":2,"42-45":3,"46-49":4,"50+":5},"3.25":{"18-21":2,"30-33":1,"34-37":2,"38-41":3,"42-45":4,"46-49":5,"50+":6},"3.5":{"18-21":3,"26-29":1,"30-33":2,"34-37":3,"38-41":4,"42-45":5,"46-49":6,"50+":7},"3.75":{"18-21":4,"22-25":1,"26-29":2,"30-33":3,"34-37":4,"38-41":5,"42-45":6,"46-49":7,"50+":8},"4":{"18-21":5,"22-25":2,"26-29":3,"30-33":4,"34-37":5,"38-41":6,"42-45":7,"46-49":8,"50+":9},"4.25":{"18-21":6,"22-25":3,"26-29":4,"30-33":5,"34-37":6,"38-41":7,"42-45":8,"46-49":9,"50+":10},"4.5":{"18-21":7,"22-25":4,"26-29":5,"30-33":6,"34-37":7,"38-41":8,"42-45":9,"46-49":10,"50+":11},"4.75":{"18-21":8,"22-25":5,"26-29":6,"30-33":7,"34-37":8,"38-41":9,"42-45":10,"46-49":11,"50+":12},"5":{"18-21":9,"22-25":6,"26-29":7,"30-33":8,"34-37":9,"38-41":10,"42-45":11,"46-49":12,"50+":13},"5.25":{"18-21":10,"22-25":7,"26-29":8,"30-33":9,"34-37":10,"38-41":11,"42-45":12,"50+":14},"5.5":{"18-21":11,"22-25":8,"26-29":9,"30-33":10,"34-37":11,"38-41":12,"46-49":13,"50+":15},"5.75":{"18-21":12,"22-25":9,"26-29":10,"30-33":11,"34-37":12,"42-45":13,"46-49":14,"50+":16},"6":{"22-25":10,"26-29":11,"30-33":12,"34-37":13,"38-41":13,"42-45":14,"46-49":15,"50+":17},"6.25":{"18-21":13,"22-25":11,"26-29":12,"46-49":16},"6.5":{"22-25":12,"30-33":13,"34-37":14,"38-41":14,"42-45":15,"50+":18},"6.75":{"18-21":14,"26-29":13,"38-41":15,"42-45":16,"46-49":17},"7":{"22-25":13,"30-33":14,"34-37":15,"46-49":18,"50+":19},"7.25":{"18-21":15,"26-29":14,"38-41":16,"42-45":17},"7.5":{"22-25":14,"30-33":15,"34-37":16,"38-41":17,"42-45":18,"46-49":19,"50+":20},"7.75":{"18-21":16,"26-29":15},"8":{"22-25":15,"30-33":16,"34-37":17,"38-41":18,"42-45":19,"46-49":20},"8.25":{"18-21":17,"26-29":16},"8.5":{"22-25":16,"30-33":17,"34-37":18,"38-41":19,"42-45":20},"8.75":{"18-21":18,"26-29":17},"9":{"22-25":17,"30-33":18,"34-37":19,"38-41":20},"9.25":{"18-21":19,"26-29":18},"9.5":{"22-25":18,"30-33":19,"34-37":20},"9.75":{"18-21":20,"26-29":19},"10":{"22-25":19,"30-33":20},"10.25":{"26-29":20},"10.5":{"22-25":20}},"H":{"4.25":{"50+":1},"4.5":{"46-49":1,"50+":2},"4.75":{"42-45":1,"46-49":2,"50+":3},"5":{"38-41":1,"42-45":2,"46-49":3,"50+":4},"5.25":{"18-21":1,"34-37":1,"38-41":2,"42-45":3,"46-49":4,"50+":5},"5.5":{"18-21":2,"30-33":1,"34-37":2,"38-41":3,"42-45":4,"46-49":5,"50+":6},"5.75":{"18-21":3,"26-29":1,"30-33":2,"34-37":3,"38-41":4,"42-45":5,"46-49":6,"50+":7},"6":{"18-21":4,"22-25":1,"26-29":2,"30-33":3,"34-37":4,"38-41":5,"42-45":6,"46-49":7,"50+":8},"6.25":{"18-21":5,"22-25":2,"26-29":3,"30-33":4,"34-37":5,"38-41":6,"42-45":7,"46-49":8,"50+":9},"6.5":{"18-21":6,"22-25":3,"26-29":4,"30-33":5,"34-37":6,"38-41":7,"42-45":8,"46-49":9,"50+":10},"6.75":{"18-21":7,"22-25":4,"26-29":5,"30-33":6,"34-37":7,"38-41":8,"42-45":9,"46-49":10,"50+":11},"7":{"18-21":8,"22-25":5,"26-29":6,"30-33":7,"34-37":8,"38-41":9,"42-45":10,"46-49":11,"50+":12},"7.25":{"18-21":9,"22-25":6,"26-29":7,"30-33":8,"34-37":9,"38-41":10,"42-45":11,"46-49":12,"50+":13},"7.5":{"18-21":10,"22-25":7,"26-29":8,"30-33":9,"34-37":10,"38-41":11,"42-45":12,"50+":14},"7.75":{"18-21":11,"22-25":8,"26-29":9,"30-33":10,"34-37":11,"38-41":12,"46-49":13,"50+":15},"8":{"18-21":12,"22-25":9,"26-29":10,"30-33":11,"34-37":12,"42-45":13,"46-49":14,"50+":16},"8.25":{"22-25":10,"26-29":11,"30-33":12,"34-37":13,"38-41":13,"42-45":14,"46-49":15,"50+":17},"8.5":{"18-21":13,"22-25":11,"26-29":12,"46-49":16},"8.75":{"22-25":12,"30-33":13,"34-37":14,"38-41":14,"42-45":15,"50+":18},"9":{"18-21":14,"26-29":13,"38-41":15,"42-45":16,"46-49":17},"9.25":{"22-25":13,"30-33":14,"34-37":15,"46-49":18,"50+":19},"9.5":{"18-21":15,"26-29":14,"38-41":16,"42-45":17},"9.75":{"22-25":14,"30-33":15,"34-37":16,"38-41":17,"42-45":18,"46-49":19,"50+":20},"10":{"18-21":16,"26-29":15},"10.25":{"22-25":15,"30-33":16,"34-37":17,"38-41":18,"42-45":19,"46-49":20},"10.5":{"18-21":17,"26-29":16},"10.75":{"22-25":16,"30-33":17,"34-37":18,"38-41":19,"42-45":20},"11":{"18-21":18,"26-29":17},"11.25":{"22-25":17,"30-33":18,"34-37":19,"38-41":20},"11.5":{"18-21":19,"26-29":18},"11.75":{"22-25":18,"30-33":19,"34-37":20},"12":{"18-21":20,"26-29":19},"12.25":{"22-25":19,"30-33":20},"12.5":{"26-29":20},"12.75":{"22-25":20}}},"aa":{"type":"time","floor":10,"F":{"110":{"22-25":20},"115":{"26-29":20},"120":{"18-21":20,"22-25":19,"30-33":20},"125":{"26-29":19,"34-37":20},"130":{"18-21":19,"22-25":18,"30-33":19,"38-41":20},"135":{"26-29":18,"34-37":19,"42-45":20},"140":{"18-21":18,"22-25":17,"30-33":18,"38-41":19,"46-49":20},"145":{"26-29":17,"34-37":18,"42-45":19,"50+":20},"150":{"18-21":17,"22-25":16,"30-33":17,"38-41":18,"46-49":19},"155":{"26-29":16,"34-37":17,"42-45":18,"50+":19},"160":{"18-21":16,"22-25":15,"30-33":16,"38-41":17,"46-49":18},"165":{"26-29":15,"34-37":16,"42-45":17,"50+":18},"170":{"18-21":15,"22-25":14,"30-33":15,"38-41":16,"46-49":17},"175":{"26-29":14,"34-37":15,"42-45":16,"50+":17},"180":{"18-21":14,"22-25":13,"30-33":14,"38-41":15,"46-49":16},"185":{"26-29":13,"34-37":14,"42-45":15,"50+":16},"190":{"18-21":13,"22-25":12,"30-33":13,"38-41":14,"46-49":15},"195":{"26-29":12,"34-37":13,"42-45":14,"50+":15},"200":{"18-21":12,"22-25":11,"30-33":12,"38-41":13,"46-49":14},"205":{"26-29":11,"34-37":12,"42-45":13,"50+":14},"210":{"18-21":11,"22-25":10,"30-33":11,"38-41":12,"46-49":13},"215":{"26-29":10,"34-37":11,"42-45":12,"50+":13},"220":{"18-21":10,"30-33":10,"38-41":11,"46-49":12},"225":{"34-37":10,"42-45":11,"50+":12},"230":{"38-41":10,"46-49":11},"235":{"42-45":10,"50+":11},"240":{"46-49":10},"245":{"50+":10}},"H":{"90":{"22-25":20},"95":{"26-29":20},"100":{"18-21":20,"22-25":19,"30-33":20},"105":{"26-29":19,"34-37":20},"110":{"18-21":19,"22-25":18,"30-33":19,"38-41":20},"115":{"26-29":18,"34-37":19,"42-45":20},"120":{"18-21":18,"22-25":17,"30-33":18,"38-41":19,"46-49":20},"125":{"26-29":17,"34-37":18,"42-45":19,"50+":20},"130":{"18-21":17,"22-25":16,"30-33":17,"38-41":18,"46-49":19},"135":{"26-29":16,"34-37":17,"42-45":18,"50+":19},"140":{"18-21":16,"22-25":15,"30-33":16,"38-41":17,"46-49":18},"145":{"26-29":15,"34-37":16,"42-45":17,"50+":18},"150":{"18-21":15,"22-25":14,"30-33":15,"38-41":16,"46-49":17},"155":{"26-29":14,"34-37":15,"42-45":16,"50+":17},"160":{"18-21":14,"22-25":13,"30-33":14,"38-41":15,"46-49":16},"165":{"26-29":13,"34-37":14,"42-45":15,"50+":16},"170":{"18-21":13,"22-25":12,"30-33":13,"38-41":14,"46-49":15},"175":{"26-29":12,"34-37":13,"42-45":14,"50+":15},"180":{"18-21":12,"22-25":11,"30-33":12,"38-41":13,"46-49":14},"185":{"26-29":11,"34-37":12,"42-45":13,"50+":14},"190":{"18-21":11,"22-25":10,"30-33":11,"38-41":12,"46-49":13},"195":{"26-29":10,"34-37":11,"42-45":12,"50+":13},"200":{"18-21":10,"30-33":10,"38-41":11,"46-49":12},"205":{"34-37":10,"42-45":11,"50+":12},"210":{"38-41":10,"46-49":11},"215":{"42-45":10,"50+":11},"220":{"46-49":10},"225":{"50+":10}}},"cmg":{"type":"num","floor":0,"F":{"2":{"46-49":1,"50+":1},"3":{"18-21":1,"38-41":1,"42-45":1,"46-49":3,"50+":3},"4":{"18-21":2,"30-33":1,"34-37":1,"38-41":2,"42-45":3,"46-49":5,"50+":5},"5":{"22-25":1,"26-29":1,"30-33":2,"34-37":2,"38-41":3,"42-45":4,"46-49":6,"50+":7},"6":{"18-21":3,"26-29":2,"34-37":3,"38-41":4,"42-45":5,"46-49":7,"50+":9},"7":{"18-21":4,"22-25":2,"30-33":3,"34-37":4,"38-41":5,"42-45":6,"46-49":8,"50+":10},"8":{"18-21":5,"26-29":3,"30-33":4,"34-37":5,"38-41":6,"42-45":7,"46-49":9,"50+":11},"9":{"18-21":6,"22-25":3,"26-29":4,"30-33":5,"34-37":6,"38-41":7,"42-45":8,"46-49":10,"50+":12},"10":{"18-21":7,"22-25":4,"26-29":5,"30-33":6,"34-37":7,"38-41":8,"42-45":9,"46-49":11,"50+":13},"11":{"18-21":8,"22-25":5,"26-29":6,"30-33":7,"34-37":8,"38-41":9,"42-45":10,"46-49":12,"50+":15},"12":{"18-21":9,"22-25":6,"26-29":7,"30-33":8,"34-37":9,"38-41":10,"42-45":11,"46-49":13,"50+":17},"13":{"18-21":10,"22-25":7,"26-29":8,"30-33":9,"34-37":10,"38-41":11,"42-45":12,"46-49":15,"50+":19},"14":{"18-21":11,"22-25":8,"26-29":9,"30-33":10,"34-37":11,"38-41":12,"42-45":13,"46-49":17,"50+":20},"15":{"18-21":12,"22-25":9,"26-29":10,"30-33":11,"34-37":12,"38-41":13,"42-45":15,"46-49":19},"16":{"18-21":13,"22-25":10,"26-29":11,"30-33":12,"34-37":13,"38-41":14,"42-45":17,"46-49":20},"17":{"18-21":14,"22-25":11,"26-29":12,"30-33":13,"34-37":14,"38-41":15,"42-45":19},"18":{"18-21":15,"22-25":12,"26-29":13,"30-33":14,"34-37":15,"38-41":17,"42-45":20},"19":{"18-21":16,"22-25":13,"26-29":14,"30-33":15,"34-37":16,"38-41":19},"20":{"18-21":17,"22-25":14,"26-29":15,"30-33":16,"34-37":17,"38-41":20},"21":{"18-21":18,"22-25":15,"26-29":16,"30-33":17,"34-37":19},"22":{"18-21":19,"22-25":16,"26-29":17,"30-33":18,"34-37":20},"23":{"18-21":20,"22-25":17,"26-29":18,"30-33":19},"24":{"22-25":18,"26-29":19,"30-33":20},"25":{"22-25":19,"26-29":20},"26":{"22-25":20}},"H":{"6":{"50+":1},"7":{"46-49":1},"8":{"42-45":1,"46-49":2,"50+":2},"9":{"38-41":1,"42-45":2,"46-49":3,"50+":3},"10":{"18-21":1,"34-37":1,"38-41":2,"42-45":3,"46-49":4,"50+":4},"11":{"18-21":2,"30-33":1,"34-37":2,"38-41":3,"42-45":4,"46-49":5,"50+":5},"12":{"18-21":3,"26-29":1,"30-33":2,"34-37":3,"38-41":4,"42-45":6,"46-49":6,"50+":6},"13":{"22-25":1,"26-29":2,"30-33":3,"34-37":4,"38-41":5,"42-45":6,"46-49":7,"50+":7},"14":{"18-21":4,"22-25":2,"26-29":3,"30-33":4,"34-37":5,"38-41":6,"42-45":7,"46-49":8,"50+":8},"15":{"50+":9},"16":{"18-21":5,"22-25":3,"26-29":4,"30-33":5,"34-37":6,"38-41":7,"42-45":8,"46-49":9,"50+":10},"18":{"18-21":6,"22-25":4,"26-29":5,"30-33":6,"34-37":7,"38-41":8,"42-45":9,"46-49":10,"50+":11},"19":{"46-49":13,"50+":12},"20":{"18-21":7,"22-25":5,"26-29":6,"30-33":7,"34-37":8,"38-41":9,"42-45":10,"46-49":14,"50+":13},"21":{"42-45":11,"46-49":15,"50+":14},"22":{"18-21":8,"22-25":6,"26-29":7,"30-33":8,"34-37":9,"38-41":10,"42-45":12,"46-49":16,"50+":15},"23":{"38-41":11,"42-45":13,"50+":16},"24":{"18-21":9,"22-25":7,"26-29":8,"30-33":9,"34-37":10,"38-41":12,"42-45":14,"46-49":17,"50+":17},"25":{"38-41":13,"42-45":15,"50+":18},"26":{"18-21":10,"22-25":8,"26-29":9,"30-33":10,"34-37":11,"38-41":14,"42-45":16,"46-49":18,"50+":19},"27":{"18-21":11,"30-33":11,"34-37":12,"50+":20},"28":{"22-25":9,"26-29":10,"34-37":13,"38-41":15,"42-45":17,"46-49":19},"29":{"18-21":12,"26-29":11,"30-33":12,"34-37":14},"30":{"22-25":10,"30-33":13,"38-41":16,"42-45":18,"46-49":20},"31":{"18-21":13,"26-29":12,"34-37":15},"32":{"22-25":11,"30-33":14,"38-41":17,"42-45":19},"33":{"18-21":14,"26-29":13,"34-37":16},"34":{"22-25":12,"30-33":15,"38-41":18,"42-45":20},"35":{"18-21":15,"26-29":14,"34-37":17},"36":{"22-25":13,"30-33":16,"38-41":19},"37":{"18-21":16,"26-29":15,"34-37":18},"38":{"22-25":14,"30-33":17,"38-41":20},"39":{"18-21":17,"26-29":16,"34-37":19},"40":{"22-25":15,"30-33":18},"41":{"18-21":18,"26-29":17,"34-37":20},"42":{"22-25":16,"30-33":19},"43":{"18-21":19,"26-29":18},"44":{"22-25":17,"30-33":20},"45":{"18-21":20,"26-29":19},"46":{"22-25":18},"47":{"26-29":20},"48":{"22-25":19},"50":{"22-25":20}}}};
+
+const AGES=['18-21','22-25','26-29','30-33','34-37','38-41','42-45','46-49','50+'];
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+
+/* ---------- état ---------- */
+const S={sexe:'H',age:30,tranche:'30-33',ecrTest:'2400',
+         perf:{'2400':{m:11,s:30},vameval:12,leger:8,aa:{m:2,s:30}},
+         aaCas:'ok',cmg:30,vmaTest:'cooper',vma:null,
+         vmaIn:{cooper:2600,demi:1300,vameval:14,leger:8,prog:14,course:{d:'10',m:50,s:0}},
+         bEpr:'2400',bSexe:'H'};
+
+function trancheFor(age){
+  const a=clamp(Math.round(age)||18,16,99);
+  if(a>=50)return '50+';
+  const idx=Math.floor((clamp(a,18,49)-18)/4);
+  return AGES[clamp(idx,0,7)];
+}
+const fmtT=s=>`${Math.floor(s/60)}:${String(Math.round(s%60)).padStart(2,'0')}`;
+const fmtN=v=>Number(v).toLocaleString('fr-FR',{maximumFractionDigits:2});
+
+/* ---------- moteur de note ---------- */
+function noteDe(code,sexe,tranche,perf){
+  const T=BAREME[code], tbl=T[sexe], keys=Object.keys(tbl).map(Number).sort((a,b)=>a-b);
+  const dispo=keys.filter(k=>tbl[k][tranche]!==undefined);
+  if(!dispo.length||perf===null||isNaN(perf))return null;
+  if(T.type==='time'){
+    for(const k of dispo) if(perf<=k) return tbl[k][tranche];
+    return T.floor;
+  }
+  for(let i=dispo.length-1;i>=0;i--) if(perf>=dispo[i]) return tbl[dispo[i]][tranche];
+  return T.floor;
+}
+function seuils(code,sexe,tranche){
+  const T=BAREME[code],tbl=T[sexe],out={};
+  const ks=Object.keys(tbl).map(Number).sort((a,b)=>a-b);
+  for(const k of ks){const v=tbl[k][tranche];if(v!==undefined&&out[v]===undefined)out[v]=k;}
+  return out;
+}
+const UNITE={'2400':'s',aa:'s',vameval:'km/h',leger:'palier',cmg:'rép.'};
+function seuilTxt(code,val){
+  if(BAREME[code].type==='time')return fmtT(val);
+  if(code==='leger')return 'palier '+fmtN(val);
+  return fmtN(val)+' '+UNITE[code];
+}
+
+/* ---------- cadran ---------- */
+function gauge(svg,note){
+  const cx=100,cy=100,r=76;
+  const pt=(a,rr)=>[cx+rr*Math.cos(a*Math.PI/180),cy+rr*Math.sin(a*Math.PI/180)];
+  if(svg.dataset.built!=='1'){
+    let g=`<path d="M ${cx-r} ${cy} A ${r} ${r} 0 0 1 ${cx+r} ${cy}" fill="none" stroke="#E5EAF1" stroke-width="12" stroke-linecap="round"/>`;
+    g+=`<path class="arc" d="" fill="none" stroke="var(--encre)" stroke-width="12" stroke-linecap="round"/>`;
+    for(let i=0;i<=20;i++){
+      const a=180+i*9,big=i%5===0;
+      const [x1,y1]=pt(a,r-9),[x2,y2]=pt(a,big?r-19:r-14);
+      g+=`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${big?'#8797AC':'#C9D2DE'}" stroke-width="${big?2:1}"/>`;
+      if(big){const[tx,ty]=pt(a,r-30);g+=`<text x="${tx}" y="${ty+4}" text-anchor="middle" font-size="11" fill="#8797AC" font-family="Oswald,sans-serif">${i}</text>`;}
+    }
+    g+=`<g class="needle"><line x1="${cx}" y1="${cy}" x2="${cx}" y2="${cy-r+16}" stroke="var(--rouge)" stroke-width="3" stroke-linecap="round"/></g>
+        <circle cx="${cx}" cy="${cy}" r="6" fill="var(--encre)"/>
+        <text class="val" x="${cx}" y="${cy+34}" text-anchor="middle" font-size="34" font-family="Oswald,sans-serif" fill="var(--encre)">—</text>
+        <text x="${cx}" y="${cy+50}" text-anchor="middle" font-size="11" letter-spacing="2" fill="#8797AC" font-family="Oswald,sans-serif">/ 20</text>`;
+    svg.innerHTML=g;svg.dataset.built='1';
+  }
+  const arc=svg.querySelector('.arc');
+  if(note===null){arc.setAttribute('d','');}
+  else{const a=180+(note/20)*180,[x,y]=pt(a,r);
+    arc.setAttribute('d',note<=0?'':`M ${cx-r} ${cy} A ${r} ${r} 0 0 1 ${x} ${y}`);}
+  svg.querySelector('.needle').style.transform=`rotate(${note===null?-90:-90+(note/20)*180}deg)`;
+  svg.querySelector('.val').textContent=note===null?'—':note;
+}
+
+/* ---------- champs des épreuves ---------- */
+function champTemps(id,st,labels='Performance'){
+  return `<label>${labels}</label><div class="dual">
+    <input type="number" id="${id}M" min="0" max="59" step="1" value="${st.m}" inputmode="numeric" aria-label="minutes"><span>min</span>
+    <input type="number" id="${id}S" min="0" max="59" step="5" value="${st.s}" inputmode="numeric" aria-label="secondes"><span>s</span></div>`;
+}
+function renderEcrIn(){
+  const t=S.ecrTest,box=$('#ecrIn');
+  if(t==='2400') box.innerHTML=champTemps('ecr',S.perf['2400'],'Temps sur 2400 m');
+  else box.innerHTML=`<label>${t==='vameval'?'Palier atteint (km/h)':'Palier atteint'}</label>
+    <input type="number" id="ecrP" min="0" max="25" step="0.25" value="${S.perf[t]}" inputmode="decimal">`;
+  box.querySelectorAll('input').forEach(i=>i.addEventListener('input',()=>{
+    if(t==='2400'){S.perf['2400']={m:+$('#ecrM').value||0,s:+$('#ecrS').value||0};}
+    else S.perf[t]=+$('#ecrP').value;
+    calc();
+  }));
+}
+function renderAaIn(){
+  const box=$('#aaIn');
+  if(S.aaCas!=='ok'){box.innerHTML='<p class="hint">Note forfaitaire : le temps n\'est pas pris en compte.</p>';return;}
+  box.innerHTML=champTemps('aa',S.perf.aa,'Temps sur 100 m');
+  box.querySelectorAll('input').forEach(i=>i.addEventListener('input',()=>{
+    S.perf.aa={m:+$('#aaM').value||0,s:+$('#aaS').value||0};calc();}));
+}
+
+/* ---------- calcul de la fiche ---------- */
+function calc(){
+  S.tranche=trancheFor(S.age); $('#tranche').textContent=S.tranche;
+
+  const ecrPerf = S.ecrTest==='2400' ? S.perf['2400'].m*60+S.perf['2400'].s : S.perf[S.ecrTest];
+  const nEcr = noteDe(S.ecrTest,S.sexe,S.tranche,ecrPerf);
+  const nAa  = S.aaCas==='ok' ? noteDe('aa',S.sexe,S.tranche,S.perf.aa.m*60+S.perf.aa.s) : +S.aaCas;
+  const nCmg = noteDe('cmg',S.sexe,S.tranche,S.cmg);
+
+  gauge($('#gEcr'),nEcr); gauge($('#gAa'),nAa); gauge($('#gCmg'),nCmg);
+  $('#nEcr').innerHTML=prochain(S.ecrTest,nEcr,ecrPerf);
+  $('#nAa').innerHTML =S.aaCas==='ok'?prochain('aa',nAa,S.perf.aa.m*60+S.perf.aa.s):'Grille des cas particuliers';
+  $('#nCmg').innerHTML=prochain('cmg',nCmg,S.cmg);
+
+  const tot=(nEcr||0)+(nAa||0)+(nCmg||0);
+  $('#tot').textContent=tot;
+  const fill=$('#fill60'); fill.style.width=(tot/60*100)+'%'; fill.classList.toggle('ok',tot>=31);
+  const cls=tot>=51?5:tot>=41?4:tot>=31?3:tot>=21?2:1;
+  const b=$('#clsBadge'); b.textContent='Niveau '+cls; b.className='badge '+(tot>=31?'ok':'ko');
+  $('#msgSeuil').innerHTML = tot>=31
+    ? `Seuil réglementaire atteint : ${tot} points, soit ${tot-31} de marge.`
+    : `Il manque <b>${31-tot} point${31-tot>1?'s':''}</b> pour atteindre le seuil de 31. En niveau 1 ou 2, tout ou partie des tests doit être repassé.`;
+
+  renderBaremes();
+}
+function prochain(code,note,perf){
+  if(note===null)return '';
+  if(note>=20)return 'Note maximale atteinte.';
+  const sq=seuils(code,S.sexe,S.tranche);
+  let n=note+1; while(n<=20&&sq[n]===undefined)n++;
+  if(n>20)return 'Note maximale atteinte pour cette tranche.';
+  const cible=sq[n],T=BAREME[code];
+  const ecart=T.type==='time'?`${Math.round(perf-cible)} s à gagner`
+           :`+${fmtN(Math.round((cible-perf)*100)/100)} ${UNITE[code]} à trouver`;
+  return `Note <b>${n}</b> à <b>${seuilTxt(code,cible)}</b> — ${ecart}.`;
+}
+
+/* ---------- barèmes ---------- */
+function renderBaremes(){
+  const code=S.bEpr,sx=S.bSexe,T=BAREME[code],tbl=T[sx];
+  const keys=Object.keys(tbl).map(Number).sort((a,b)=>T.type==='time'?a-b:b-a);
+  const unite=T.type==='time'?'Temps':(code==='cmg'?'Rép.':'Palier');
+  let h=`<thead><tr><th>${unite}</th>`+AGES.map(a=>`<th class="${a===S.tranche&&sx===S.sexe?'hi':''}">${a}</th>`).join('')+'</tr></thead><tbody>';
+  for(const k of keys){
+    h+=`<tr><th>${T.type==='time'?fmtT(k):fmtN(k)}</th>`;
+    for(const a of AGES){const v=tbl[k][a];
+      h+=`<td class="${a===S.tranche&&sx===S.sexe?'hi':''}">${v===undefined?'':v}</td>`;}
+    h+='</tr>';
+  }
+  $('#tblBar').innerHTML=h+'</tbody>';
+
+  $('#objTitre').textContent=`${sx==='F'?'femmes':'hommes'} ${S.tranche}`;
+  const sq=seuils(code,sx,S.tranche);
+  let o='<thead><tr><th>Note</th><th>Performance à réaliser</th></tr></thead><tbody>';
+  for(let n=20;n>=1;n--) o+=`<tr><th>${n}</th><td>${sq[n]!==undefined?seuilTxt(code,sq[n]):'—'}</td></tr>`;
+  $('#tblObj').innerHTML=o+'</tbody>';
+}
+
+/* ---------- VMA ---------- */
+const NORMES={
+ H:[[29,[33,37,43,49,53]],[39,[31,35,41,46,50]],[49,[30,33,39,44,48]],[59,[26,31,36,41,46]],[99,[20,26,32,36,45]]],
+ F:[[29,[24,28,33,37,42]],[39,[20,27,32,36,41]],[49,[17,25,29,33,37]],[59,[15,21,25,29,32]],[99,[13,18,22,25,31]]]
+};
+const CAT=['Très faible','Faible','Moyen','Bon','Excellent','Supérieur'];
+const CATC=['#8B1A1A','#C8102E','#C98A05','#3C7A3C','#0F7B52','#10233F'];
+
+const VMA_TESTS={
+ cooper:{lab:'Distance parcourue en 12 minutes',unit:'m',min:500,max:6000,step:10,
+   f:v=>v/200,note:'VMA = distance ÷ 200. VO₂ max Cooper = (distance − 504,9) ÷ 44,73.'},
+ demi:{lab:'Distance parcourue en 6 minutes',unit:'m',min:300,max:3000,step:10,
+   f:v=>v/100,note:'VMA = distance ÷ 100 (test dit « demi-Cooper »).'},
+ vameval:{lab:'Dernier palier tenu (km/h)',unit:'km/h',min:8,max:24,step:0.25,
+   f:v=>v,note:'Sur VAMEVAL, le palier est directement exprimé en km/h : c\'est la VMA.'},
+ leger:{lab:'Dernier palier tenu (n° de palier)',unit:'palier',min:1,max:21,step:0.25,
+   f:v=>8.5+0.5*v,note:'Navette 20 m : vitesse = 8,5 + 0,5 × palier (palier 1 = 9 km/h, +0,5 km/h par minute).'},
+ prog:{lab:'Dernière vitesse maintenue (km/h)',unit:'km/h',min:6,max:24,step:0.5,
+   f:v=>v,note:'Départ à 8-10 km/h, +1 km/h toutes les 2 à 3 minutes ; la VMA est la dernière vitesse tenue.'}
+};
+const COURSES={'5':[5,1.00,'5 km'],'10':[10,1.05,'10 km'],'21':[21.0975,1.15,'Semi-marathon'],'42':[42.195,1.25,'Marathon']};
+
+function renderVmaIn(){
+  const t=S.vmaTest,box=$('#vmaIn');
+  if(t==='course'){
+    const c=S.vmaIn.course;
+    box.innerHTML=`<label for="cD">Distance</label>
+      <select id="cD">${Object.entries(COURSES).map(([k,v])=>`<option value="${k}" ${c.d===k?'selected':''}>${v[2]}</option>`).join('')}</select>
+      <div style="margin-top:12px"><label>Temps réalisé</label><div class="dual">
+      <input type="number" id="cM" min="0" max="600" step="1" value="${c.m}" inputmode="numeric" aria-label="minutes"><span>min</span>
+      <input type="number" id="cS" min="0" max="59" step="1" value="${c.s}" inputmode="numeric" aria-label="secondes"><span>s</span></div></div>`;
+    $('#vmaFormule').textContent='VMA ≈ vitesse de course × coefficient (5 km : 1,00 · 10 km : 1,05 · semi : 1,15 · marathon : 1,25).';
+  }else{
+    const d=VMA_TESTS[t];
+    box.innerHTML=`<label for="vIn">${d.lab}</label>
+      <input type="number" id="vIn" min="${d.min}" max="${d.max}" step="${d.step}" value="${S.vmaIn[t]}" inputmode="decimal">`;
+    $('#vmaFormule').textContent=d.note;
+  }
+  box.querySelectorAll('input,select').forEach(el=>el.addEventListener('input',()=>{
+    if(t==='course')S.vmaIn.course={d:$('#cD').value,m:+$('#cM').value||0,s:+$('#cS').value||0};
+    else S.vmaIn[t]=+$('#vIn').value;
+    calcVma();
+  }));
+}
+function calcVma(){
+  const t=S.vmaTest;let vma=null,vo2=null;
+  if(t==='course'){
+    const c=S.vmaIn.course,[km,coef]=COURSES[c.d],h=(c.m*60+c.s)/3600;
+    if(h>0)vma=(km/h)*coef;
+  }else{
+    const v=S.vmaIn[t];if(v>0)vma=VMA_TESTS[t].f(v);
+    if(t==='cooper')vo2=(S.vmaIn.cooper-504.9)/44.73;
+  }
+  S.vma=vma;
+  if(!vma||vma<=0){$('#kVma').textContent='—';$('#kVo2').textContent='—';$('#kAll').textContent='—';
+    $('#curVo2').textContent='Renseignez une performance ci-contre.';$('#equiv').innerHTML='';renderZones();return;}
+  if(vo2===null)vo2=vma*3.5;
+  $('#kVma').textContent=fmtN(Math.round(vma*10)/10);
+  $('#kVo2').textContent=fmtN(Math.round(vo2*10)/10);
+  $('#kAll').textContent=fmtT(3600/vma);
+
+  const bands=(NORMES[S.sexe].find(([a])=>S.age<=a)||NORMES[S.sexe][4])[1];
+  let idx=0;while(idx<5&&vo2>=bands[idx])idx++;
+  $('#railVo2').innerHTML=CAT.map((c,i)=>`<div style="background:${CATC[i]};${i===idx?'flex:1.6;font-weight:600':'opacity:.42'}">${c}</div>`).join('');
+  $('#curVo2').innerHTML=`VO₂ max estimé à <b>${fmtN(Math.round(vo2*10)/10)}</b> — catégorie <b>${CAT[idx]}</b>
+     pour ${S.sexe==='F'?'une femme':'un homme'} de ${S.age} ans. <span class="note-src">Repères indicatifs, hors contexte médical.</span>`;
+
+  const eq=[];
+  eq.push(['Cooper (12 min)',Math.round(vma*200)+' m']);
+  eq.push(['Demi-Cooper (6 min)',Math.round(vma*100)+' m']);
+  eq.push(['Palier VAMEVAL',fmtN(Math.round(vma*4)/4)+' km/h']);
+  const pl=Math.round(((vma-8.5)/0.5)*4)/4;
+  eq.push(['Palier Luc Léger',pl>0?fmtN(pl):'—']);
+  const t2400=2400/(vma*0.95/3.6);
+  eq.push(['2400 m (≈ 95 % VMA)','≈ '+fmtT(t2400)]);
+  const n24=noteDe('2400',S.sexe,S.tranche,Math.round(t2400));
+  const nvv=noteDe('vameval',S.sexe,S.tranche,Math.round(vma*4)/4);
+  eq.push(['Note CCPG estimée sur 2400 m',n24===null?'—':n24+' / 20']);
+  eq.push(['Note CCPG estimée sur VAMEVAL',nvv===null?'—':nvv+' / 20']);
+  $('#equiv').innerHTML=eq.map(([a,b])=>`<tr><td>${a}</td><td style="text-align:right;font-weight:600">${b}</td></tr>`).join('');
+  renderZones();
+}
+const ZONES=[['Endurance fondamentale',65,75,'Sorties longues, récupération, réatlétisation'],
+             ['Endurance active',75,85,'Footing soutenu, fond de séance'],
+             ['Seuil',85,90,'Blocs de 8 à 20 min, préparation du 2400 m'],
+             ['VMA longue',90,100,'Fractions de 2 à 4 min'],
+             ['VMA courte',100,110,'30/30, 200 à 400 m']];
+function renderZones(){
+  const v=S.vma,tb=$('#zones');
+  if(!v){tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--acier);padding:18px">Calculez d\'abord une VMA.</td></tr>';return;}
+  tb.innerHTML=ZONES.map(([n,a,b,u])=>{
+    const va=v*a/100,vb=v*b/100;
+    return `<tr><td><b>${n}</b></td><td>${a}–${b} %</td>
+      <td>${fmtN(Math.round(va*10)/10)}–${fmtN(Math.round(vb*10)/10)} km/h</td>
+      <td>${fmtT(3600/vb)}–${fmtT(3600/va)}</td>
+      <td>${fmtT(1440/vb)}–${fmtT(1440/va)}</td>
+      <td>${fmtT(720/vb)}–${fmtT(720/va)}</td>
+      <td style="text-align:left;color:var(--acier)">${u}</td></tr>`;}).join('');
+}
+
+/* ---------- liaisons ---------- */
+function segment(sel,key,cb){
+  $$(sel+' button').forEach(b=>b.addEventListener('click',()=>{
+    $$(sel+' button').forEach(x=>x.setAttribute('aria-pressed','false'));
+    b.setAttribute('aria-pressed','true');S[key]=b.dataset.v;cb();}));
+}
+segment('#sexe','sexe',()=>{S.bSexe=S.sexe;
+  $$('#bSexe button').forEach(x=>x.setAttribute('aria-pressed',x.dataset.v===S.sexe?'true':'false'));
+  calc();calcVma();});
+segment('#bSexe','bSexe',renderBaremes);
+$('#age').addEventListener('input',e=>{S.age=+e.target.value||18;calc();calcVma();});
+$('#ecrTest').addEventListener('change',e=>{S.ecrTest=e.target.value;renderEcrIn();calc();});
+$('#aaCas').addEventListener('change',e=>{S.aaCas=e.target.value;renderAaIn();calc();});
+$('#cmgVal').addEventListener('input',e=>{S.cmg=+e.target.value||0;calc();});
+$('#bEpr').addEventListener('change',e=>{S.bEpr=e.target.value;renderBaremes();});
+$$('#vmaTabs button').forEach(b=>b.addEventListener('click',()=>{
+  $$('#vmaTabs button').forEach(x=>x.setAttribute('aria-pressed','false'));
+  b.setAttribute('aria-pressed','true');S.vmaTest=b.dataset.t;renderVmaIn();calcVma();}));
+
+renderEcrIn();renderAaIn();renderVmaIn();calc();calcVma();
+</script>
+<script src="../assets/retour.js" defer></script>
+</body>
+</html>

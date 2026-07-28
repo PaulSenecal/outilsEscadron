@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Page introuvable — Outils escadron</title>
+<!-- Styles inline : cette page est servie pour n'importe quelle URL manquante,
+     y compris profondément imbriquée, où un chemin vers une feuille externe casserait. -->
+<style>
+  body{margin:0;background:#0B1B33;color:#E8EDF4;
+    font-family:"Barlow","Segoe UI",system-ui,-apple-system,sans-serif;line-height:1.55;
+    display:flex;align-items:center;min-height:100vh}
+  .wrap{max-width:640px;margin:0 auto;padding:32px 24px}
+  .eyebrow{margin:0;font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:#C9A227;font-weight:600}
+  h1{margin:12px 0 14px;font-family:"Arial Narrow",Impact,sans-serif;font-weight:800;
+    font-size:clamp(38px,9vw,72px);line-height:.9;text-transform:uppercase}
+  p.lede{margin:0;color:#93A9C7}
+  a{display:inline-block;margin-top:28px;padding:12px 22px;border-radius:3px;
+    border:1px solid rgba(201,162,39,.45);background:transparent;
+    color:#C9A227;text-decoration:none;font-weight:600;letter-spacing:.12em;
+    text-transform:uppercase;font-size:12px;transition:background .2s,color .2s}
+  a:hover{background:#C9A227;color:#0B1B33}
+  a:focus-visible{outline:2px solid #E3C158;outline-offset:3px}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <p class="eyebrow">Erreur 404</p>
+    <h1>Cette page<br>n'existe pas</h1>
+    <p class="lede">L'adresse a peut-être changé, ou le lien est incomplet.</p>
+    <a id="home" href="/">Revenir à la liste des outils</a>
+  </div>
+<script>
+  /* Sur un dépôt projet le site vit sous /nom-du-depot/ ; sur un site utilisateur, à la racine.
+     On reconstruit le lien d'accueil à partir de l'URL courante. */
+  (function () {
+    var seg = location.pathname.split('/')[1] || '';
+    var racine = location.hostname.endsWith('github.io') && seg ? '/' + seg + '/' : '/';
+    document.getElementById('home').setAttribute('href', racine);
+  })();
+</script>
+</body>
+</html>
