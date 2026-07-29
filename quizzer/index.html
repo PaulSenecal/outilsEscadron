@@ -859,6 +859,72 @@ header .badge {
   padding: 4px 8px;
   border-bottom: 1px solid #e5e9f4;
 }
+
+/* ── Données de référence ─────────────────────────────── */
+#ref-modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  z-index: 520;
+  align-items: center;
+  justify-content: center;
+}
+#ref-modal.show { display: flex; }
+.ref-msg { font-size: 13px; color: var(--text-dim); line-height: 1.6; }
+.ref-source {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 12px 14px;
+  font-size: 12.5px;
+  color: var(--text-dim);
+  line-height: 1.6;
+}
+.ref-source b { color: var(--text); font-weight: 600; }
+.ref-stats { display: flex; flex-direction: column; gap: 1px; }
+.ref-stat {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 9px 14px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  font-size: 13px;
+}
+.ref-stat:first-child { border-radius: 9px 9px 0 0; }
+.ref-stat:last-child  { border-radius: 0 0 9px 9px; }
+.ref-stat .n {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 17px;
+  min-width: 34px;
+  text-align: right;
+  color: var(--text);
+}
+.ref-stat .lbl { color: var(--text-dim); }
+.ref-stat.danger { border-color: #7a2432; background: #26161c; }
+.ref-stat.danger .n   { color: #ff8095; }
+.ref-stat.danger .lbl { color: #f0a5b2; }
+.ref-error {
+  background: #26161c;
+  border: 1px solid #7a2432;
+  border-radius: 9px;
+  padding: 12px 14px;
+  font-size: 13px;
+  color: #f0a5b2;
+  line-height: 1.55;
+}
+.ref-backup {
+  font-size: 12px;
+  color: var(--text-dim);
+  border-top: 1px dashed var(--border);
+  padding-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
 </style>
 </head>
 <body>
@@ -866,9 +932,10 @@ header .badge {
 
   <header>
     <h1>🎖 Quiz Editor</h1>
-    <span style="font-family:'Syne',sans-serif;font-size:9px;font-weight:700;color:var(--text-dim);letter-spacing:0.5px;margin-left:2px;align-self:flex-end;margin-bottom:3px">v1.1.0</span>
+    <span style="font-family:'Syne',sans-serif;font-size:9px;font-weight:700;color:var(--text-dim);letter-spacing:0.5px;margin-left:2px;align-self:flex-end;margin-bottom:3px">v1.4.0</span>
     <span class="badge">FORMATION MILITAIRE</span>
     <div class="header-right">
+      <button class="btn btn-secondary btn-sm" onclick="openRefModal()" title="Récupérer le jeu de questions officiel publié sur le serveur">🌐 Charger les données de référence</button>
       <button class="btn btn-secondary btn-sm" onclick="importJSON()">📂 Charger JSON</button>
       <button class="btn btn-secondary btn-sm" onclick="exportJSON()">💾 Sauvegarder JSON</button>
       <button class="btn btn-warn btn-sm" onclick="markAllSeen()">✓ Tout marquer vu</button>
@@ -979,6 +1046,18 @@ header .badge {
       <input class="new-cat-name" type="text" id="new-cat-name" placeholder="Nom du nouveau sujet…" maxlength="24" onkeydown="if(event.key==='Enter')addCategory()">
       <button class="btn btn-primary btn-sm" onclick="addCategory()">+ Ajouter</button>
     </div>
+  </div>
+</div>
+
+<!-- REFERENCE DATA MODAL -->
+<div id="ref-modal">
+  <div class="cat-modal-box" style="width:520px;gap:16px">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <h2>🌐 Données de référence</h2>
+      <button class="btn btn-secondary btn-sm" onclick="closeRefModal()">✕ Fermer</button>
+    </div>
+    <div id="ref-body"></div>
+    <div id="ref-actions" style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap"></div>
   </div>
 </div>
 
@@ -1652,6 +1731,254 @@ document.addEventListener('DOMContentLoaded', () => {
   document.body.appendChild(inp);
   init();
 });
+
+// ═══════════════════════════════════════════
+// DONNÉES DE RÉFÉRENCE (fichier publié sur le serveur)
+// ═══════════════════════════════════════════
+// Lecture seule : la page ne peut pas écrire dans le dépôt.
+// Cycle de publication : éditer ici → « Sauvegarder JSON » → commiter
+// le fichier sous quizzer/data/quiz.json.
+
+const REF_URL    = 'data/quiz.json';
+const BACKUP_KEY = 'quiz_backup';
+let refState = null;
+
+// Signature d'une question : ne retient que ce qui fait le contenu.
+// isNew est un drapeau d'affichage local, l'inclure créerait de fausses
+// différences sur des questions pourtant identiques.
+function refSignature(q) {
+  return JSON.stringify({
+    t: String(q.question || '').trim(),
+    c: q.category || '',
+    m: !!q.multiCorrect,
+    i: q.image || '',
+    a: (q.answers || []).map(a => ({ t: String(a.text || '').trim(), k: !!a.correct }))
+  });
+}
+
+// Accepte soit un tableau de questions (le format du bouton « Sauvegarder JSON »),
+// soit un objet { version, genere_le, categories, questions }.
+function refNormalise(data) {
+  let qs = null, cats = null, version = null, genere = null;
+  if (Array.isArray(data)) {
+    qs = data;
+  } else if (data && typeof data === 'object') {
+    qs = data.questions; cats = data.categories;
+    version = data.version; genere = data.genere_le;
+  }
+  if (!Array.isArray(qs)) throw new Error("Le fichier ne contient pas de liste de questions.");
+  if (qs.length === 0)    throw new Error("Le fichier ne contient aucune question.");
+  qs.forEach((q, i) => {
+    const n = i + 1;
+    if (!q || typeof q !== 'object')    throw new Error("Question n° " + n + " illisible.");
+    if (typeof q.question !== 'string') throw new Error("Question n° " + n + " : intitulé manquant.");
+    if (!Array.isArray(q.answers))      throw new Error("Question n° " + n + " : liste de réponses manquante.");
+    if (!q.id) q.id = nextId();
+  });
+  if (cats && !Array.isArray(cats)) cats = null;
+  return { questions: qs, categories: cats, version: version, genere_le: genere };
+}
+
+function refCompare(ref) {
+  const locales   = new Map(questions.map(q => [q.id, q]));
+  const distantes = new Map(ref.questions.map(q => [q.id, q]));
+  let ajoutees = 0, modifiees = 0;
+  distantes.forEach((q, id) => {
+    const l = locales.get(id);
+    if (!l) ajoutees++;
+    else if (refSignature(l) !== refSignature(q)) modifiees++;
+  });
+  let perdues = 0;
+  locales.forEach((q, id) => { if (!distantes.has(id)) perdues++; });
+  return { ajoutees: ajoutees, modifiees: modifiees, perdues: perdues };
+}
+
+function refDate(d) {
+  if (!d) return null;
+  const x = new Date(d);
+  if (isNaN(x)) return null;
+  const p = n => String(n).padStart(2, '0');
+  return p(x.getDate()) + '/' + p(x.getMonth() + 1) + '/' + x.getFullYear() +
+         ' à ' + p(x.getHours()) + 'h' + p(x.getMinutes());
+}
+
+function openRefModal() {
+  refState = null;
+  document.getElementById('ref-modal').classList.add('show');
+  document.getElementById('ref-actions').innerHTML = '';
+  document.getElementById('ref-body').innerHTML =
+    '<div class="ref-msg">Recherche du fichier sur le serveur…</div>';
+  refFetch();
+}
+
+function closeRefModal() {
+  document.getElementById('ref-modal').classList.remove('show');
+}
+
+function refEchec(titre, detail) {
+  document.getElementById('ref-body').innerHTML =
+    '<div class="ref-error"><b>' + titre + '</b><br>' + detail + '</div>';
+  document.getElementById('ref-actions').innerHTML =
+    '<button class="btn btn-secondary btn-sm" onclick="closeRefModal()">Fermer</button>' +
+    '<button class="btn btn-primary btn-sm" onclick="openRefModal()">Réessayer</button>';
+  refRenderBackup();
+}
+
+function refFetch() {
+  if (location.protocol === 'file:') {
+    refEchec("Disponible uniquement en ligne",
+      "L'application est ouverte directement depuis un fichier. " +
+      "Le navigateur interdit alors la lecture du fichier de référence. " +
+      "Ouvrez la page depuis son adresse web pour utiliser cette fonction.");
+    return;
+  }
+  // Le paramètre horaire contourne le cache du serveur, qui garderait
+  // sinon l'ancienne version une dizaine de minutes.
+  fetch(REF_URL + '?v=' + Date.now(), { cache: 'no-store' })
+    .then(function (res) {
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const maj = res.headers.get('Last-Modified');
+      return res.text().then(function (txt) { return { txt: txt, maj: maj }; });
+    })
+    .then(function (r) {
+      let brut;
+      try { brut = JSON.parse(r.txt); }
+      catch (e) { throw new Error("Le fichier n'est pas un JSON valide."); }
+      const ref = refNormalise(brut);
+      ref.maj = ref.genere_le || r.maj;
+      refState = ref;
+      refRenderResume();
+    })
+    .catch(function (err) {
+      const m = String(err.message || err);
+      if (m.indexOf('HTTP 404') === 0 || m.indexOf('HTTP 404') > -1) {
+        refEchec("Fichier introuvable",
+          "Aucun fichier <b>" + REF_URL + "</b> n'a été trouvé. " +
+          "Vérifiez qu'il est bien présent dans le dépôt à côté de cette page.");
+      } else if (m.indexOf('HTTP') === 0) {
+        refEchec("Le serveur a refusé la demande", m);
+      } else if (m.indexOf('Failed to fetch') > -1 || m.indexOf('NetworkError') > -1) {
+        refEchec("Pas de connexion",
+          "Impossible de joindre le serveur. Vos données locales sont intactes.");
+      } else {
+        refEchec("Fichier inexploitable", m);
+      }
+    });
+}
+
+function refRenderResume() {
+  const c   = refCompare(refState);
+  const maj = refDate(refState.maj);
+  let html = '<div class="ref-source">' +
+    'Fichier en ligne : <b>' + refState.questions.length + ' question' +
+    (refState.questions.length > 1 ? 's' : '') + '</b>' +
+    (refState.version ? ' · version <b>' + refState.version + '</b>' : '') +
+    (maj ? '<br>Mis en ligne le <b>' + maj + '</b>' : '') +
+    '</div>';
+
+  html += '<div style="height:14px"></div><div class="ref-stats">' +
+    refStat(c.ajoutees,  'question' + (c.ajoutees  > 1 ? 's' : '') + ' que vous n\'avez pas encore', false) +
+    refStat(c.modifiees, 'question' + (c.modifiees > 1 ? 's' : '') + ' dont le contenu a changé', false) +
+    refStat(c.perdues,   'question' + (c.perdues   > 1 ? 's' : '') + ' présente' + (c.perdues > 1 ? 's' : '') +
+                         ' uniquement chez vous, qui ser' + (c.perdues > 1 ? 'ont' : 'a') + ' perdue' +
+                         (c.perdues > 1 ? 's' : ''), c.perdues > 0) +
+    '</div>';
+
+  if (c.ajoutees === 0 && c.modifiees === 0 && c.perdues === 0) {
+    html += '<div style="height:12px"></div>' +
+      '<div class="ref-msg">Vous êtes déjà à jour : vos questions sont identiques au fichier du serveur.</div>';
+  } else if (c.perdues > 0) {
+    html += '<div style="height:12px"></div>' +
+      '<div class="ref-msg">Le chargement remplace l\'intégralité de vos questions. ' +
+      'Une sauvegarde de votre état actuel est conservée dans le navigateur, restaurable en un clic.</div>';
+  }
+
+  document.getElementById('ref-body').innerHTML = html;
+  document.getElementById('ref-actions').innerHTML =
+    '<button class="btn btn-secondary btn-sm" onclick="closeRefModal()">Annuler</button>' +
+    '<button class="btn ' + (c.perdues > 0 ? 'btn-warn' : 'btn-primary') +
+    ' btn-sm" onclick="refAppliquer()">Remplacer mes données</button>';
+  refRenderBackup();
+}
+
+function refStat(n, libelle, danger) {
+  return '<div class="ref-stat' + (danger ? ' danger' : '') + '">' +
+         '<span class="n">' + n + '</span><span class="lbl">' + libelle + '</span></div>';
+}
+
+function refRenderBackup() {
+  const raw = localStorage.getItem(BACKUP_KEY);
+  if (!raw) return;
+  let d = null;
+  try { d = refDate(JSON.parse(raw).date); } catch (e) {}
+  const box = document.createElement('div');
+  box.className = 'ref-backup';
+  box.innerHTML = '<span>Sauvegarde disponible' + (d ? ' du ' + d : '') + '</span>' +
+    '<button class="btn btn-secondary btn-sm" onclick="refRestaurer()">↩ Restaurer</button>';
+  document.getElementById('ref-body').appendChild(box);
+}
+
+function refAppliquer() {
+  if (!refState) return;
+  // Filet de sécurité : l'état courant est copié avant tout écrasement.
+  try {
+    localStorage.setItem(BACKUP_KEY, JSON.stringify({
+      date: new Date().toISOString(),
+      questions: questions,
+      categories: CATEGORIES
+    }));
+  } catch (e) { /* quota dépassé : on continue sans bloquer le chargement */ }
+
+  questions = refState.questions;
+
+  // Les sujets du fichier complètent les vôtres, ils ne les suppriment pas.
+  if (refState.categories) {
+    refState.categories.forEach(function (rc) {
+      if (!rc || !rc.id) return;
+      const i = CATEGORIES.findIndex(function (c) { return c.id === rc.id; });
+      if (i >= 0) CATEGORIES[i] = Object.assign({}, CATEGORIES[i], rc);
+      else CATEGORIES.push(Object.assign({}, rc));
+    });
+    saveCategories();
+  }
+
+  saveToStorage();
+  refApresChangement(questions.length + ' question' +
+    (questions.length > 1 ? 's' : '') + ' chargée' +
+    (questions.length > 1 ? 's' : '') + ' depuis le serveur');
+}
+
+function refRestaurer() {
+  const raw = localStorage.getItem(BACKUP_KEY);
+  if (!raw) return;
+  let b;
+  try { b = JSON.parse(raw); } catch (e) { alert('Sauvegarde illisible.'); return; }
+  if (!b || !Array.isArray(b.questions)) { alert('Sauvegarde illisible.'); return; }
+  questions = b.questions;
+  if (Array.isArray(b.categories) && b.categories.length) {
+    CATEGORIES = b.categories;
+    saveCategories();
+  }
+  saveToStorage();
+  refApresChangement('Sauvegarde restaurée');
+}
+
+function refApresChangement(message) {
+  activeId = null;
+  renderCatFilter();
+  renderList();
+  document.getElementById('empty-state').style.display = 'flex';
+  document.getElementById('editor-content').style.display = 'none';
+  closeRefModal();
+  toast(message);
+}
+
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape' && document.getElementById('ref-modal').classList.contains('show')) {
+    closeRefModal();
+  }
+});
+
 </script>
 <script src="../assets/retour.js" defer></script>
 </body>
