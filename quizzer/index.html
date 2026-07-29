@@ -925,6 +925,60 @@ header .badge {
   justify-content: space-between;
   gap: 12px;
 }
+
+/* ═══════════════ MOBILE ═══════════════ */
+/* Visible uniquement sur petit écran, où la liste et l'éditeur
+   se partagent la même place au lieu d'être côte à côte. */
+#retour-liste { display: none; }
+
+@media (max-width: 780px) {
+  /* dvh : sur mobile, 100vh déborde sous la barre d'adresse */
+  body, #app { height: 100dvh; }
+
+  header {
+    position: static;
+    padding: 10px 12px;
+    gap: 8px 10px;
+    flex-wrap: wrap;
+  }
+  header .badge { display: none; }
+  .header-right {
+    margin-left: 0;
+    width: 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 6px;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+  }
+  .header-right::-webkit-scrollbar { display: none; }
+  .header-right .btn { flex: 0 0 auto; }
+
+  /* Une seule colonne : la liste et l'éditeur s'échangent la place */
+  .main-layout { grid-template-columns: 1fr; }
+  .sidebar { border-right: 0; }
+  body.vue-editeur .sidebar { display: none; }
+  body:not(.vue-editeur) .editor-area { display: none; }
+  #retour-liste { display: inline-flex; }
+
+  .editor-toolbar { padding: 10px 12px; flex-wrap: wrap; gap: 8px; }
+  .editor-scroll { flex-direction: column; padding: 16px 14px; gap: 20px; }
+  .editor-form { max-width: none; }
+  .preview-panel { width: 100%; }
+
+  /* Les fenêtres ont une largeur fixe, parfois en style inline :
+     !important est nécessaire pour la neutraliser. */
+  .cat-modal-box {
+    width: auto !important;
+    max-width: calc(100vw - 22px);
+    max-height: 88vh;
+    padding: 20px 18px;
+  }
+  .print-toolbar { flex-wrap: wrap; gap: 8px; }
+
+  /* Le bouton flottant « ← Escadron » ne doit pas masquer le dernier élément */
+  .q-list, .editor-scroll { padding-bottom: 60px; }
+}
 </style>
 </head>
 <body>
@@ -932,7 +986,7 @@ header .badge {
 
   <header>
     <h1>🎖 Quiz Editor</h1>
-    <span style="font-family:'Syne',sans-serif;font-size:9px;font-weight:700;color:var(--text-dim);letter-spacing:0.5px;margin-left:2px;align-self:flex-end;margin-bottom:3px">v1.4.0</span>
+    <span style="font-family:'Syne',sans-serif;font-size:9px;font-weight:700;color:var(--text-dim);letter-spacing:0.5px;margin-left:2px;align-self:flex-end;margin-bottom:3px">v1.1.0</span>
     <span class="badge">FORMATION MILITAIRE</span>
     <div class="header-right">
       <button class="btn btn-secondary btn-sm" onclick="openRefModal()" title="Récupérer le jeu de questions officiel publié sur le serveur">🌐 Charger les données de référence</button>
@@ -971,6 +1025,7 @@ header .badge {
       <div id="editor-content" style="display:none;flex-direction:column;flex:1;overflow:hidden">
 
         <div class="editor-toolbar">
+          <button class="btn btn-secondary btn-sm" id="retour-liste" onclick="retourListe()">← Liste</button>
           <button class="btn btn-danger btn-sm" onclick="deleteQuestion()">🗑 Supprimer</button>
           <div id="new-toggle-wrap"></div>
           <div style="margin-left:auto;display:flex;gap:8px">
@@ -1970,6 +2025,7 @@ function refApresChangement(message) {
   document.getElementById('empty-state').style.display = 'flex';
   document.getElementById('editor-content').style.display = 'none';
   closeRefModal();
+  vueEditeur(false);
   toast(message);
 }
 
@@ -1978,6 +2034,39 @@ document.addEventListener('keydown', function (e) {
     closeRefModal();
   }
 });
+
+
+// ═══════════════════════════════════════════
+// NAVIGATION MOBILE (liste ↔ éditeur)
+// ═══════════════════════════════════════════
+// Sous 780 px les deux panneaux ne tiennent pas côte à côte : on affiche
+// l'un ou l'autre. Sur grand écran la classe n'a aucun effet, les règles
+// correspondantes sont dans une media query.
+
+function vueEditeur(actif) {
+  document.body.classList.toggle('vue-editeur', !!actif);
+}
+
+function retourListe() {
+  saveActiveQuestion();
+  vueEditeur(false);
+  renderList();
+}
+
+// Les fonctions d'origine sont enveloppées plutôt que modifiées :
+// les onclick générés dans les listes continuent de fonctionner tels quels.
+const _selectQuestion = selectQuestion;
+selectQuestion = function (id) { _selectQuestion(id); vueEditeur(true); };
+
+const _newQuestion = newQuestion;
+newQuestion = function () { _newQuestion(); vueEditeur(true); };
+
+const _deleteQuestion = deleteQuestion;
+deleteQuestion = function () { _deleteQuestion(); if (!activeId) vueEditeur(false); };
+
+// Au démarrage, init() sélectionne la première question : sur mobile on
+// veut malgré tout arriver sur la liste, pas dans l'éditeur.
+document.addEventListener('DOMContentLoaded', function () { vueEditeur(false); });
 
 </script>
 <script src="../assets/retour.js" defer></script>
