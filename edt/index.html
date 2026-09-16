@@ -266,7 +266,7 @@ header .badge {
 }
 
 .session {
-  position: absolute; left: 3px; right: 3px; border-radius: 6px;
+  position: absolute; border-radius: 6px;
   padding: 3px 6px; overflow: hidden; cursor: grab;
   box-shadow: 0 2px 6px rgba(0,0,0,.35);
   border: 1px solid rgba(255,255,255,.16);
@@ -489,18 +489,43 @@ function toast(msg) {
   toast._t = setTimeout(() => t.classList.remove('show'), 2200);
 }
 
-/* ─────────── logique de chevauchement ─────────── */
-function sessionsOfDay(dayId, excludeId) {
-  return SESSIONS.filter(s => s.dayId === dayId && s.id !== excludeId);
+/* ─────────── séances simultanées : mise en colonnes côte à côte ─────────── */
+function maxDurationAt(start) {
+  return Math.max(CONFIG.gran, CONFIG.endMin - start);
 }
-function overlaps(dayId, start, duration, excludeId) {
-  const end = start + duration;
-  return sessionsOfDay(dayId, excludeId).some(s => start < s.start + s.duration && end > s.start);
-}
-function maxDurationAt(dayId, start, excludeId) {
-  const nexts = sessionsOfDay(dayId, excludeId).filter(s => s.start >= start).map(s => s.start);
-  const ceiling = nexts.length ? Math.min(...nexts) : CONFIG.endMin;
-  return Math.max(CONFIG.gran, Math.min(ceiling, CONFIG.endMin) - start);
+
+// Deux groupes peuvent suivre deux activités différentes au même horaire :
+// les séances qui se chevauchent dans un même jour sont donc affichées
+// côte à côte plutôt que rejetées. Algorithme classique de calendrier :
+// on regroupe les séances qui se touchent en grappes, puis on attribue à
+// chacune la première colonne libre au sein de sa grappe.
+function computeDayLayout(dayId) {
+  const events = SESSIONS.filter(s => s.dayId === dayId)
+    .slice().sort((a, b) => a.start - b.start || a.duration - b.duration);
+  const layout = new Map();
+  let group = [], groupEnd = -Infinity;
+
+  function flushGroup() {
+    if (!group.length) return;
+    const colEnds = [];
+    group.forEach(ev => {
+      let idx = colEnds.findIndex(end => end <= ev.start);
+      if (idx === -1) { idx = colEnds.length; colEnds.push(0); }
+      colEnds[idx] = ev.start + ev.duration;
+      layout.set(ev.id, { col: idx, cols: 0 });
+    });
+    const cols = colEnds.length;
+    group.forEach(ev => { layout.get(ev.id).cols = cols; });
+    group = []; groupEnd = -Infinity;
+  }
+
+  events.forEach(ev => {
+    if (ev.start >= groupEnd) flushGroup();
+    group.push(ev);
+    groupEnd = Math.max(groupEnd, ev.start + ev.duration);
+  });
+  flushGroup();
+  return layout;
 }
 
 /* ─────────── rendu : sidebar matières ─────────── */
@@ -607,7 +632,11 @@ function renderGrid() {
     col.className = 'day-col';
     col.dataset.dayId = day.id;
     col.style.height = H + 'px';
-    SESSIONS.filter(s => s.dayId === day.id).forEach(s => col.appendChild(renderSessionEl(s)));
+    const layout = computeDayLayout(day.id);
+    SESSIONS.filter(s => s.dayId === day.id).forEach(s => {
+      const info = layout.get(s.id) || { col: 0, cols: 1 };
+      col.appendChild(renderSessionEl(s, info.col, info.cols));
+    });
     rowsBox.appendChild(col);
   });
 
@@ -622,13 +651,16 @@ function renderGrid() {
 
 function catOf(id) { return CATS.find(c => c.id === id) || { name: '(matière supprimée)', color: '#555a6e' }; }
 
-function renderSessionEl(s) {
+function renderSessionEl(s, colIndex, colsTotal) {
+  colIndex = colIndex || 0; colsTotal = colsTotal || 1;
   const cat = catOf(s.catId);
   const el = document.createElement('div');
   el.className = 'session';
   el.style.background = cat.color;
   el.style.top = ((s.start - CONFIG.startMin) * PX_MIN) + 'px';
   el.style.height = Math.max(16, s.duration * PX_MIN) + 'px';
+  el.style.left = `calc(${(100 * colIndex / colsTotal)}% + 2px)`;
+  el.style.width = `calc(${100 / colsTotal}% - 4px)`;
   el.innerHTML = `
     <button class="s-del" title="Supprimer">×</button>
     <div class="s-label" contenteditable="true" spellcheck="false">${escapeHTML(s.label)}</div>
@@ -685,7 +717,7 @@ function startResize(session, el, e) {
   handle.setPointerCapture(e.pointerId);
   const startY = e.clientY;
   const startDur = session.duration;
-  const maxDur = maxDurationAt(session.dayId, session.start, session.id);
+  const maxDur = maxDurationAt(session.start);
 
   function onMove(ev) {
     const deltaMin = (ev.clientY - startY) / PX_MIN;
@@ -700,6 +732,7 @@ function startResize(session, el, e) {
     handle.removeEventListener('pointermove', onMove);
     handle.removeEventListener('pointerup', onUp);
     saveSessions();
+    renderGrid();
   }
   handle.addEventListener('pointermove', onMove);
   handle.addEventListener('pointerup', onUp);
@@ -754,11 +787,7 @@ function startMoveDrag(session, el, e) {
       const dayId = hoveredCol.dataset.dayId;
       const rect = hoveredCol.getBoundingClientRect();
       let minute = clamp(snap(CONFIG.startMin + (ev.clientY - rect.top) / PX_MIN - grabOffsetMin), CONFIG.startMin, CONFIG.endMin - session.duration);
-      if (overlaps(dayId, minute, session.duration, session.id)) {
-        toast('Chevauchement avec une autre séance : déplacement annulé.');
-      } else {
-        session.dayId = dayId; session.start = minute; saveSessions();
-      }
+      session.dayId = dayId; session.start = minute; saveSessions();
     }
     renderGrid();
   }
@@ -795,7 +824,7 @@ function startCreateDrag(cat, e) {
       col.classList.add('drop-hover');
       const rect = col.getBoundingClientRect();
       const minute = clamp(snap(CONFIG.startMin + (ev.clientY - rect.top) / PX_MIN), CONFIG.startMin, CONFIG.endMin - CONFIG.gran);
-      const dur = Math.min(60, maxDurationAt(col.dataset.dayId, minute, null));
+      const dur = Math.min(60, maxDurationAt(minute));
       showPreview(col, minute, dur);
     }
   }
@@ -810,7 +839,7 @@ function startCreateDrag(cat, e) {
       const dayId = hoveredCol.dataset.dayId;
       const rect = hoveredCol.getBoundingClientRect();
       const minute = clamp(snap(CONFIG.startMin + (ev.clientY - rect.top) / PX_MIN), CONFIG.startMin, CONFIG.endMin - CONFIG.gran);
-      const maxDur = maxDurationAt(dayId, minute, null);
+      const maxDur = maxDurationAt(minute);
       if (maxDur < CONFIG.gran) {
         toast('Pas de place disponible ici.');
       } else {
