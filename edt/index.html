@@ -16,14 +16,14 @@
 }
 
 :root {
-  --bg: #0f1117;
-  --surface: #181c27;
-  --surface2: #1f2436;
-  --surface3: #262c42;
-  --border: #2a3050;
-  --text: #e8eaf2;
-  --text-dim: #7a839e;
-  --accent: #4f6ef7;
+  --bg: #f4f5f8;
+  --surface: #ffffff;
+  --surface2: #eef0f4;
+  --surface3: #e3e6ee;
+  --border: #ccd2de;
+  --text: #1a2030;
+  --text-dim: #6c7789;
+  --accent: #1f3a63;
   --danger: #c8102e;
 
   --px-min: 1.6px; /* échelle verticale : 1 minute = 1.6px, soit 96px/heure */
@@ -89,6 +89,7 @@ header .badge {
   gap: 6px;
   transition: border-color .15s, background .15s;
   white-space: nowrap;
+  text-decoration: none;
 }
 .btn:hover { border-color: var(--accent); background: var(--surface3); }
 .btn-primary { background: var(--accent); border-color: var(--accent); color: white; }
@@ -137,7 +138,7 @@ header .badge {
   align-items: center;
   gap: 10px;
   cursor: grab;
-  border: 1.5px solid rgba(255,255,255,.12);
+  border: 1.5px solid rgba(0,0,0,.15);
   position: relative;
   touch-action: none;
   user-select: none;
@@ -171,8 +172,10 @@ header .badge {
 }
 .cat-del:hover { color: white; background: rgba(0,0,0,.25); }
 
-.sidebar-foot { padding: 10px; border-top: 1px solid var(--border); }
+.sidebar-foot { padding: 10px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px; }
 .sidebar-foot .btn { width: 100%; justify-content: center; }
+.btn-retour { color: var(--accent); border-color: var(--border); }
+.btn-retour:hover { border-color: var(--accent); background: var(--surface2); }
 
 /* ═══════════════ EDITOR ═══════════════ */
 .editor-area { flex: 1; display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
@@ -253,15 +256,16 @@ header .badge {
 }
 .day-col {
   flex: 1 0 190px; position: relative; border-right: 1px solid var(--border);
+  background-color: var(--surface);
   background-image:
     repeating-linear-gradient(to bottom, var(--border) 0, var(--border) 1px, transparent 1px, transparent 96px),
-    repeating-linear-gradient(to bottom, rgba(255,255,255,.045) 0, rgba(255,255,255,.045) 1px, transparent 1px, transparent 48px);
+    repeating-linear-gradient(to bottom, rgba(0,0,0,.055) 0, rgba(0,0,0,.055) 1px, transparent 1px, transparent 48px);
 }
-.day-col.drop-hover { background-color: rgba(79,110,247,.08); }
+.day-col.drop-hover { background-color: rgba(31,58,99,.07); }
 
 .drop-preview {
   position: absolute; left: 3px; right: 3px; border-radius: 6px;
-  border: 2px dashed rgba(255,255,255,.55); background: rgba(255,255,255,.08);
+  border: 2px dashed rgba(31,58,99,.55); background: rgba(31,58,99,.08);
   pointer-events: none; z-index: 3;
 }
 
@@ -383,6 +387,7 @@ header .badge {
       </div>
       <div class="cat-list" id="cat-list"></div>
       <div class="sidebar-foot">
+        <a class="btn btn-retour" href="../">← Escadron</a>
         <button class="btn" onclick="ajouterCategorie()">+ Ajouter une matière</button>
       </div>
     </aside>
@@ -943,7 +948,5 @@ function init() {
 }
 document.addEventListener('DOMContentLoaded', init);
 window.addEventListener('resize', () => renderGrid());
-</script>
-<script src="../assets/retour.js" defer></script>
-</body>
+</script></body>
 </html>
