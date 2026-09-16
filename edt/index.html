@@ -100,7 +100,7 @@ header .badge {
 
 /* ═══════════════ SIDEBAR (matières) ═══════════════ */
 .sidebar {
-  width: 230px;
+  width: 268px;
   flex-shrink: 0;
   background: var(--surface);
   border-right: 1px solid var(--border);
@@ -131,11 +131,11 @@ header .badge {
 .cat-list { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
 
 .cat-chip {
-  border-radius: 8px;
-  padding: 9px 10px;
+  border-radius: 9px;
+  padding: 13px 12px;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   cursor: grab;
   border: 1.5px solid rgba(255,255,255,.12);
   position: relative;
@@ -146,8 +146,8 @@ header .badge {
 .cat-chip.dragging-source { opacity: .35; }
 
 .cat-color {
-  width: 20px; height: 20px; border-radius: 5px; flex-shrink: 0;
-  border: none; padding: 0; cursor: pointer;
+  width: 24px; height: 24px; border-radius: 6px; flex-shrink: 0;
+  border: none; padding: 0; cursor: grab;
 }
 .cat-name {
   flex: 1; min-width: 0;
@@ -283,6 +283,14 @@ header .badge {
   font-size: 9.5px; color: rgba(255,255,255,.78); margin-top: 1px;
   font-family: 'Syne', sans-serif; letter-spacing: .3px;
 }
+.session .s-comment {
+  font-size: 9.5px; color: rgba(255,255,255,.88); margin-top: 2px;
+  font-style: italic; outline: none; line-height: 1.3; border-radius: 3px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.session .s-comment:focus { white-space: normal; text-overflow: clip; background: rgba(0,0,0,.25); }
+.session .s-comment.is-empty { color: rgba(255,255,255,.45); }
+.session .s-comment.is-empty::before { content: attr(data-placeholder); }
 .session .s-del {
   position: absolute; top: 2px; right: 2px; background: rgba(0,0,0,.3);
   border: none; color: rgba(255,255,255,.85); width: 16px; height: 16px;
@@ -336,7 +344,8 @@ header .badge {
   .tick { color: #333 !important; }
   .day-col { border-color: #ccc !important; }
   .session { border-color: rgba(0,0,0,.25) !important; }
-  .session .s-label, .session .s-time { color: white !important; }
+  .s-comment.is-empty::before { content: '' !important; }
+  .session .s-label, .session .s-time, .session .s-comment { color: white !important; }
   @page { size: landscape; margin: 10mm; }
 }
 
@@ -511,7 +520,6 @@ function renderCats() {
     const delBtn = chip.querySelector('.cat-del');
 
     colorInput.addEventListener('input', () => { cat.color = colorInput.value; chip.style.background = cat.color; saveCats(); renderGrid(); });
-    colorInput.addEventListener('pointerdown', e => e.stopPropagation());
     nameSpan.addEventListener('pointerdown', e => e.stopPropagation());
     nameSpan.addEventListener('blur', () => {
       const v = nameSpan.textContent.trim() || cat.name;
@@ -625,11 +633,13 @@ function renderSessionEl(s) {
     <button class="s-del" title="Supprimer">×</button>
     <div class="s-label" contenteditable="true" spellcheck="false">${escapeHTML(s.label)}</div>
     <div class="s-time">${hhmm(s.start)} – ${hhmm(s.start + s.duration)}</div>
+    <div class="s-comment" contenteditable="true" spellcheck="false" data-placeholder="+ commentaire (qui, où…)"></div>
     <div class="resize-handle"></div>`;
 
   const label = el.querySelector('.s-label');
   const delBtn = el.querySelector('.s-del');
   const handle = el.querySelector('.resize-handle');
+  const comment = el.querySelector('.s-comment');
 
   label.addEventListener('pointerdown', e => e.stopPropagation());
   label.addEventListener('blur', () => {
@@ -638,6 +648,19 @@ function renderSessionEl(s) {
     saveSessions();
   });
   label.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); label.blur(); } });
+
+  if (s.comment) comment.textContent = s.comment;
+  else comment.classList.add('is-empty');
+  comment.addEventListener('pointerdown', e => e.stopPropagation());
+  comment.addEventListener('focus', () => comment.classList.remove('is-empty'));
+  comment.addEventListener('blur', () => {
+    const v = comment.textContent.trim();
+    s.comment = v;
+    comment.textContent = v;
+    comment.classList.toggle('is-empty', !v);
+    saveSessions();
+  });
+  comment.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); comment.blur(); } });
 
   delBtn.addEventListener('pointerdown', e => e.stopPropagation());
   delBtn.addEventListener('click', () => {
@@ -791,7 +814,7 @@ function startCreateDrag(cat, e) {
       if (maxDur < CONFIG.gran) {
         toast('Pas de place disponible ici.');
       } else {
-        SESSIONS.push({ id: uid('s'), catId: cat.id, dayId, start: minute, duration: Math.min(60, maxDur), label: cat.name });
+        SESSIONS.push({ id: uid('s'), catId: cat.id, dayId, start: minute, duration: Math.min(60, maxDur), label: cat.name, comment: '' });
         saveSessions();
       }
     }
