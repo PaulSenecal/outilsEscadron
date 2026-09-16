@@ -639,6 +639,40 @@ function renderDayHeaders() {
 /* ─────────── rendu : grille horaire ─────────── */
 function totalHeight() { return (CONFIG.endMin - CONFIG.startMin) * PX_MIN; }
 
+/* ─────────── tenir sur une seule page à l'impression ─────────── */
+// Les colonnes se répartissent déjà toute la largeur de la page (voir @media
+// print). Il reste la hauteur : on calcule un facteur de zoom qui ramène
+// tout le contenu (titre + en-têtes + grille) dans la hauteur imprimable
+// d'une page A4 paysage (297×210mm, marges 10mm ⇒ ~190mm ⇒ ~700px à 96dpi).
+// Cette hauteur, plus petite que celle d'une page portrait, sert de cas le
+// plus défavorable : si ça tient en paysage, ça tient aussi en portrait.
+const PRINT_TARGET_HEIGHT = 700;
+
+function computePrintScale() {
+  const titleEl = document.querySelector('.doc-title-bar');
+  const headEl = document.getElementById('day-headers');
+  const titleH = titleEl ? titleEl.getBoundingClientRect().height : 0;
+  const headH = headEl ? headEl.getBoundingClientRect().height : 0;
+  const total = titleH + headH + totalHeight() + 6;
+  if (total <= 0) return 1;
+  return Math.max(0.25, Math.min(1, PRINT_TARGET_HEIGHT / total));
+}
+function preparePrint() {
+  const app = document.getElementById('app');
+  app.style.zoom = String(computePrintScale());
+}
+function restorePrint() {
+  document.getElementById('app').style.zoom = '';
+}
+window.addEventListener('beforeprint', preparePrint);
+window.addEventListener('afterprint', restorePrint);
+if (window.matchMedia) {
+  const printMq = window.matchMedia('print');
+  const onPrintChange = e => { if (e.matches) preparePrint(); else restorePrint(); };
+  if (printMq.addEventListener) printMq.addEventListener('change', onPrintChange);
+  else if (printMq.addListener) printMq.addListener(onPrintChange);
+}
+
 function renderGrid() {
   const rowsBox = document.getElementById('grid-rows');
   rowsBox.innerHTML = '';
