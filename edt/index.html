@@ -180,6 +180,16 @@ header .badge {
 /* ═══════════════ EDITOR ═══════════════ */
 .editor-area { flex: 1; display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
 
+.doc-title-bar { padding: 16px 22px 2px; flex-shrink: 0; }
+.doc-title {
+  font-family: 'Syne', sans-serif; font-weight: 800; font-size: 21px; letter-spacing: .3px;
+  color: var(--text); outline: none; border-radius: 6px; padding: 4px 7px;
+  display: inline-block; min-width: 160px; max-width: 100%;
+}
+.doc-title:hover, .doc-title:focus { background: var(--surface2); }
+.doc-title.is-empty { color: var(--text-dim); font-weight: 700; }
+.doc-title.is-empty::before { content: attr(data-placeholder); }
+
 .editor-toolbar {
   padding: 10px 20px;
   border-bottom: 1px solid var(--border);
@@ -251,7 +261,7 @@ header .badge {
   background: var(--surface); border-right: 1px solid var(--border);
 }
 .tick {
-  position: absolute; right: 8px; transform: translateY(-50%);
+  position: absolute; right: 8px;
   font-size: 10.5px; color: var(--text-dim); font-family: 'Syne', sans-serif;
 }
 .day-col {
@@ -347,6 +357,9 @@ header .badge {
   .day-name { color: #111 !important; }
   .tick { color: #333 !important; }
   .day-col { border-color: #ccc !important; }
+  .doc-title-bar { padding: 0 0 8px; }
+  .doc-title { color: #111 !important; font-size: 20px; }
+  .doc-title.is-empty::before { content: '' !important; }
   .session { border-color: rgba(0,0,0,.25) !important; }
   .s-comment.is-empty::before { content: '' !important; }
   .session .s-label, .session .s-time, .session .s-comment { color: white !important; }
@@ -393,6 +406,9 @@ header .badge {
     </aside>
 
     <div class="editor-area">
+      <div class="doc-title-bar">
+        <div class="doc-title" id="doc-title" contenteditable="true" spellcheck="false" data-placeholder="Cliquez pour donner un titre à cet emploi du temps"></div>
+      </div>
       <div class="editor-toolbar">
         <div class="toolbar-group">
           <label>Plage horaire</label>
@@ -440,7 +456,8 @@ const KEYS = {
   cats: 'esc.edt.cats',
   days: 'esc.edt.days',
   config: 'esc.edt.config',
-  sessions: 'esc.edt.sessions'
+  sessions: 'esc.edt.sessions',
+  title: 'esc.edt.title'
 };
 
 const DEFAULT_CATS = [
@@ -457,7 +474,7 @@ const DEFAULT_DAYS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi']
   .map((n, i) => ({ id: 'd' + i, name: n }));
 const DEFAULT_CONFIG = { startMin: 7 * 60, endMin: 19 * 60, gran: 15 };
 
-let CATS = [], DAYS = [], CONFIG = { ...DEFAULT_CONFIG }, SESSIONS = [];
+let CATS = [], DAYS = [], CONFIG = { ...DEFAULT_CONFIG }, SESSIONS = [], TITLE = '';
 
 function uid(p) { return p + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
 
@@ -466,6 +483,7 @@ function load() {
   try { DAYS = JSON.parse(localStorage.getItem(KEYS.days)) || null; } catch (e) { DAYS = null; }
   try { CONFIG = JSON.parse(localStorage.getItem(KEYS.config)) || null; } catch (e) { CONFIG = null; }
   try { SESSIONS = JSON.parse(localStorage.getItem(KEYS.sessions)) || []; } catch (e) { SESSIONS = []; }
+  try { TITLE = localStorage.getItem(KEYS.title) || ''; } catch (e) { TITLE = ''; }
   if (!Array.isArray(CATS) || !CATS.length) CATS = JSON.parse(JSON.stringify(DEFAULT_CATS));
   if (!Array.isArray(DAYS) || !DAYS.length) DAYS = JSON.parse(JSON.stringify(DEFAULT_DAYS));
   if (!CONFIG || typeof CONFIG.startMin !== 'number') CONFIG = { ...DEFAULT_CONFIG };
@@ -475,6 +493,7 @@ function saveCats() { try { localStorage.setItem(KEYS.cats, JSON.stringify(CATS)
 function saveDays() { try { localStorage.setItem(KEYS.days, JSON.stringify(DAYS)); } catch (e) {} }
 function saveConfig() { try { localStorage.setItem(KEYS.config, JSON.stringify(CONFIG)); } catch (e) {} }
 function saveSessions() { try { localStorage.setItem(KEYS.sessions, JSON.stringify(SESSIONS)); } catch (e) {} }
+function saveTitle() { try { localStorage.setItem(KEYS.title, TITLE); } catch (e) {} }
 
 /* ─────────── outils temps ─────────── */
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -625,7 +644,7 @@ function renderGrid() {
   for (let m = Math.ceil(CONFIG.startMin / 60) * 60; m <= CONFIG.endMin; m += 60) {
     const tick = document.createElement('div');
     tick.className = 'tick';
-    tick.style.top = ((m - CONFIG.startMin) * PX_MIN) + 'px';
+    tick.style.top = ((m - CONFIG.startMin) * PX_MIN + 3) + 'px';
     tick.textContent = hhmm(m);
     timeCol.appendChild(tick);
   }
@@ -909,7 +928,7 @@ function viderSeances() {
 }
 
 function exportJSON() {
-  const data = { version: 1, exporte_le: new Date().toISOString(), categories: CATS, jours: DAYS, config: CONFIG, seances: SESSIONS };
+  const data = { version: 1, exporte_le: new Date().toISOString(), titre: TITLE, categories: CATS, jours: DAYS, config: CONFIG, seances: SESSIONS };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -930,18 +949,37 @@ function importJSON(evt) {
       toast('Ce fichier ne correspond pas à un export du planificateur.');
       return;
     }
-    CATS = data.categories; DAYS = data.jours; CONFIG = data.config; SESSIONS = data.seances;
-    saveCats(); saveDays(); saveConfig(); saveSessions();
-    fillConfigInputs(); renderCats(); renderDayHeaders(); renderGrid();
+    CATS = data.categories; DAYS = data.jours; CONFIG = data.config; SESSIONS = data.seances; TITLE = data.titre || '';
+    saveCats(); saveDays(); saveConfig(); saveSessions(); saveTitle();
+    fillConfigInputs(); refreshTitleField(); renderCats(); renderDayHeaders(); renderGrid();
     toast('Emploi du temps importé.');
   };
   reader.readAsText(file);
 }
 
 /* ─────────── démarrage ─────────── */
+function initTitleField() {
+  const el = document.getElementById('doc-title');
+  refreshTitleField();
+  el.addEventListener('focus', () => el.classList.remove('is-empty'));
+  el.addEventListener('blur', () => {
+    TITLE = el.textContent.trim();
+    el.textContent = TITLE;
+    el.classList.toggle('is-empty', !TITLE);
+    saveTitle();
+  });
+  el.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); el.blur(); } });
+}
+function refreshTitleField() {
+  const el = document.getElementById('doc-title');
+  if (TITLE) { el.textContent = TITLE; el.classList.remove('is-empty'); }
+  else { el.textContent = ''; el.classList.add('is-empty'); }
+}
+
 function init() {
   load();
   fillConfigInputs();
+  initTitleField();
   renderCats();
   renderDayHeaders();
   renderGrid();
