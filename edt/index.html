@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Planificateur EDT – Formation Militaire</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Literata:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════ RESET & BASE ═══════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+* {
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
+  color-adjust: exact !important;
+}
+
+:root {
+  --bg: #0f1117;
+  --surface: #181c27;
+  --surface2: #1f2436;
+  --surface3: #262c42;
+  --border: #2a3050;
+  --text: #e8eaf2;
+  --text-dim: #7a839e;
+  --accent: #4f6ef7;
+  --danger: #c8102e;
+
+  --px-min: 1.6px; /* échelle verticale : 1 minute = 1.6px, soit 96px/heure */
+}
+
+body {
+  font-family: 'Literata', Georgia, serif;
+  background: var(--bg);
+  color: var(--text);
+  height: 100vh;
+  overflow: hidden;
+}
+
+button { font-family: inherit; }
+
+/* ═══════════════ LAYOUT ═══════════════ */
+#app { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+
+header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+header h1 {
+  font-family: 'Syne', sans-serif;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+header .badge {
+  font-family: 'Syne', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: var(--accent);
+  color: white;
+  letter-spacing: 1px;
+}
+
+.header-right { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+.btn {
+  font-family: 'Syne', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  padding: 8px 13px;
+  border-radius: 7px;
+  border: 1.5px solid var(--border);
+  background: var(--surface2);
+  color: var(--text);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: border-color .15s, background .15s;
+  white-space: nowrap;
+}
+.btn:hover { border-color: var(--accent); background: var(--surface3); }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: white; }
+.btn-primary:hover { filter: brightness(1.1); }
+.btn-danger:hover { border-color: var(--danger); }
+.btn-sm { padding: 5px 9px; font-size: 10px; }
+
+.main-layout { display: flex; flex: 1; min-height: 0; overflow: hidden; }
+
+/* ═══════════════ SIDEBAR (matières) ═══════════════ */
+.sidebar {
+  width: 230px;
+  flex-shrink: 0;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sidebar-head {
+  padding: 14px 14px 8px;
+  border-bottom: 1px solid var(--border);
+}
+.sidebar-head .lbl {
+  font-family: 'Syne', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+.sidebar-head .hint {
+  font-size: 11.5px;
+  color: var(--text-dim);
+  margin-top: 6px;
+  line-height: 1.5;
+}
+
+.cat-list { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+
+.cat-chip {
+  border-radius: 8px;
+  padding: 9px 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: grab;
+  border: 1.5px solid rgba(255,255,255,.12);
+  position: relative;
+  touch-action: none;
+  user-select: none;
+}
+.cat-chip:active { cursor: grabbing; }
+.cat-chip.dragging-source { opacity: .35; }
+
+.cat-color {
+  width: 20px; height: 20px; border-radius: 5px; flex-shrink: 0;
+  border: none; padding: 0; cursor: pointer;
+}
+.cat-name {
+  flex: 1; min-width: 0;
+  font-family: 'Syne', sans-serif;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: white;
+  background: rgba(0,0,0,.18);
+  border-radius: 4px;
+  padding: 3px 6px;
+  outline: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cat-name:focus { background: rgba(0,0,0,.35); text-overflow: clip; }
+.cat-del {
+  background: none; border: none; color: rgba(255,255,255,.6);
+  font-size: 14px; cursor: pointer; flex-shrink: 0; line-height: 1;
+  padding: 2px 4px; border-radius: 4px;
+}
+.cat-del:hover { color: white; background: rgba(0,0,0,.25); }
+
+.sidebar-foot { padding: 10px; border-top: 1px solid var(--border); }
+.sidebar-foot .btn { width: 100%; justify-content: center; }
+
+/* ═══════════════ EDITOR ═══════════════ */
+.editor-area { flex: 1; display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
+
+.editor-toolbar {
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  display: flex;
+  gap: 22px;
+  align-items: center;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+.toolbar-group { display: flex; align-items: center; gap: 7px; }
+.toolbar-group label {
+  font-family: 'Syne', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+.toolbar-group input[type=time], .toolbar-group select {
+  background: var(--surface2);
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: 'Literata', serif;
+  font-size: 13px;
+  padding: 5px 8px;
+  outline: none;
+}
+.toolbar-group input[type=time]:focus, .toolbar-group select:focus { border-color: var(--accent); }
+.toolbar-sep { color: var(--text-dim); font-size: 12px; }
+
+/* ═══════════════ GRILLE ═══════════════ */
+.grid-scroll { flex: 1; overflow: auto; position: relative; background: var(--bg); }
+.grid-inner { display: flex; flex-direction: column; min-width: fit-content; }
+
+.day-headers { display: flex; position: sticky; top: 0; z-index: 6; background: var(--surface); border-bottom: 1px solid var(--border); }
+.corner {
+  width: 64px; flex-shrink: 0; position: sticky; left: 0; z-index: 7;
+  background: var(--surface); border-right: 1px solid var(--border);
+}
+.day-header {
+  flex: 1 0 190px; padding: 9px 10px; border-right: 1px solid var(--border);
+  display: flex; align-items: center; gap: 6px;
+}
+.day-name {
+  flex: 1; min-width: 0;
+  font-family: 'Syne', sans-serif; font-weight: 800; font-size: 13px;
+  letter-spacing: .5px; text-transform: uppercase;
+  outline: none; border-radius: 4px; padding: 3px 5px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.day-name:focus { background: var(--surface3); text-overflow: clip; }
+.day-del {
+  background: none; border: none; color: var(--text-dim); font-size: 13px;
+  cursor: pointer; padding: 2px 5px; border-radius: 4px; flex-shrink: 0;
+}
+.day-del:hover { color: white; background: var(--danger); }
+.day-add {
+  flex: 0 0 110px; display: flex; align-items: center; justify-content: center;
+  border-right: none; cursor: pointer; color: var(--text-dim);
+  font-family: 'Syne', sans-serif; font-size: 11px; font-weight: 700;
+}
+.day-add:hover { color: var(--accent); }
+
+.grid-rows { display: flex; position: relative; }
+.time-col {
+  width: 64px; flex-shrink: 0; position: sticky; left: 0; z-index: 5;
+  background: var(--surface); border-right: 1px solid var(--border);
+}
+.tick {
+  position: absolute; right: 8px; transform: translateY(-50%);
+  font-size: 10.5px; color: var(--text-dim); font-family: 'Syne', sans-serif;
+}
+.day-col {
+  flex: 1 0 190px; position: relative; border-right: 1px solid var(--border);
+  background-image:
+    repeating-linear-gradient(to bottom, var(--border) 0, var(--border) 1px, transparent 1px, transparent 96px),
+    repeating-linear-gradient(to bottom, rgba(255,255,255,.045) 0, rgba(255,255,255,.045) 1px, transparent 1px, transparent 48px);
+}
+.day-col.drop-hover { background-color: rgba(79,110,247,.08); }
+
+.drop-preview {
+  position: absolute; left: 3px; right: 3px; border-radius: 6px;
+  border: 2px dashed rgba(255,255,255,.55); background: rgba(255,255,255,.08);
+  pointer-events: none; z-index: 3;
+}
+
+.session {
+  position: absolute; left: 3px; right: 3px; border-radius: 6px;
+  padding: 3px 6px; overflow: hidden; cursor: grab;
+  box-shadow: 0 2px 6px rgba(0,0,0,.35);
+  border: 1px solid rgba(255,255,255,.16);
+  touch-action: none;
+}
+.session.dragging { opacity: .3; }
+.session .s-label {
+  font-family: 'Syne', sans-serif; font-weight: 700; font-size: 11.5px;
+  color: white; outline: none; line-height: 1.25;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.session .s-label:focus { white-space: normal; text-overflow: clip; background: rgba(0,0,0,.25); border-radius: 3px; }
+.session .s-time {
+  font-size: 9.5px; color: rgba(255,255,255,.78); margin-top: 1px;
+  font-family: 'Syne', sans-serif; letter-spacing: .3px;
+}
+.session .s-del {
+  position: absolute; top: 2px; right: 2px; background: rgba(0,0,0,.3);
+  border: none; color: rgba(255,255,255,.85); width: 16px; height: 16px;
+  border-radius: 3px; font-size: 11px; line-height: 1; cursor: pointer; display: none;
+}
+.session:hover .s-del { display: block; }
+.session .s-del:hover { background: var(--danger); color: white; }
+.resize-handle {
+  position: absolute; bottom: 0; left: 0; right: 0; height: 7px;
+  cursor: ns-resize; touch-action: none;
+}
+.resize-handle::after {
+  content: ""; position: absolute; left: 50%; bottom: 2px; transform: translateX(-50%);
+  width: 22px; height: 2px; border-radius: 2px; background: rgba(255,255,255,.4);
+}
+
+.ghost {
+  position: fixed; z-index: 9999; pointer-events: none;
+  padding: 5px 10px; border-radius: 6px; color: white;
+  font-family: 'Syne', sans-serif; font-weight: 700; font-size: 11.5px;
+  box-shadow: 0 6px 18px rgba(0,0,0,.5); opacity: .92;
+  transform: translate(-8px, -8px);
+}
+
+.empty-hint {
+  position: absolute; top: 14px; left: 14px; right: 14px;
+  font-size: 12px; color: var(--text-dim); line-height: 1.5;
+  pointer-events: none; max-width: 340px;
+}
+
+/* toast */
+.toast {
+  position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(20px);
+  background: var(--surface3); border: 1px solid var(--border); color: var(--text);
+  padding: 10px 18px; border-radius: 8px; font-size: 13px; z-index: 10000;
+  opacity: 0; transition: opacity .2s, transform .2s; pointer-events: none;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ═══════════════ IMPRESSION ═══════════════ */
+@media print {
+  header, .sidebar, .editor-toolbar, .empty-hint, .resize-handle, .s-del,
+  .day-add, .day-del, .cat-del, .toast { display: none !important; }
+  body { height: auto !important; overflow: visible !important; background: white !important; color: #111 !important; }
+  .main-layout { display: block !important; }
+  .editor-area, .grid-scroll { overflow: visible !important; height: auto !important; }
+  .grid-inner { min-width: 0 !important; }
+  .day-headers, .corner, .time-col { position: static !important; }
+  .day-header { border-color: #999 !important; }
+  .day-name { color: #111 !important; }
+  .tick { color: #333 !important; }
+  .day-col { border-color: #ccc !important; }
+  .session { border-color: rgba(0,0,0,.25) !important; }
+  .session .s-label, .session .s-time { color: white !important; }
+  @page { size: landscape; margin: 10mm; }
+}
+
+/* écran étroit */
+@media (max-width: 820px) {
+  .main-layout { flex-direction: column; }
+  .sidebar { width: 100%; height: auto; max-height: 160px; border-right: none; border-bottom: 1px solid var(--border); }
+  .cat-list { flex-direction: row; flex-wrap: nowrap; overflow-x: auto; }
+  .cat-chip { flex-shrink: 0; min-width: 150px; }
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <header>
+    <h1>Planificateur EDT</h1>
+    <span class="badge">ESCADRON</span>
+    <div class="header-right">
+      <button class="btn btn-sm" onclick="exportJSON()">⭳ Exporter</button>
+      <label class="btn btn-sm" style="cursor:pointer">⭱ Importer
+        <input type="file" accept="application/json" style="display:none" onchange="importJSON(event)">
+      </label>
+      <button class="btn btn-sm btn-danger" onclick="viderSeances()">↺ Vider les séances</button>
+      <button class="btn btn-primary btn-sm" onclick="window.print()">🖨️ Imprimer / PDF</button>
+    </div>
+  </header>
+
+  <div class="main-layout">
+
+    <aside class="sidebar">
+      <div class="sidebar-head">
+        <div class="lbl">Matières</div>
+        <div class="hint">Glissez un bloc coloré directement sur la grille pour créer une séance. Cliquez sur le nom ou la pastille pour les modifier.</div>
+      </div>
+      <div class="cat-list" id="cat-list"></div>
+      <div class="sidebar-foot">
+        <button class="btn" onclick="ajouterCategorie()">+ Ajouter une matière</button>
+      </div>
+    </aside>
+
+    <div class="editor-area">
+      <div class="editor-toolbar">
+        <div class="toolbar-group">
+          <label>Plage horaire</label>
+          <input type="time" id="cfg-start" onchange="onConfigChange()">
+          <span class="toolbar-sep">→</span>
+          <input type="time" id="cfg-end" onchange="onConfigChange()">
+        </div>
+        <div class="toolbar-group">
+          <label>Pas</label>
+          <select id="cfg-gran" onchange="onConfigChange()">
+            <option value="5">5 min</option>
+            <option value="10">10 min</option>
+            <option value="15">15 min</option>
+            <option value="30">30 min</option>
+            <option value="60">60 min</option>
+          </select>
+        </div>
+        <div class="toolbar-group" style="color:var(--text-dim); font-size:11.5px;">
+          Redimensionnez une séance par sa poignée du bas · faites-la glisser pour la déplacer.
+        </div>
+      </div>
+
+      <div class="grid-scroll" id="grid-scroll">
+        <div class="grid-inner" id="grid-inner">
+          <div class="day-headers" id="day-headers"></div>
+          <div class="grid-rows" id="grid-rows"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════
+   PLANIFICATEUR EDT — créateur d'emploi du temps par glisser-
+   déposer de blocs « matière ». Aucune dépendance externe,
+   toutes les données restent dans le navigateur (localStorage).
+   ═══════════════════════════════════════════════════════════ */
+
+const PX_MIN = 1.6; // px par minute (96px/heure)
+const KEYS = {
+  cats: 'esc.edt.cats',
+  days: 'esc.edt.days',
+  config: 'esc.edt.config',
+  sessions: 'esc.edt.sessions'
+};
+
+const DEFAULT_CATS = [
+  { id: 'sit',      name: 'SIT',      color: '#2453a6' },
+  { id: 'istc',     name: 'ISTC',     color: '#a1284f' },
+  { id: 'nrbc',     name: 'NRBC',     color: '#3d7020' },
+  { id: 'armement', name: 'ARMEMENT', color: '#54566c' },
+  { id: 'rens',     name: 'RENS',     color: '#54269a' },
+  { id: 'topo',     name: 'TOPO',     color: '#7a4520' },
+  { id: 'trans',    name: 'TRANS',    color: '#b04c00' },
+  { id: 'cyber',    name: 'CYBER',    color: '#00693f' }
+];
+const DEFAULT_DAYS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi']
+  .map((n, i) => ({ id: 'd' + i, name: n }));
+const DEFAULT_CONFIG = { startMin: 7 * 60, endMin: 19 * 60, gran: 15 };
+
+let CATS = [], DAYS = [], CONFIG = { ...DEFAULT_CONFIG }, SESSIONS = [];
+
+function uid(p) { return p + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+function load() {
+  try { CATS = JSON.parse(localStorage.getItem(KEYS.cats)) || null; } catch (e) { CATS = null; }
+  try { DAYS = JSON.parse(localStorage.getItem(KEYS.days)) || null; } catch (e) { DAYS = null; }
+  try { CONFIG = JSON.parse(localStorage.getItem(KEYS.config)) || null; } catch (e) { CONFIG = null; }
+  try { SESSIONS = JSON.parse(localStorage.getItem(KEYS.sessions)) || []; } catch (e) { SESSIONS = []; }
+  if (!Array.isArray(CATS) || !CATS.length) CATS = JSON.parse(JSON.stringify(DEFAULT_CATS));
+  if (!Array.isArray(DAYS) || !DAYS.length) DAYS = JSON.parse(JSON.stringify(DEFAULT_DAYS));
+  if (!CONFIG || typeof CONFIG.startMin !== 'number') CONFIG = { ...DEFAULT_CONFIG };
+  if (!Array.isArray(SESSIONS)) SESSIONS = [];
+}
+function saveCats() { try { localStorage.setItem(KEYS.cats, JSON.stringify(CATS)); } catch (e) {} }
+function saveDays() { try { localStorage.setItem(KEYS.days, JSON.stringify(DAYS)); } catch (e) {} }
+function saveConfig() { try { localStorage.setItem(KEYS.config, JSON.stringify(CONFIG)); } catch (e) {} }
+function saveSessions() { try { localStorage.setItem(KEYS.sessions, JSON.stringify(SESSIONS)); } catch (e) {} }
+
+/* ─────────── outils temps ─────────── */
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const snap = m => Math.round(m / CONFIG.gran) * CONFIG.gran;
+function hhmm(min) {
+  min = ((min % 1440) + 1440) % 1440;
+  const h = Math.floor(min / 60), m = min % 60;
+  return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+}
+function parseHHMM(s) { const [h, m] = s.split(':').map(Number); return h * 60 + m; }
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+/* ─────────── logique de chevauchement ─────────── */
+function sessionsOfDay(dayId, excludeId) {
+  return SESSIONS.filter(s => s.dayId === dayId && s.id !== excludeId);
+}
+function overlaps(dayId, start, duration, excludeId) {
+  const end = start + duration;
+  return sessionsOfDay(dayId, excludeId).some(s => start < s.start + s.duration && end > s.start);
+}
+function maxDurationAt(dayId, start, excludeId) {
+  const nexts = sessionsOfDay(dayId, excludeId).filter(s => s.start >= start).map(s => s.start);
+  const ceiling = nexts.length ? Math.min(...nexts) : CONFIG.endMin;
+  return Math.max(CONFIG.gran, Math.min(ceiling, CONFIG.endMin) - start);
+}
+
+/* ─────────── rendu : sidebar matières ─────────── */
+function renderCats() {
+  const box = document.getElementById('cat-list');
+  box.innerHTML = '';
+  CATS.forEach(cat => {
+    const chip = document.createElement('div');
+    chip.className = 'cat-chip';
+    chip.style.background = cat.color;
+    chip.innerHTML = `
+      <input type="color" class="cat-color" value="${cat.color}">
+      <span class="cat-name" contenteditable="true" spellcheck="false">${escapeHTML(cat.name)}</span>
+      <button class="cat-del" title="Supprimer la matière">×</button>`;
+    const colorInput = chip.querySelector('.cat-color');
+    const nameSpan = chip.querySelector('.cat-name');
+    const delBtn = chip.querySelector('.cat-del');
+
+    colorInput.addEventListener('input', () => { cat.color = colorInput.value; chip.style.background = cat.color; saveCats(); renderGrid(); });
+    colorInput.addEventListener('pointerdown', e => e.stopPropagation());
+    nameSpan.addEventListener('pointerdown', e => e.stopPropagation());
+    nameSpan.addEventListener('blur', () => {
+      const v = nameSpan.textContent.trim() || cat.name;
+      cat.name = v; nameSpan.textContent = v; saveCats(); renderGrid();
+    });
+    nameSpan.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); nameSpan.blur(); } });
+    delBtn.addEventListener('pointerdown', e => e.stopPropagation());
+    delBtn.addEventListener('click', () => {
+      if (CATS.length <= 1) { toast('Au moins une matière est nécessaire.'); return; }
+      CATS = CATS.filter(c => c.id !== cat.id);
+      saveCats(); renderCats(); renderGrid();
+    });
+
+    chip.addEventListener('pointerdown', e => startCreateDrag(cat, e));
+    box.appendChild(chip);
+  });
+}
+
+function ajouterCategorie() {
+  const palette = ['#2453a6', '#a1284f', '#3d7020', '#54566c', '#54269a', '#7a4520', '#b04c00', '#00693f', '#8a1f8a', '#1f7a7a'];
+  const color = palette[CATS.length % palette.length];
+  CATS.push({ id: uid('c'), name: 'Nouvelle matière', color });
+  saveCats(); renderCats();
+}
+
+/* ─────────── rendu : en-têtes de colonnes (jours) ─────────── */
+function renderDayHeaders() {
+  const row = document.getElementById('day-headers');
+  row.innerHTML = '<div class="corner"></div>';
+  DAYS.forEach(day => {
+    const el = document.createElement('div');
+    el.className = 'day-header';
+    el.innerHTML = `
+      <span class="day-name" contenteditable="true" spellcheck="false">${escapeHTML(day.name)}</span>
+      <button class="day-del" title="Supprimer la colonne">×</button>`;
+    const nameSpan = el.querySelector('.day-name');
+    const delBtn = el.querySelector('.day-del');
+    nameSpan.addEventListener('blur', () => {
+      const v = nameSpan.textContent.trim() || day.name;
+      day.name = v; nameSpan.textContent = v; saveDays();
+    });
+    nameSpan.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); nameSpan.blur(); } });
+    delBtn.addEventListener('click', () => {
+      if (DAYS.length <= 1) { toast('Au moins une colonne est nécessaire.'); return; }
+      DAYS = DAYS.filter(d => d.id !== day.id);
+      SESSIONS = SESSIONS.filter(s => s.dayId !== day.id);
+      saveDays(); saveSessions(); renderDayHeaders(); renderGrid();
+    });
+    row.appendChild(el);
+  });
+  const add = document.createElement('div');
+  add.className = 'day-header day-add';
+  add.textContent = '+ Colonne';
+  add.addEventListener('click', () => {
+    DAYS.push({ id: uid('d'), name: 'Nouvelle colonne' });
+    saveDays(); renderDayHeaders(); renderGrid();
+  });
+  row.appendChild(add);
+}
+
+/* ─────────── rendu : grille horaire ─────────── */
+function totalHeight() { return (CONFIG.endMin - CONFIG.startMin) * PX_MIN; }
+
+function renderGrid() {
+  const rowsBox = document.getElementById('grid-rows');
+  rowsBox.innerHTML = '';
+  const H = totalHeight();
+
+  // colonne des heures
+  const timeCol = document.createElement('div');
+  timeCol.className = 'time-col';
+  timeCol.style.height = H + 'px';
+  for (let m = Math.ceil(CONFIG.startMin / 60) * 60; m <= CONFIG.endMin; m += 60) {
+    const tick = document.createElement('div');
+    tick.className = 'tick';
+    tick.style.top = ((m - CONFIG.startMin) * PX_MIN) + 'px';
+    tick.textContent = hhmm(m);
+    timeCol.appendChild(tick);
+  }
+  rowsBox.appendChild(timeCol);
+
+  // colonnes de jours
+  DAYS.forEach(day => {
+    const col = document.createElement('div');
+    col.className = 'day-col';
+    col.dataset.dayId = day.id;
+    col.style.height = H + 'px';
+    SESSIONS.filter(s => s.dayId === day.id).forEach(s => col.appendChild(renderSessionEl(s)));
+    rowsBox.appendChild(col);
+  });
+
+  if (!SESSIONS.length) {
+    const hint = document.createElement('div');
+    hint.className = 'empty-hint';
+    hint.textContent = 'Aucune séance pour le moment. Glissez un bloc de matière depuis la colonne de gauche jusqu\'à l\'endroit voulu sur la grille.';
+    document.getElementById('grid-rows').style.position = 'relative';
+    document.getElementById('grid-rows').appendChild(hint);
+  }
+}
+
+function catOf(id) { return CATS.find(c => c.id === id) || { name: '(matière supprimée)', color: '#555a6e' }; }
+
+function renderSessionEl(s) {
+  const cat = catOf(s.catId);
+  const el = document.createElement('div');
+  el.className = 'session';
+  el.style.background = cat.color;
+  el.style.top = ((s.start - CONFIG.startMin) * PX_MIN) + 'px';
+  el.style.height = Math.max(16, s.duration * PX_MIN) + 'px';
+  el.innerHTML = `
+    <button class="s-del" title="Supprimer">×</button>
+    <div class="s-label" contenteditable="true" spellcheck="false">${escapeHTML(s.label)}</div>
+    <div class="s-time">${hhmm(s.start)} – ${hhmm(s.start + s.duration)}</div>
+    <div class="resize-handle"></div>`;
+
+  const label = el.querySelector('.s-label');
+  const delBtn = el.querySelector('.s-del');
+  const handle = el.querySelector('.resize-handle');
+
+  label.addEventListener('pointerdown', e => e.stopPropagation());
+  label.addEventListener('blur', () => {
+    s.label = label.textContent.trim() || cat.name;
+    label.textContent = s.label;
+    saveSessions();
+  });
+  label.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); label.blur(); } });
+
+  delBtn.addEventListener('pointerdown', e => e.stopPropagation());
+  delBtn.addEventListener('click', () => {
+    SESSIONS = SESSIONS.filter(x => x.id !== s.id);
+    saveSessions(); renderGrid();
+  });
+
+  handle.addEventListener('pointerdown', e => startResize(s, el, e));
+  el.addEventListener('pointerdown', e => { if (e.target === label || e.target === delBtn) return; startMoveDrag(s, el, e); });
+
+  return el;
+}
+
+function escapeHTML(str) {
+  const d = document.createElement('div'); d.textContent = str == null ? '' : String(str); return d.innerHTML;
+}
+
+/* ─────────── redimensionnement d'une séance ─────────── */
+function startResize(session, el, e) {
+  e.stopPropagation(); e.preventDefault();
+  const handle = e.currentTarget;
+  handle.setPointerCapture(e.pointerId);
+  const startY = e.clientY;
+  const startDur = session.duration;
+  const maxDur = maxDurationAt(session.dayId, session.start, session.id);
+
+  function onMove(ev) {
+    const deltaMin = (ev.clientY - startY) / PX_MIN;
+    let dur = snap(startDur + deltaMin);
+    dur = clamp(dur, CONFIG.gran, maxDur);
+    session.duration = dur;
+    el.style.height = Math.max(16, dur * PX_MIN) + 'px';
+    el.querySelector('.s-time').textContent = hhmm(session.start) + ' – ' + hhmm(session.start + dur);
+  }
+  function onUp(ev) {
+    handle.releasePointerCapture(ev.pointerId);
+    handle.removeEventListener('pointermove', onMove);
+    handle.removeEventListener('pointerup', onUp);
+    saveSessions();
+  }
+  handle.addEventListener('pointermove', onMove);
+  handle.addEventListener('pointerup', onUp);
+}
+
+/* ─────────── déplacement d'une séance existante ─────────── */
+function startMoveDrag(session, el, e) {
+  e.preventDefault();
+  const startX = e.clientX, startY = e.clientY;
+  const grabOffsetMin = (e.clientY - el.getBoundingClientRect().top) / PX_MIN;
+  let moved = false, ghost = null, hoveredCol = null;
+  const cat = catOf(session.catId);
+
+  function ensureGhost() {
+    if (ghost) return;
+    moved = true;
+    el.classList.add('dragging');
+    ghost = document.createElement('div');
+    ghost.className = 'ghost';
+    ghost.style.background = cat.color;
+    ghost.textContent = session.label;
+    document.body.appendChild(ghost);
+  }
+
+  function onMove(ev) {
+    if (!moved && Math.hypot(ev.clientX - startX, ev.clientY - startY) < 4) return;
+    ensureGhost();
+    ghost.style.left = ev.clientX + 'px';
+    ghost.style.top = ev.clientY + 'px';
+
+    if (hoveredCol) hoveredCol.classList.remove('drop-hover');
+    clearPreview();
+    const under = document.elementFromPoint(ev.clientX, ev.clientY);
+    const col = under && under.closest('.day-col');
+    hoveredCol = col || null;
+    if (col) {
+      col.classList.add('drop-hover');
+      const rect = col.getBoundingClientRect();
+      const minute = clamp(snap(CONFIG.startMin + (ev.clientY - rect.top) / PX_MIN - grabOffsetMin), CONFIG.startMin, CONFIG.endMin - CONFIG.gran);
+      showPreview(col, minute, session.duration);
+    }
+  }
+  function onUp(ev) {
+    document.removeEventListener('pointermove', onMove);
+    document.removeEventListener('pointerup', onUp);
+    if (hoveredCol) hoveredCol.classList.remove('drop-hover');
+    clearPreview();
+    el.classList.remove('dragging');
+    if (ghost) ghost.remove();
+
+    if (moved && hoveredCol) {
+      const dayId = hoveredCol.dataset.dayId;
+      const rect = hoveredCol.getBoundingClientRect();
+      let minute = clamp(snap(CONFIG.startMin + (ev.clientY - rect.top) / PX_MIN - grabOffsetMin), CONFIG.startMin, CONFIG.endMin - session.duration);
+      if (overlaps(dayId, minute, session.duration, session.id)) {
+        toast('Chevauchement avec une autre séance : déplacement annulé.');
+      } else {
+        session.dayId = dayId; session.start = minute; saveSessions();
+      }
+    }
+    renderGrid();
+  }
+  document.addEventListener('pointermove', onMove);
+  document.addEventListener('pointerup', onUp);
+}
+
+/* ─────────── création par glisser-déposer depuis la sidebar ─────────── */
+function startCreateDrag(cat, e) {
+  const startX = e.clientX, startY = e.clientY;
+  let moved = false, ghost = null, hoveredCol = null;
+
+  function ensureGhost() {
+    if (ghost) return;
+    moved = true;
+    ghost = document.createElement('div');
+    ghost.className = 'ghost';
+    ghost.style.background = cat.color;
+    ghost.textContent = cat.name;
+    document.body.appendChild(ghost);
+  }
+  function onMove(ev) {
+    if (!moved && Math.hypot(ev.clientX - startX, ev.clientY - startY) < 4) return;
+    ensureGhost();
+    ghost.style.left = ev.clientX + 'px';
+    ghost.style.top = ev.clientY + 'px';
+
+    if (hoveredCol) hoveredCol.classList.remove('drop-hover');
+    clearPreview();
+    const under = document.elementFromPoint(ev.clientX, ev.clientY);
+    const col = under && under.closest('.day-col');
+    hoveredCol = col || null;
+    if (col) {
+      col.classList.add('drop-hover');
+      const rect = col.getBoundingClientRect();
+      const minute = clamp(snap(CONFIG.startMin + (ev.clientY - rect.top) / PX_MIN), CONFIG.startMin, CONFIG.endMin - CONFIG.gran);
+      const dur = Math.min(60, maxDurationAt(col.dataset.dayId, minute, null));
+      showPreview(col, minute, dur);
+    }
+  }
+  function onUp(ev) {
+    document.removeEventListener('pointermove', onMove);
+    document.removeEventListener('pointerup', onUp);
+    if (hoveredCol) hoveredCol.classList.remove('drop-hover');
+    clearPreview();
+    if (ghost) ghost.remove();
+
+    if (moved && hoveredCol) {
+      const dayId = hoveredCol.dataset.dayId;
+      const rect = hoveredCol.getBoundingClientRect();
+      const minute = clamp(snap(CONFIG.startMin + (ev.clientY - rect.top) / PX_MIN), CONFIG.startMin, CONFIG.endMin - CONFIG.gran);
+      const maxDur = maxDurationAt(dayId, minute, null);
+      if (maxDur < CONFIG.gran) {
+        toast('Pas de place disponible ici.');
+      } else {
+        SESSIONS.push({ id: uid('s'), catId: cat.id, dayId, start: minute, duration: Math.min(60, maxDur), label: cat.name });
+        saveSessions();
+      }
+    }
+    renderGrid();
+  }
+  document.addEventListener('pointermove', onMove);
+  document.addEventListener('pointerup', onUp);
+}
+
+function showPreview(col, minute, duration) {
+  const p = document.createElement('div');
+  p.className = 'drop-preview';
+  p.id = 'drop-preview-el';
+  p.style.top = ((minute - CONFIG.startMin) * PX_MIN) + 'px';
+  p.style.height = Math.max(16, duration * PX_MIN) + 'px';
+  col.appendChild(p);
+}
+function clearPreview() { const p = document.getElementById('drop-preview-el'); if (p) p.remove(); }
+
+/* ─────────── configuration (plage horaire / pas) ─────────── */
+function fillConfigInputs() {
+  document.getElementById('cfg-start').value = hhmm(CONFIG.startMin);
+  document.getElementById('cfg-end').value = hhmm(CONFIG.endMin);
+  document.getElementById('cfg-gran').value = String(CONFIG.gran);
+}
+
+function onConfigChange() {
+  const startMin = parseHHMM(document.getElementById('cfg-start').value || '07:00');
+  const endMin = parseHHMM(document.getElementById('cfg-end').value || '19:00');
+  const gran = Number(document.getElementById('cfg-gran').value) || 15;
+
+  if (endMin <= startMin) {
+    toast("L'heure de fin doit être après l'heure de début.");
+    fillConfigInputs();
+    return;
+  }
+  CONFIG = { startMin, endMin, gran };
+  saveConfig();
+
+  // recadre les séances qui déborderaient de la nouvelle plage
+  SESSIONS = SESSIONS.filter(s => {
+    s.start = clamp(snap(s.start), CONFIG.startMin, CONFIG.endMin - CONFIG.gran);
+    s.duration = clamp(snap(s.duration), CONFIG.gran, CONFIG.endMin - s.start);
+    return s.duration >= CONFIG.gran;
+  });
+  saveSessions();
+  renderGrid();
+}
+
+/* ─────────── vider / exporter / importer ─────────── */
+function viderSeances() {
+  if (!SESSIONS.length) { toast('Aucune séance à vider.'); return; }
+  if (!confirm('Supprimer toutes les séances placées sur la grille ? Les matières et colonnes sont conservées.')) return;
+  SESSIONS = [];
+  saveSessions();
+  renderGrid();
+  toast('Séances vidées.');
+}
+
+function exportJSON() {
+  const data = { version: 1, exporte_le: new Date().toISOString(), categories: CATS, jours: DAYS, config: CONFIG, seances: SESSIONS };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'edt-' + new Date().toISOString().slice(0, 10) + '.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function importJSON(evt) {
+  const file = evt.target.files && evt.target.files[0];
+  evt.target.value = '';
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    let data;
+    try { data = JSON.parse(reader.result); } catch (e) { toast('Fichier illisible.'); return; }
+    if (!data || !Array.isArray(data.categories) || !Array.isArray(data.jours) || !Array.isArray(data.seances) || !data.config) {
+      toast('Ce fichier ne correspond pas à un export du planificateur.');
+      return;
+    }
+    CATS = data.categories; DAYS = data.jours; CONFIG = data.config; SESSIONS = data.seances;
+    saveCats(); saveDays(); saveConfig(); saveSessions();
+    fillConfigInputs(); renderCats(); renderDayHeaders(); renderGrid();
+    toast('Emploi du temps importé.');
+  };
+  reader.readAsText(file);
+}
+
+/* ─────────── démarrage ─────────── */
+function init() {
+  load();
+  fillConfigInputs();
+  renderCats();
+  renderDayHeaders();
+  renderGrid();
+}
+document.addEventListener('DOMContentLoaded', init);
+window.addEventListener('resize', () => renderGrid());
+</script>
+<script src="../assets/retour.js" defer></script>
+</body>
+</html>
