@@ -180,7 +180,7 @@ header .badge {
 /* ═══════════════ EDITOR ═══════════════ */
 .editor-area { flex: 1; display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
 
-.doc-title-bar { padding: 16px 22px 2px; flex-shrink: 0; }
+.doc-title-bar { padding: 16px 22px 2px; flex-shrink: 0; text-align: center; }
 .doc-title {
   font-family: 'Syne', sans-serif; font-weight: 800; font-size: 21px; letter-spacing: .3px;
   color: var(--text); outline: none; border-radius: 6px; padding: 4px 7px;
@@ -351,7 +351,13 @@ header .badge {
   body { height: auto !important; overflow: visible !important; background: white !important; color: #111 !important; }
   .main-layout { display: block !important; }
   .editor-area, .grid-scroll { overflow: visible !important; height: auto !important; }
-  .grid-inner { min-width: 0 !important; }
+  .grid-inner { min-width: 0 !important; width: 100% !important; }
+  .day-headers, .grid-rows { width: 100% !important; }
+  .day-header, .day-col {
+    flex: 1 1 0 !important; min-width: 0 !important; width: auto !important;
+  }
+  .corner, .time-col { flex: 0 0 50px !important; width: 50px !important; }
+  .session { page-break-inside: avoid; break-inside: avoid; }
   .day-headers, .corner, .time-col { position: static !important; }
   .day-header { border-color: #999 !important; }
   .day-name { color: #111 !important; }
