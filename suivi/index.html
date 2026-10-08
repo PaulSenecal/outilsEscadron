@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <!-- Politique de sécurité : aucune requête réseau (sauf Google Fonts), seul le script de ce fichier peut s'exécuter
      (empreinte sha256 : après toute modification du script, lancer « node tests/csp.mjs » pour la mettre à jour). -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-OAoM7dvJs5CcX2BxqQF0MnznJMbGX7Pta927xgdOHJA='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-/Yo+DxktAVhOKU/lQboPTHfDaaG6jDN4a7Mlj7p9eYU='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
 <title>Suivi du personnel</title>
 <meta name="theme-color" content="#0B1629">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%2313233F'/%3E%3Cpath d='M32 9l18 7v13c0 12-8 21-18 26-10-5-18-14-18-26V16z' fill='none' stroke='%23C9A227' stroke-width='4'/%3E%3Ccircle cx='32' cy='27' r='6' fill='%23C9A227'/%3E%3Cpath d='M21 44c2-7 6-10 11-10s9 3 11 10' fill='%23C9A227'/%3E%3C/svg%3E">
@@ -56,6 +56,12 @@ a{color:var(--navy)}
 .ca-sec .ch{display:block;font-size:13px}
 .ca-sec .ch s{color:var(--muted)}
 .ca-sec select{max-width:260px;font-size:13px;padding:3px 4px}
+.uir-escs{display:flex;flex-wrap:wrap;gap:6px 14px}
+.ca-sec .choix-val{display:flex;gap:6px;flex-wrap:wrap}
+.ca-sec .choix-val label{display:flex;gap:6px;align-items:flex-start;border:1px solid var(--line);border-radius:6px;padding:3px 8px;cursor:pointer;font-size:13px}
+.ca-sec .choix-val label:has(input:checked){border-color:var(--navy);background:var(--info-bg)}
+.ca-sec .choix-val small{display:block;color:var(--muted);font-size:11px}
+.ca-outils{display:flex;gap:8px;padding:0 12px 8px}
 /* Qualité des données */
 .qu-resume{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
 .qu-resume button{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:4px 12px;cursor:pointer;font-size:14px}
@@ -411,7 +417,7 @@ dialog form{display:grid;gap:0}
 .fld input.in-warn{border-color:#E9C98A;background:var(--warn-bg)}
 .fld input.in-ok{border-color:#A9D2B6;background:var(--ok-bg)}
 .fld input.chk{width:20px;height:20px;margin:8px 0;accent-color:var(--navy)}
-.champ-row{display:grid;grid-template-columns:160px 1fr 170px 100px 90px 60px 90px;gap:8px;align-items:end;padding-bottom:10px;border-bottom:1px dashed var(--line)}
+.champ-row{display:grid;grid-template-columns:150px 1fr 160px 90px 80px 60px 50px 60px 90px;gap:8px;align-items:end;padding-bottom:10px;border-bottom:1px dashed var(--line)}
 .stats{display:flex;flex-wrap:wrap;gap:8px}
 .stats div{background:var(--paper);border-radius:6px;padding:8px 12px;font-size:14px}
 .stats b{font-family:var(--cond);font-size:22px;margin-right:4px}
@@ -541,6 +547,7 @@ details summary{cursor:pointer;font-weight:600;color:var(--navy)}
         <div class="dd-menu" role="menu" hidden>
           <button type="button" role="menuitem" id="btn-import">Importer (Excel ou CSV)…</button>
           <button type="button" role="menuitem" id="btn-cartec">Mettre à jour depuis CARTEC…</button>
+          <button type="button" role="menuitem" id="btn-uir">Compléter depuis le fichier UIR…</button>
           <button type="button" role="menuitem" data-clic="#btn-export">Exporter tout (Excel)</button>
           <button type="button" role="menuitem" data-clic="#btn-export-csv">Exporter tout (CSV)</button>
           <hr>
@@ -641,7 +648,7 @@ details summary{cursor:pointer;font-weight:600;color:var(--navy)}
 
       <div class="card" id="ls-champs-card" hidden>
         <h2>3. Champs à afficher</h2>
-        <p class="hint">Grade, nom et prénom sont toujours inclus.</p>
+        <p class="hint">Grade, nom et prénom sont toujours inclus. Les données sensibles (famille, n° de sécurité sociale, personne à prévenir…) ne sont exportables que d'ici, si vous les cochez.</p>
         <div id="ls-champs" class="ls-champs"></div>
         <label class="check"><input type="checkbox" id="ls-etat" checked> Ajouter une colonne « État » (à jour, expiré…) à côté de chaque date à échéance dans l'export</label>
       </div>
@@ -937,7 +944,7 @@ details summary{cursor:pointer;font-weight:600;color:var(--navy)}
         <div class="fld"><span>Sécurité</span><button type="button" class="btn" id="btn-mdp">Changer le mot de passe…</button></div>
       </div>
       <p class="subhead">Champs des fiches</p>
-      <p class="hint">La validité (en mois) ne concerne que les champs de type Date : laissez-la vide pour une date sans échéance. « Stats » affiche la répartition des valeurs (ex. tailles) dans le tableau de situation. Le type d'un champ existant ne peut pas être changé.</p>
+      <p class="hint">La validité (en mois) ne concerne que les champs de type Date : laissez-la vide pour une date sans échéance. « Limite » : la date est une fin de validité (VMP, fin de contrat), surveillée sans durée. « Sensible » : exclu des exports, sauf « Préparer une liste ». « Stats » affiche la répartition des valeurs (ex. tailles) dans le tableau de situation. Le type d'un champ existant ne peut pas être changé.</p>
       <div id="champs-list" style="display:grid;gap:10px"></div>
       <datalist id="dl-groupes"></datalist>
       <div><button type="button" class="btn" id="btn-add-champ">Ajouter un champ</button></div>
@@ -968,6 +975,25 @@ details summary{cursor:pointer;font-weight:600;color:var(--navy)}
   </form>
 </dialog>
 <input type="file" id="ca-input" accept=".xlsx" hidden>
+
+<!-- ============ Compléter depuis le fichier « gestion du personnel » de l'UIR ============ -->
+<dialog id="dlg-uir" class="wide">
+  <form id="form-uir" autocomplete="off">
+    <div class="dlg-head"><h2>Compléter depuis le fichier UIR</h2>
+      <p>Données administratives (VMP, fin de contrat, naissance, famille, personne à prévenir…) des personnes déjà présentes dans les escadrons choisis. Aucune fiche n'est créée. Rien n'est appliqué avant de valider.</p></div>
+    <div class="dlg-body">
+      <p class="hint" id="uir-fichier" style="margin:0"></p>
+      <div class="fld"><span>Escadrons à compléter</span><div id="uir-escs" class="uir-escs"></div></div>
+      <div id="uir-resume" class="stats"></div>
+      <div id="uir-details"></div>
+    </div>
+    <div class="dlg-foot">
+      <button type="button" class="btn" data-close>Annuler</button>
+      <button type="submit" class="btn btn-gold" id="uir-go">Appliquer</button>
+    </div>
+  </form>
+</dialog>
+<input type="file" id="uir-input" accept=".xlsx" hidden>
 
 <!-- ============ Import ============ -->
 <dialog id="dlg-import" class="wide">
@@ -1006,16 +1032,21 @@ const $ = s => document.querySelector(s);
 const enc = new TextEncoder(), dec = new TextDecoder();
 const FORMAT = "suivi-personnel";
 const ITER = 600000;          // PBKDF2 (OWASP 2023). Un fichier plus ancien est relu avec ses itérations et mis à niveau au prochain enregistrement
-const SCHEMA = 3;
-const VERSION = "3.5";
+const SCHEMA = 4;
+const VERSION = "3.6";
 /* Historique affiché par le bouton « Nouveautés » : à chaque évolution, incrémenter VERSION
    et ajouter une entrée EN TÊTE de cette liste. */
 const NOUVEAUTES = [
+  { v: "3.6", date: "08/10/2026", items: [
+    "Compléter depuis le fichier UIR (menu « Fichier et réglages ») : VMP, entrée en service, fin de contrat, grade et date de grade, attestation cyber, fin de CPR, naissance, matricule, SAP, coordonnées, famille (conjoint, enfants), personne à prévenir, carte d'identité militaire, diplôme civil.",
+    "Seules les personnes déjà présentes dans les escadrons choisis sont complétées ; les cases vides sont remplies, et pour chaque valeur différente vous choisissez laquelle garder.",
+    "VMP et fin de contrat sont surveillées comme les autres échéances (orange puis rouge, page « À faire »). Âge et ancienneté calculés dans la fiche.",
+    "Nouveaux groupes « Famille » et « Administratif ». Les données sensibles (n° de sécurité sociale, famille, adresse, personne à prévenir…) ne sortent plus dans les exports, sauf depuis « Préparer une liste » en les cochant.",
+    "CARTEC : noms doubles et lettres inversées reconnus (« FHILO/GENEVAUX » ≈ « Filho »), menu « Déjà dans le suivi ? » pour relier une ligne à une fiche existante (classé : archivées, en attente, puis par grade), rapprochement par SAP."] },
   { v: "3.5", date: "08/10/2026", items: [
     "Mise à jour depuis CARTEC (menu « Fichier et réglages ») : escadron, peloton, golf et spécialité de chacun sont repris du fichier CARTEC, à partir du commandant d'unité.",
     "Les nouvelles personnes sont créées, celles qui ne figurent plus dans CARTEC sont archivées (restaurables), et tout est présenté avant d'être appliqué.",
-    "Les noms proches (faute de frappe, lettres inversées, nom double comme « FHILO/GENEVAUX ») sont proposés automatiquement, à confirmer une seule fois.",
-    "Correction à la main : pour chaque nouvelle fiche, le menu « Déjà dans le suivi ? » permet de la relier à une fiche existante (les personnes qui allaient être archivées sont proposées en premier). Le lien est retenu pour les mises à jour suivantes.",
+    "Les noms proches (faute de frappe, prénom composé) sont à confirmer une seule fois : ils sont reconnus aux mises à jour suivantes.",
     "REO : noms des groupes et postes à pourvoir (avec leur intitulé) repris de CARTEC pour chaque escadron."] },
   { v: "3.4", date: "08/10/2026", items: [
     "Enregistrement automatique : un fichier ouvert depuis l'ordinateur (Chrome, Edge) est enregistré tout seul quelques secondes après chaque modification. Réglable dans « Champs et réglages ».",
@@ -1073,6 +1104,21 @@ const TYPES = { texte: "Texte", long: "Texte long", liste: "Liste (suggestions)"
 const FIXES = ["nom", "prenom", "grade", "escadron", "peloton"];
 const STATS_DEFAUT = ["anp", "t3p", "beret", "veste", "pantalon", "gant", "chaussure"];
 
+/* Champs ajoutés au schéma 4 (fichier « gestion du personnel » de l'UIR). sensible = exclu des exports, sauf
+   « Préparer une liste » ; limite = la date est une fin de validité (pas de durée) ; calcul = âge / ancienneté affichés */
+const IDENTITE_V4 = [["naissance", "Date de naissance", "Identité", "date", { calcul: "age", sensible: true }],
+  ["lieu_naissance", "Lieu de naissance", "Identité", "texte", { sensible: true }],
+  ["matricule", "Matricule", "Identité", "texte"], ["sap", "SAP", "Identité", "texte"]];
+const CARRIERE_V4 = [["cyber", "Attestation cyber", "Carrière", "date"], ["cpr", "Fin de validité CPR", "Carrière", "date"]];
+const FAMILLE_V4 = [["sitfam", "Situation familiale", "Famille", "liste", { options: ["Célibataire", "Marié(e)", "Pacsé(e)", "Concubinage", "Divorcé(e)", "Veuf(ve)"], sensible: true }],
+  ["nb_enfants", "Nombre d'enfants", "Famille", "texte", { sensible: true }],
+  ["conj_nom", "Conjoint : nom", "Famille", "texte", { sensible: true }], ["conj_prenom", "Conjoint : prénom", "Famille", "texte", { sensible: true }],
+  ["conj_tel", "Conjoint : téléphone", "Famille", "tel", { sensible: true }],
+  ...[1, 2, 3, 4, 5].flatMap(i => [[`enf${i}_prenom`, `Enfant ${i} : prénom`, "Famille", "texte", { sensible: true }],
+    [`enf${i}_naissance`, `Enfant ${i} : né(e) le`, "Famille", "date", { calcul: "age", sensible: true }]])];
+const ADMIN_V4 = [["cim_num", "Carte d'identité militaire : n°", "Administratif", "texte", { sensible: true }],
+  ["cim_validite", "Carte d'identité militaire : validité", "Administratif", "date"],
+  ["dipl_civil", "Diplôme civil", "Administratif", "texte"], ["dipl_civil_date", "Diplôme civil : date", "Administratif", "texte"]];
 function defaultChamps() {
   const c = (id, label, groupe, type, x) => Object.assign({ id, label, groupe, type }, x);
   const an = { validite: 12 };
@@ -1087,18 +1133,24 @@ function defaultChamps() {
     c("golf", "Golf", "Identité", "texte"),
     c("spe", "Spécialité", "Identité", "liste", { options: [] }),
     c("patrouille", "Nom patrouille", "Identité", "texte"),
+    ...IDENTITE_V4.map(x => c(...x)),
     c("tel", "Téléphone", "Contact", "tel"),
     c("mail", "Mail", "Contact", "mail"),
-    c("adresse", "Adresse", "Contact", "texte"),
-    c("entree", "Entrée en service", "Carrière", "date"),
-    c("fincontrat", "Fin de contrat", "Carrière", "date"),
-    c("dategrade", "Date de grade", "Carrière", "date"),
+    c("adresse", "Adresse", "Contact", "texte", { sensible: true }),
+    c("entree", "Entrée en service", "Carrière", "date", { calcul: "anciennete" }),
+    c("fincontrat", "Fin de contrat", "Carrière", "date", { limite: true, alerte: 90 }),
+    c("dategrade", "Date de grade", "Carrière", "date", { calcul: "anciennete" }),
     c("anciennete", "Ancienneté grade", "Carrière", "texte"),
-    c("pap_nom", "Nom", "Personne à prévenir", "texte"),
-    c("pap_prenom", "Prénom", "Personne à prévenir", "texte"),
-    c("pap_tel", "Téléphone", "Personne à prévenir", "tel"),
-    c("pap_adr", "Adresse", "Personne à prévenir", "texte"),
-    c("nsecu", "N° Sécurité sociale", "Santé", "texte"),
+    ...CARRIERE_V4.map(x => c(...x)),
+    ...FAMILLE_V4.map(x => c(...x)),
+    c("pap_lien", "Lien", "Personne à prévenir", "texte", { sensible: true }),
+    c("pap_nom", "Nom", "Personne à prévenir", "texte", { sensible: true }),
+    c("pap_prenom", "Prénom", "Personne à prévenir", "texte", { sensible: true }),
+    c("pap_tel", "Téléphone", "Personne à prévenir", "tel", { sensible: true }),
+    c("pap_adr", "Adresse", "Personne à prévenir", "texte", { sensible: true }),
+    ...ADMIN_V4.map(x => c(...x)),
+    c("vmp", "VMP (fin de validité)", "Santé", "date", { limite: true, alerte: 60 }),
+    c("nsecu", "N° Sécurité sociale", "Santé", "texte", { sensible: true }),
     c("psc1", "PSC1", "Santé", "date", an),
     c("sc1", "SC1", "Santé", "date", an),
     c("c4", "C4", "Santé", "date"),
@@ -1277,6 +1329,22 @@ function migrerV3(C) {
   }
   C.splice(0, C.length, ...reste);
 }
+/* Schéma 4 : champs du fichier UIR (identité, famille, administratif, VMP), dates limites (fin de contrat, VMP),
+   données sensibles. Ajoute ce qui manque à sa place (après le dernier champ du même groupe), sans toucher au reste. */
+function migrerV4(C) {
+  const D = defaultChamps();
+  D.forEach((f, i) => {
+    const x = C.find(c => c.id === f.id);
+    if (x) {   // champ existant : drapeaux du schéma 4 seulement s'ils n'ont jamais été réglés
+      ["limite", "sensible", "calcul"].forEach(k => { if (f[k] !== undefined && x[k] === undefined) x[k] = f[k]; });
+      if (f.limite && x.alerte === undefined && !x.validite) x.alerte = f.alerte;
+      return;
+    }
+    const prec = D.slice(0, i).reverse().find(g => C.some(c => c.id === g.id));
+    const j = prec ? C.findIndex(c => c.id === prec.id) + 1 : C.length;
+    C.splice(j, 0, { ...f });
+  });
+}
 /* Éligibilité aux permis : pour chaque permis, les permis dont il suffit d'avoir l'un pour pouvoir le passer */
 function defaultReglesPermis() {
   return { vt4: ["civil"], p4: ["civil"], masstech: ["civil", "vt4"], vbl: ["civil"], pl: ["civil"],
@@ -1298,6 +1366,7 @@ function normalize(d) {
     d.champs = champs; delete d.types;
   }
   if ((d.meta.schema || 2) < 3) migrerV3(d.champs);
+  if ((d.meta.schema || 2) < 4) migrerV4(d.champs);
   const ids = new Set(d.champs.map(c => c.id));
   defaultChamps().filter(c => FIXES.includes(c.id) && !ids.has(c.id)).reverse().forEach(c => d.champs.unshift(c));
   d.champs.forEach(c => {
@@ -1333,14 +1402,28 @@ function groupes(champs) {
   return [...m];
 }
 
+/* Date à échéance : date + validité (formation), ou date limite (fin de validité : VMP, fin de contrat) */
+const aEcheance = f => f.type === "date" && !!(f.validite || f.limite);
+const expiration = (f, v) => addMonths(v, f.limite ? 0 : Number(f.validite));
+const libEcheanceChamp = f => f.limite ? "date limite" : `${f.validite} mois`;
+/* Âge ou ancienneté depuis une date : « 34 ans », « 3 ans 2 mois » */
+function duree(iso) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso || "")) return "";
+  const [y, m, d] = iso.split("-").map(Number), t = today();
+  let mois = (t.getFullYear() - y) * 12 + t.getMonth() - (m - 1) - (t.getDate() < d ? 1 : 0);
+  if (mois < 0) return "";
+  const a = Math.floor(mois / 12); mois %= 12;
+  return a ? `${a} an${a > 1 ? "s" : ""}${mois ? ` ${mois} mois` : ""}` : `${mois} mois`;
+}
+const champsExportables = C => C.filter(f => !f.sensible);
 /* Seuil « à prévoir » d'un champ : son propre réglage, sinon le réglage général */
 const seuilAlerte = f => f.alerte ?? state.data.meta.alerteJours;
 /* Statut d'une valeur : bad, warn, ok, none, info */
 function statusOf(p, f) {
   const v = p.v[f.id] || "";
-  if (f.type === "date" && f.validite) {
-    if (!v) return { k: "none", txt: "À faire" };
-    const exp = addMonths(v, Number(f.validite));
+  if (aEcheance(f)) {
+    if (!v) return { k: "none", txt: f.limite ? "Non renseigné" : "À faire" };
+    const exp = expiration(f, v);
     const days = Math.round((exp - today()) / 864e5);
     if (days < 0) return { k: "bad", days, txt: -days > 365 ? "Expiré depuis plus d'un an" : `Expiré depuis ${-days} j` };
     if (days <= seuilAlerte(f)) return { k: "warn", days, txt: days === 0 ? "Expire aujourd'hui" : `Expire dans ${days} j` };
@@ -1653,7 +1736,7 @@ function lireCartec(grid) {
   const h = grid.findIndex((r, i) => i < 15 && (r || []).some(c => norm(cellText(c)) === "nom") && (r || []).some(c => norm(cellText(c)).startsWith("prenom")));
   if (h < 0) throw new Error("Fichier CARTEC non reconnu : colonnes « NOM » et « PRENOM » introuvables.");
   const H = Array.from(grid[h], c => norm(cellText(c))), col = f => H.findIndex(f);
-  const cNom = col(x => x === "nom"), cPrenom = col(x => x.startsWith("prenom")), cGrade = col(x => x === "grade"), cLib = col(x => x.startsWith("libelle"));
+  const cNom = col(x => x === "nom"), cPrenom = col(x => x.startsWith("prenom")), cGrade = col(x => x === "grade"), cLib = col(x => x.startsWith("libelle")), cSap = col(x => x === "sap");
   if (cLib < 0) throw new Error("Fichier CARTEC non reconnu : colonne « LIBELLE » (emploi) introuvable.");
   // Colonnes des en-têtes « CODE : LIBELLÉ » : les trois dernières = unité, peloton, groupe
   const colsEntete = new Set();
@@ -1678,7 +1761,7 @@ function lireCartec(grid) {
     if (libelle) lib = libelle;               // ligne sans libellé : même poste que la ligne au-dessus
     if (/^commandant d.unite/.test(norm(lib))) u.cdu = true;
     const golf = grp ? grp.golf : "";
-    if (nom) u.entrees.push({ nom, prenom: t(cPrenom), grade: t(cGrade).toUpperCase(), peloton: pel.id, golf, spe: lib });
+    if (nom) u.entrees.push({ nom, prenom: t(cPrenom), grade: t(cGrade).toUpperCase(), peloton: pel.id, golf, spe: lib, sap: t(cSap) });
     else u.vacants.push({ peloton: pel.id, golf, libelle: lib });
   }
   return unites.filter(x => x.cdu).map(({ cdu, ...x }) => x);
@@ -1701,7 +1784,7 @@ const distance = (a, b) => {   // distance d'édition (fautes de frappe)
 /* Noms proches : une des parties identique ou à 2 fautes près (« FHILO/GENEVAUX » ≈ « Filho ») */
 const nomsProches = (a, b) => { const A = partiesNom(a), B = partiesNom(b); return A.some(x => B.some(y => x === y || (x.length > 3 && y.length > 3 && distance(x, y) <= 2))); };
 const prenomsProches = (a, b) => !!a && !!b && (a === b || a.startsWith(b) || b.startsWith(a) || distance(a, b) <= 2);
-const CHAMPS_CARTEC = [["escadron", "Escadron"], ["peloton", "Peloton"], ["golf", "Golf"], ["spe", "Spécialité"]];
+const CHAMPS_CARTEC = [["escadron", "Escadron"], ["peloton", "Peloton"], ["golf", "Golf"], ["spe", "Spécialité"], ["sap", "SAP"]];
 /* Plan de mise à jour. corresp : { codeUnité: escadron }.
    lignes : [{ cle, e (entrée CARTEC + escadron), p? (fiche), statut, changements: [{ champ, label, avant, apres }], cands? }]
    liens : { cléLigne: id de fiche choisi à la main, ou "nouveau" } (correction dans l'aperçu)
@@ -1711,7 +1794,7 @@ function planCartec(unites, d, corresp, liens = {}) {
   const cle = p => cleNom(p.v.nom) + "|" + cleNom(p.v.prenom);
   const index = L => { const m = new Map(); L.forEach(p => { const k = cle(p); if (!m.has(k)) m.set(k, []); m.get(k).push(p); }); return m; };
   const iP = index(d.personnes), iA = index(d.archives), pris = new Set(), escs = new Set(), lignes = [];
-  const diff = (p, e) => CHAMPS_CARTEC.filter(([k]) => (k !== "escadron" || e.escadron) && (p.v[k] || "") !== (e[k] || ""))
+  const diff = (p, e) => CHAMPS_CARTEC.filter(([k]) => (k !== "escadron" || e.escadron) && (k !== "sap" || e.sap) && (p.v[k] || "") !== (e[k] || ""))
     .map(([k, label]) => ({ champ: k, label, avant: p.v[k] || "", apres: e[k] || "" }));
   unites.forEach(u => {
     const escadron = corresp[u.code] || ""; if (escadron) escs.add(escadron);
@@ -1727,7 +1810,7 @@ function planCartec(unites, d, corresp, liens = {}) {
   // 1. Correspondance déjà validée (nom proche accepté lors d'une mise à jour précédente), puis même nom et même prénom
   const alias = d.meta.cartecAlias || {};
   lignes.filter(l => !l.statut).forEach(l => {
-    const a = d.personnes.find(p => p.id === alias[cleNom(l.e.nom) + "|" + cleNom(l.e.prenom)]);
+    const a = (l.e.sap && d.personnes.find(p => p.v.sap === l.e.sap)) || d.personnes.find(p => p.id === alias[cleNom(l.e.nom) + "|" + cleNom(l.e.prenom)]);
     const c = a ? [a] : iP.get(cleNom(l.e.nom) + "|" + cleNom(l.e.prenom)) || [];
     if (c.length > 1) Object.assign(l, { statut: "ambigu", cands: c.map(p => p.id) });
     else if (c.length === 1) {
@@ -1759,7 +1842,7 @@ function planCartec(unites, d, corresp, liens = {}) {
    Une ligne décochée n'est pas appliquée (le lien d'une ligne se corrige dans l'aperçu, voir liens). Renvoie { maj, crees, restaures, archives, ids, details: [{ id, texte }] }. */
 function appliquerCartec(d, unites, plan, corresp, refus = new Set(), date = isoLocal(today())) {
   const r = { maj: 0, crees: 0, restaures: 0, archives: 0, ids: [], details: [] };
-  const champsE = e => clean({ escadron: e.escadron, peloton: e.peloton, golf: e.golf, spe: e.spe });
+  const champsE = e => clean({ escadron: e.escadron, peloton: e.peloton, golf: e.golf, spe: e.spe, sap: e.sap });
   for (const l of plan.lignes) {
     if (!l.e.escadron || l.statut === "ambigu" || l.statut === "doublon" || l.statut === "identique") continue;
     if (refus.has(l.cle)) continue;
@@ -1794,6 +1877,144 @@ function appliquerCartec(d, unites, plan, corresp, refus = new Set(), date = iso
     d.reo.cartec.escadrons[e] = { unite: u.label, groupes: { ...u.groupes }, vacants };
   });
   d.meta.cartecUnites = { ...(d.meta.cartecUnites || {}), ...corresp };
+  return r;
+}
+
+/* ---------- Fichier « gestion du personnel » de l'UIR : données administratives ---------- */
+/* En-tête sur 1 à 3 lignes (cellules fusionnées : le libellé d'un niveau vaut pour les colonnes suivantes tant que
+   le niveau au-dessus ne change pas). Chaque colonne est identifiée par son chemin « niveau 1 › niveau 2 › niveau 3 ».
+   Seules les colonnes de UIR_COLONNES sont reprises ; le reste (affectation, arme, permis, tirs…) est ignoré. */
+const UIR_COLONNES = [
+  ["entree", ([a]) => a.startsWith("entree en service")], ["vmp", ([a, b]) => a === "sante" && b === "vmp"],
+  ["fincontrat", ([a]) => a.startsWith("fin de contrat")], ["grade", ([a, b]) => a === "grade" && (!b || b === "grade")],
+  ["dategrade", ([a, b]) => a === "grade" && b.startsWith("depuis")], ["cyber", ([a]) => a.startsWith("attestation cyber")],
+  ["cpr", ([a]) => a.startsWith("fin de validite cpr")], ["sap", ([a]) => a === "sap"], ["matricule", ([a]) => a === "matricule"],
+  ["naissance", ([a]) => a === "date de naissance"], ["lieu_naissance", ([a]) => a === "lieu de naissance"],
+  ["tel", ([a]) => /portable/.test(a)], ["mail", ([a]) => a.startsWith("adresse mail")], ["adresse", ([a]) => a === "adresse"],
+  ["sitfam", ([a]) => a.startsWith("situation familiale")], ["nb_enfants", ([a]) => /^(nb|nombre).*enfants/.test(a)],
+  ["conj_nom", ([a, b]) => a === "conjoint" && b === "nom"], ["conj_prenom", ([a, b]) => a === "conjoint" && b === "prenom"],
+  ["conj_tel", ([a, b]) => a === "conjoint" && /telephone|portable/.test(b)],
+  ...[1, 2, 3, 4, 5].flatMap(i => [[`enf${i}_prenom`, ([a, b, c]) => a === "enfants" && b === String(i) && c === "prenom"],
+    [`enf${i}_naissance`, ([a, b, c]) => a === "enfants" && b === String(i) && c.startsWith("date")]]),
+  ["pap_lien", ([a, , c]) => a.startsWith("personne a prevenir") && c === "lien"], ["pap_nom", ([a, , c]) => a.startsWith("personne a prevenir") && c === "nom"],
+  ["pap_adr", ([a, , c]) => a.startsWith("personne a prevenir") && c === "adresse"],
+  ["pap_tel", ([a, b, c]) => a.startsWith("personne a prevenir") && !b && (!c || /tel|portable/.test(c))],
+  ["nsecu", ([a]) => /securite sociale/.test(a)], ["cim_num", ([a, b]) => a.startsWith("carte d'identite militaire") && !b],
+  ["cim_validite", ([a, b]) => a.startsWith("carte d'identite militaire") && b.startsWith("validite")],
+  ["dipl_civil", ([a, b]) => a.startsWith("diplome civil") && b.startsWith("intitule")],
+  ["dipl_civil_date", ([a, b]) => a.startsWith("diplome civil") && (b === "date" || b === "annee")]];
+const SITFAM = { marie: "Marié(e)", mariee: "Marié(e)", celibataire: "Célibataire", pacse: "Pacsé(e)", pacsee: "Pacsé(e)", concubinage: "Concubinage",
+  divorce: "Divorcé(e)", divorcee: "Divorcé(e)", veuf: "Veuf(ve)", veuve: "Veuf(ve)" };
+function lireUIR(grid, champs) {
+  const h = grid.findIndex((r, i) => i < 10 && (r || []).some(c => norm(cellText(c)) === "nom") && (r || []).some(c => norm(cellText(c)).startsWith("prenom")));
+  if (h < 0) throw new Error("Fichier non reconnu : colonnes « NOM » et « PRENOM » introuvables.");
+  const H0 = Array.from(grid[h], c => norm(cellText(c)));
+  const cNom = H0.indexOf("nom"), cPrenom = H0.findIndex(x => x.startsWith("prenom"));
+  let debut = h + 1;
+  while (debut < Math.min(grid.length, h + 3) && !cellText((grid[debut] || [])[cNom])) debut++;
+  const niveaux = grid.slice(h, debut).map(r => Array.from(r || [], c => norm(cellText(c))));
+  const larg = Math.max(...grid.slice(h, Math.min(grid.length, debut + 50)).map(r => (r || []).length));
+  const colonnes = [], porte = niveaux.map(() => "");
+  for (let i = 0; i < larg; i++) {
+    const chemin = niveaux.map((N, k) => {
+      const v = N[i] || "";
+      if (v) { porte[k] = v; for (let j = k + 1; j < porte.length; j++) porte[j] = ""; }
+      return k === niveaux.length - 1 ? v : porte[k];   // le dernier niveau n'est pas reporté
+    });
+    while (chemin.length < 3) chemin.push("");
+    const regle = i === cNom || i === cPrenom ? null : UIR_COLONNES.find(([, t]) => t(chemin));
+    const f = regle && champs.find(c => c.id === regle[0]);
+    if (f) colonnes.push({ i, chemin: chemin.filter(Boolean).join(" › "), f });
+  }
+  const valeur = (f, raw) => {
+    if (raw == null || raw === "") return "";
+    if (f.type === "date") return anyDate(raw) || null;     // null = date illisible
+    let t = cellText(raw);
+    if (/^(neant|nc|n\/a|-+|\?)$/i.test(t)) return "";
+    if (f.id === "grade") return t.toUpperCase();
+    if (f.id === "sitfam") return SITFAM[norm(t).replace(/[^a-z]/g, "")] || t;
+    return t;
+  };
+  const lignes = [];
+  for (let r = debut; r < grid.length; r++) {
+    const R = grid[r] || [], nom = cellText(R[cNom]), prenom = cellText(R[cPrenom]);
+    if (!nom) continue;
+    const valeurs = {}, illisibles = [];
+    colonnes.forEach(({ i, f, chemin }) => {
+      const v = valeur(f, R[i]);
+      if (v === null) illisibles.push(`${chemin} : « ${cellText(R[i])} »`);
+      else if (v && !valeurs[f.id]) valeurs[f.id] = v;   // deux colonnes pour un champ (téléphone du conjoint) : la première remplie
+    });
+    lignes.push({ ligne: r + 1, nom, prenom, valeurs, illisibles });
+  }
+  return { colonnes, lignes };
+}
+
+/* Valeurs équivalentes (pas un vrai changement) : même date, mêmes chiffres pour un téléphone, même texte aux accents
+   et à la casse près */
+function memeValeur(f, a, b) {
+  if (f.type === "tel") return a.replace(/\D/g, "").replace(/^33/, "0") === b.replace(/\D/g, "").replace(/^33/, "0");
+  return norm(a) === norm(b);
+}
+/* Plan : seules les fiches des escadrons choisis sont complétées (aucune création).
+   lignes : [{ cle, u (ligne UIR), p?, statut: ok | probable | manuel | ambigu | doublon | hors, ajouts: [{ f, apres }],
+   differences: [{ f, avant, apres }] }] ; sansDonnees : fiches des escadrons choisis absentes du fichier UIR. */
+function planUIR(lu, d, escadrons, liens = {}) {
+  const cible = d.personnes.filter(p => escadrons.includes(p.v.escadron)), pris = new Set(), alias = d.meta.uirAlias || {};
+  const cle = (n, p) => cleNom(n) + "|" + cleNom(p);
+  const lignes = lu.lignes.map((u, i) => ({ cle: "u" + u.ligne + "#" + i, u }));
+  const prendre = (l, p, statut) => { if (pris.has(p.id)) { l.statut = "doublon"; return; } pris.add(p.id); Object.assign(l, { p, statut }); };
+  // Liens choisis à la main, SAP, nom déjà validé, puis même nom et prénom
+  lignes.forEach(l => {
+    const id = liens[l.cle];
+    if (id === "aucun") l.statut = "hors";
+    else if (id) { const p = cible.find(x => x.id === id); if (p) prendre(l, p, "manuel"); }
+  });
+  lignes.filter(l => !l.statut).forEach(l => {
+    const sap = l.u.valeurs.sap && cible.find(p => p.v.sap && p.v.sap === l.u.valeurs.sap);
+    const al = cible.find(p => p.id === alias[cle(l.u.nom, l.u.prenom)]);
+    if (sap || al) return prendre(l, sap || al, "ok");
+    const c = cible.filter(p => cle(p.v.nom, p.v.prenom) === cle(l.u.nom, l.u.prenom));
+    if (c.length > 1) Object.assign(l, { statut: "ambigu", cands: c.map(p => p.id) });
+    else if (c.length === 1) prendre(l, c[0], "ok");
+  });
+  // Noms proches parmi les fiches non retrouvées ; sinon la personne n'est pas dans nos escadrons
+  lignes.filter(l => !l.statut).forEach(l => {
+    const pr = cleNom(l.u.prenom);
+    const proche = cible.filter(p => !pris.has(p.id) && nomsProches(p.v.nom, l.u.nom) && prenomsProches(cleNom(p.v.prenom), pr));
+    if (proche.length === 1) prendre(l, proche[0], "probable"); else l.statut = "hors";
+  });
+  lignes.forEach(l => {
+    l.ajouts = []; l.differences = [];
+    if (!l.p) return;
+    Object.entries(l.u.valeurs).forEach(([id, apres]) => {
+      const f = d.champs.find(c => c.id === id), avant = l.p.v[id] || "";
+      if (!f || !apres) return;
+      if (!avant) l.ajouts.push({ f, apres });
+      else if (!memeValeur(f, avant, apres)) l.differences.push({ f, avant, apres });
+    });
+  });
+  const sansDonnees = cible.filter(p => !pris.has(p.id) && !lignes.some(l => l.cands?.includes(p.id)));
+  return { lignes, sansDonnees };
+}
+/* Applique le plan. refus : lignes décochées ; garder : « cléLigne|champ » des différences où l'on garde la valeur du suivi
+   (par défaut, la valeur UIR est prise). Renvoie { fiches, valeurs, details: [{ id, texte }] }. */
+function appliquerUIR(d, plan, refus = new Set(), garder = new Set()) {
+  const r = { fiches: 0, valeurs: 0, details: [] };
+  plan.lignes.forEach(l => {
+    if (!l.p || refus.has(l.cle) || !["ok", "probable", "manuel"].includes(l.statut)) return;
+    if (l.statut !== "ok") (d.meta.uirAlias ||= {})[cleNom(l.u.nom) + "|" + cleNom(l.u.prenom)] = l.p.id;   // ne plus redemander
+    const p = d.personnes.find(x => x.id === l.p.id); if (!p) return;
+    // Le journal ne recopie pas les données sensibles : seulement le nom du champ
+    const faits = [], note = (f, t) => faits.push(f.sensible ? `${f.label} mis à jour` : `${f.label} : ${t}`);
+    l.ajouts.forEach(({ f, apres }) => { p.v[f.id] = apres; note(f, valText(f, apres)); });
+    l.differences.filter(x => !garder.has(l.cle + "|" + x.f.id)).forEach(({ f, avant, apres }) => {
+      p.v[f.id] = apres; note(f, `${valText(f, avant)} → ${valText(f, apres)}`);
+    });
+    if (!faits.length) return;
+    r.fiches++; r.valeurs += faits.length;
+    r.details.push({ id: p.id, texte: `${nomPersonne(p.v)} : ${faits.join(", ")}` });
+  });
   return r;
 }
 
@@ -2083,7 +2304,7 @@ function echeances(P, champs, jours, manquants) {
   return P.map(p => ({ p, items: champs.map(f => {
     const v = p.v[f.id];
     if (!v) return manquants ? { f, k: "none", days: null } : null;
-    const exp = addMonths(v, Number(f.validite)), days = Math.round((exp - today()) / 864e5);
+    const exp = expiration(f, v), days = Math.round((exp - today()) / 864e5);
     return days <= (jours ?? seuilAlerte(f)) ? { f, k: days < 0 ? "bad" : "warn", days, exp } : null;
   }).filter(Boolean) })).filter(x => x.items.length);
 }
@@ -2253,7 +2474,7 @@ function classeurXlsx(feuilles) {
 /* Cellule Excel d'un champ, avec la couleur du statut */
 function xCell(p, f, z) {
   const v = p.v[f.id] || "", Z = z ? "Z" : "";
-  if (f.type === "date" && f.validite) {
+  if (aEcheance(f)) {
     if (!v) return X("", "ctr" + Z);
     const k = statusOf(p, f).k;
     return X(v, k === "ok" ? "ok" + Z : k, true);
@@ -2292,8 +2513,9 @@ function enteteXlsx(F, desc) {
 const Zs = (s, z) => s + (z ? "Z" : "");
 
 /* ---------- Export principal (réimportable : ligne de groupes + ligne de libellés contenant « Nom ») ---------- */
+/* Exports « Personnel » : sans les données sensibles (disponibles seulement via « Préparer une liste ») */
 function xlsxPersonnel(d) {
-  const C = groupes(d.champs).flatMap(([, fs]) => fs);
+  const C = groupes(champsExportables(d.champs)).flatMap(([, fs]) => fs);
   const P = [...d.personnes].sort((a, b) => norm(`${a.v.nom} ${a.v.prenom}`).localeCompare(norm(`${b.v.nom} ${b.v.prenom}`), "fr"));
   const F = feuille("Personnel");
   titreXlsx(F, `${d.meta.titre} – suivi du personnel`, `${P.length} personnes · exporté le ${dateJour()} · version ${VERSION}`, C.length);
@@ -2303,7 +2525,7 @@ function xlsxPersonnel(d) {
   return classeurXlsx([F]);
 }
 function csvPersonnel(d) {
-  const C = d.champs, lines = [C.map(f => f.groupe), C.map(f => f.label)];
+  const C = champsExportables(d.champs), lines = [C.map(f => f.groupe), C.map(f => f.label)];
   d.personnes.forEach(p => lines.push(C.map(f => csvVal(f, p.v[f.id]))));
   return "\ufeff" + lines.map(r => r.map(csvCell).join(";")).join("\r\n");
 }
@@ -2452,7 +2674,7 @@ document.addEventListener("keydown", e => { if (e.key === "Escape") fermerMenus(
 /* Retire de la page tout ce qui contient des données personnelles */
 function viderAffichage() {
   document.querySelectorAll("dialog[open]").forEach(d => d.close());
-  ["#tbl", "#board", "#p-body", "#reo", "#synth", "#sy-avant", "#stats", "#todo", "#qualite", "#qu-resume", "#journal-list", "#archives-list", "#se-match",
+  ["#tbl", "#board", "#p-body", "#reo", "#synth", "#sy-avant", "#stats", "#todo", "#qualite", "#qu-resume", "#ca-details", "#ca-unites", "#uir-details", "#journal-list", "#archives-list", "#se-match",
    "#ls-match", "#ls-result", "#ls-champs", "#imp-map", "#imp-warn"].forEach(id => { const e = $(id); if (e) e.innerHTML = ""; });
   ["#ls-texte", "#se-texte", "#f-q"].forEach(id => { const e = $(id); if (e) e.value = ""; });
   $("#viz-tip").hidden = true;
@@ -2816,12 +3038,12 @@ function population() {
 /* Dates à échéance effectivement renseignées pour au moins une personne */
 function suivis() {
   const P = state.data.personnes;
-  return state.data.champs.filter(f => f.type === "date" && f.validite && P.some(p => p.v[f.id]));
+  return state.data.champs.filter(f => aEcheance(f) && P.some(p => p.v[f.id]));
 }
 
 const ETATS_VALIDITE = [["tout", "Tous"], ["regul", "À régulariser"], ["bad", "Expirés"], ["warn", "À prévoir"], ["none", "Manquants"], ["ok", "À jour"]];
 function etatOptions(f) {
-  if (!f || (f.type === "date" && f.validite)) return ETATS_VALIDITE;
+  if (!f || (aEcheance(f))) return ETATS_VALIDITE;
   const o = [["tout", "Tous"], ["rempli", "Renseigné"], ["vide", "Non renseigné"]];
   if (f.type === "permis") o.push(["verif", "À vérifier"]);
   if (f.type === "ouinon") o.push(["oui", "Oui"], ["non", "Non"]);
@@ -2871,7 +3093,7 @@ function renderBoard() {
   $("#effectif").textContent = `${P.length} personne${P.length > 1 ? "s" : ""}${scope ? " – " + scope : ""}`;
   // Dates à échéance renseignées (toujours affichées dans un groupe qui a des statistiques, ex. NRBC)
   const gStats = new Set(C.filter(c => c.stats).map(c => c.groupe));
-  const lignes = C.filter(c => c.type === "date" && c.validite ? gStats.has(c.groupe) || tous.some(p => p.v[c.id])
+  const lignes = C.filter(c => aEcheance(c) ? gStats.has(c.groupe) || tous.some(p => p.v[c.id])
                                                               : c.stats && tous.some(p => p.v[c.id]));
   if (!lignes.length) {
     $("#board").innerHTML = `<p class="hint">Aucune date à échéance renseignée pour l'instant. Importez votre tableau Excel ou complétez les fiches.</p>`;
@@ -2883,7 +3105,7 @@ function renderBoard() {
 function dateRow(c, P) {
   const n = { ok: 0, warn: 0, bad: 0, none: 0 };
   P.forEach(p => n[statusOf(p, c).k]++);
-  return `<div class="trow"><span class="tl" title="Valable ${c.validite} mois">${esc(c.label)}</span><div class="counts">${
+  return `<div class="trow"><span class="tl" title="Échéance : ${esc(libEcheanceChamp(c))}">${esc(c.label)}</span><div class="counts">${
     [["bad", "expirés"], ["warn", "à prévoir"], ["none", "manquants"], ["ok", "à jour"]].map(([k, l]) =>
       `<button type="button" class="count c-${k}" data-champ="${esc(c.id)}" data-etat="${k}" ${n[k] ? "" : "disabled"} title="Afficher ces personnes"><span class="n">${n[k]}</span><span class="l">${l}</span></button>`).join("")}</div></div>`;
 }
@@ -2932,7 +3154,7 @@ function sortKey(p, id) {
   if (id === "nom") return norm((p.v.nom || "") + " " + (p.v.prenom || ""));
   const f = champById(id), v = p.v[id] || "";
   if (!v || !f) return null;
-  if (f.type === "date" && f.validite) return statusOf(p, f).days;
+  if (aEcheance(f)) return statusOf(p, f).days;
   if (f.type === "liste") { const i = (f.options || []).indexOf(v); if (i >= 0) return i; }
   if (f.type === "permis") return v === "?" ? "0" : v === "oui" ? "1" : v;
   return norm(v);
@@ -2946,7 +3168,7 @@ function compare(a, b) {
 
 function cellHtml(p, f, g0) {
   const v = p.v[f.id] || "", cls = g0 ? " g0" : "";
-  if (f.type === "date" && f.validite) {
+  if (aEcheance(f)) {
     const s = statusOf(p, f);
     return `<td class="d d-${s.k}${cls}"><span class="dv">${v ? fmtIso(v) : "—"}</span>${s.txt ? `<span class="ds">${esc(s.txt)}</span>` : ""}</td>`;
   }
@@ -3025,13 +3247,15 @@ function statutFiche(f, v) {
   const s = statusOf({ v: { [f.id]: v } }, f);
   return { k: s.k, html: `<span class="fstat fs-${s.k}" data-statut="${esc(f.id)}">${esc(s.txt || "")}</span>` };
 }
+/* Âge (date de naissance) ou ancienneté (entrée en service, date de grade), recalculés à la saisie */
+const calculHtml = (f, v) => `<small class="calc" data-calcul="${esc(f.id)}">${v && duree(v) ? `${f.calcul === "age" ? "Âge" : "Ancienneté"} : ${esc(duree(v))}` : ""}</small>`;
 function inputHtml(f, v) {
-  const lab = `<span>${esc(f.label)}${f.validite ? ` <small>(${f.validite} mois)</small>` : ""}</span>`;
+  const lab = `<span>${esc(f.label)}${aEcheance(f) ? ` <small>(${esc(libEcheanceChamp(f))})</small>` : ""}</span>`;
   const a = `data-f="${esc(f.id)}" aria-label="${esc(f.label)}"`;
   switch (f.type) {
     case "long": return `<label class="fld wide">${lab}<textarea ${a} rows="3">${esc(v)}</textarea></label>`;
     case "date": {
-      if (!f.validite) return `<label class="fld">${lab}<input type="date" ${a} value="${esc(v)}"></label>`;
+      if (!aEcheance(f)) return `<label class="fld">${lab}<input type="date" ${a} value="${esc(v)}">${f.calcul ? calculHtml(f, v) : ""}</label>`;
       const st = statutFiche(f, v);
       return `<label class="fld">${lab}<input type="date" ${a} class="in-${st.k}" value="${esc(v)}">${st.html}</label>`;
     }
@@ -3070,7 +3294,8 @@ function openPerson(id, preset = {}) {
 }
 $("#p-body").addEventListener("input", e => {
   const t = e.target, f = t.matches('input[type="date"][data-f]') && champById(t.dataset.f);
-  if (!f || !f.validite) return;
+  if (f?.calcul) t.parentElement.querySelector("[data-calcul]").outerHTML = calculHtml(f, t.value);
+  if (!f || !aEcheance(f)) return;
   const st = statutFiche(f, t.value);
   t.className = "in-" + st.k;
   t.parentElement.querySelector("[data-statut]").outerHTML = st.html;
@@ -3359,9 +3584,11 @@ function renderChampsDraft() {
     <label class="fld"><span>Groupe</span><input data-i="${i}" data-k="groupe" list="dl-groupes" value="${esc(c.groupe)}"></label>
     <label class="fld"><span>Libellé</span><input data-i="${i}" data-k="label" value="${esc(c.label)}"></label>
     <label class="fld"><span>Type</span><select data-i="${i}" data-k="type" ${c._new ? "" : "disabled"}>${options(Object.entries(TYPES), c.type)}</select></label>
-    <label class="fld"><span>Validité (mois)</span><input data-i="${i}" data-k="validite" type="number" min="1" max="240" value="${c.validite ?? ""}" ${c.type === "date" ? "" : "disabled"}></label>
-    <label class="fld" title="Nombre de jours avant l'expiration où la date passe « à prévoir ». Vide = réglage général."><span>Alerte (jours)</span><input data-i="${i}" data-k="alerte" type="number" min="1" max="365" placeholder="${esc(String($("#s-alerte").value || state.data.meta.alerteJours))}" value="${c.alerte ?? ""}" ${c.type === "date" && c.validite ? "" : "disabled"}></label>
+    <label class="fld"><span>Validité (mois)</span><input data-i="${i}" data-k="validite" type="number" min="1" max="240" value="${c.validite ?? ""}" ${c.type === "date" && !c.limite ? "" : "disabled"}></label>
+    <label class="fld" title="Nombre de jours avant l'expiration où la date passe « à prévoir ». Vide = réglage général."><span>Alerte (jours)</span><input data-i="${i}" data-k="alerte" type="number" min="1" max="365" placeholder="${esc(String($("#s-alerte").value || state.data.meta.alerteJours))}" value="${c.alerte ?? ""}" ${aEcheance(c) ? "" : "disabled"}></label>
+    <label class="fld" title="Date limite (fin de validité : VMP, fin de contrat…) : surveillée sans durée de validité"><span>Limite</span><input data-i="${i}" data-k="limite" type="checkbox" class="chk" ${c.limite ? "checked" : ""} ${c.type === "date" ? "" : "disabled"}></label>
     <label class="fld" title="Afficher la répartition des valeurs dans le tableau de situation"><span>Stats</span><input data-i="${i}" data-k="stats" type="checkbox" class="chk" ${c.stats ? "checked" : ""} ${c.type === "texte" || c.type === "liste" ? "" : "disabled"}></label>
+    <label class="fld" title="Donnée sensible : exclue des exports, sauf « Préparer une liste »"><span>Sensible</span><input data-i="${i}" data-k="sensible" type="checkbox" class="chk" ${c.sensible ? "checked" : ""}></label>
     ${c.fixe ? `<span class="hint">Obligatoire</span>` : `<button type="button" class="btn btn-danger" data-del="${i}">Retirer</button>`}</div>`).join("");
 }
 $("#btn-champs").addEventListener("click", () => {
@@ -3377,11 +3604,13 @@ $("#champs-list").addEventListener("input", e => {
   const i = e.target.dataset.i; if (i === undefined) return;
   const c = champsDraft[i], k = e.target.dataset.k;
   if (k === "stats") c.stats = e.target.checked;
+  else if (k === "sensible") c.sensible = e.target.checked;
+  else if (k === "limite") { c.limite = e.target.checked; if (c.limite) c.validite = null; renderChampsDraft(); return; }
   else if (k === "validite") c.validite = e.target.value ? Math.max(1, parseInt(e.target.value, 10)) : null;
   else if (k === "alerte") c.alerte = e.target.value ? Math.min(365, Math.max(1, parseInt(e.target.value, 10))) : null;
   else c[k] = e.target.value;
   if (k === "type") renderChampsDraft();
-  if (k === "validite") e.target.closest(".champ-row").querySelector('[data-k="alerte"]').disabled = !c.validite;
+  if (k === "validite") e.target.closest(".champ-row").querySelector('[data-k="alerte"]').disabled = !aEcheance(c);
 });
 $("#champs-list").addEventListener("click", e => {
   const b = e.target.closest("[data-del]"); if (!b) return;
@@ -3405,8 +3634,10 @@ $("#form-champs").addEventListener("submit", e => {
   state.data.champs = champsDraft.map(c => {
     const o = { ...c, label: c.label.trim(), groupe: c.groupe.trim() || "Divers" };
     delete o._new;
-    if (o.type === "date") o.validite = o.validite || null; else delete o.validite;
-    if (o.type !== "date" || !o.validite || !o.alerte) delete o.alerte;
+    if (o.type === "date" && !o.limite) o.validite = o.validite || null; else delete o.validite;
+    if (o.type !== "date" || !o.limite) delete o.limite;
+    if (!aEcheance(o) || !o.alerte) delete o.alerte;
+    if (!o.sensible) delete o.sensible;
     if (o.type === "liste") o.options ||= [];
     if (!o.stats || (o.type !== "texte" && o.type !== "liste")) delete o.stats;
     return o;
@@ -3433,22 +3664,24 @@ $("#ca-input").addEventListener("change", async e => {
   } catch (x) { alert(x.message); }
 });
 function caCalculer() { ca.liens ||= {}; ca.refus ||= new Set(); ca.plan = planCartec(ca.unites, state.data, ca.corresp, ca.liens); renderCartec(); }
-/* Menu « Même personne que… » : nouvelle fiche, puis fiches qui allaient être archivées, fiches « En attente » (escadron
-   hors CARTEC), et toutes les autres regroupées par grade décroissant. Dans chaque groupe : grade décroissant puis nom. */
-function caLienSelect(l) {
+/* Menu « Même personne que… » (CARTEC, UIR) : premier choix (nouvelle fiche / aucune), choix actuel, groupes prioritaires
+   (ex. fiches qui allaient être archivées), puis les autres fiches regroupées par grade décroissant ; grade décroissant
+   puis nom dans chaque groupe. */
+function selectFiche({ cle, courant, premier, prioritaires = [], candidats = state.data.personnes }) {
   const lib = p => `${nomPersonne(p.v)}${p.v.escadron || p.v.peloton ? ` (${[p.v.escadron, p.v.peloton].filter(Boolean).join(" · ")})` : ""}`;
-  const opt = p => `<option value="${esc(p.id)}"${p.id === l.p?.id ? " selected" : ""}>${esc(lib(p))}</option>`;
+  const opt = p => `<option value="${esc(p.id)}"${p.id === courant?.id ? " selected" : ""}>${esc(lib(p))}</option>`;
   const groupe = (titre, P) => P.length ? `<optgroup label="${esc(titre)}">${P.sort(parGrade).map(opt).join("")}</optgroup>` : "";
-  const vus = new Set(l.p ? [l.p.id] : []), prendre = P => P.filter(p => !vus.has(p.id) && vus.add(p.id));
-  const absents = prendre(ca.plan.absents);
-  const enAttente = prendre(state.data.personnes.filter(p => !ca.plan.escadrons.includes(p.v.escadron)));
+  const vus = new Set(courant ? [courant.id] : []), prendre = P => P.filter(p => !vus.has(p.id) && vus.add(p.id));
+  const prio = prioritaires.map(([t, P]) => [t, prendre(P)]);
   const parGr = new Map();
-  prendre(state.data.personnes).forEach(p => { const g = p.v.grade || "Sans grade"; if (!parGr.has(g)) parGr.set(g, []); parGr.get(g).push(p); });
+  prendre(candidats).forEach(p => { const g = p.v.grade || "Sans grade"; if (!parGr.has(g)) parGr.set(g, []); parGr.get(g).push(p); });
   const grades = [...parGr.keys()].sort((a, b) => GRADES.indexOf(b) - GRADES.indexOf(a) || a.localeCompare(b));   // grade inconnu en dernier
-  return `<select data-lien="${esc(l.cle)}" aria-label="Même personne que"><option value="nouveau"${l.p ? "" : " selected"}>Nouvelle fiche</option>
-    ${l.p ? groupe("Choix actuel", [l.p]) : ""}${groupe("Absentes de CARTEC", absents)}${groupe("En attente / hors CARTEC", enAttente)}
+  return `<select data-lien="${esc(cle)}" aria-label="Même personne que"><option value="${esc(premier[0])}"${courant ? "" : " selected"}>${esc(premier[1])}</option>
+    ${courant ? groupe("Choix actuel", [courant]) : ""}${prio.map(([t, P]) => groupe(t, P)).join("")}
     ${grades.map(g => groupe(g, parGr.get(g))).join("")}</select>`;
 }
+const caLienSelect = l => selectFiche({ cle: l.cle, courant: l.p, premier: ["nouveau", "Nouvelle fiche"], prioritaires: [
+  ["Absentes de CARTEC", ca.plan.absents], ["En attente / hors CARTEC", state.data.personnes.filter(p => !ca.plan.escadrons.includes(p.v.escadron))]] });
 function renderCartec() {
   const { plan, unites } = ca, L = plan.lignes, par = st => L.filter(l => l.statut === st);
   const vac = unites.reduce((t, u) => t + (ca.corresp[u.code] ? u.vacants.length : 0), 0);
@@ -3511,6 +3744,92 @@ $("#form-cartec").addEventListener("submit", e => {
   toast(`CARTEC : ${r.maj} fiche(s) mise(s) à jour, ${r.crees} créée(s), ${r.archives} archivée(s).`);
 });
 $("#dlg-cartec").addEventListener("close", () => { ca = null; $("#ca-details").innerHTML = $("#ca-unites").innerHTML = ""; });
+
+/* ---------- Compléter depuis le fichier UIR ---------- */
+let ui_ = null;   // { nom, lu, escadrons, liens, plan, refus, garder }
+$("#btn-uir").addEventListener("click", () => $("#uir-input").click());
+$("#uir-input").addEventListener("change", async e => {
+  const file = e.target.files[0]; e.target.value = ""; if (!file) return;
+  try {
+    const lu = lireUIR(await readXlsx(await file.arrayBuffer()), state.data.champs);
+    if (!lu.lignes.length) throw new Error("Aucune personne trouvée dans ce fichier.");
+    const cartec = [...new Set(Object.values(state.data.meta.cartecUnites || {}))].filter(x => valeurs("escadron", true).includes(x));
+    ui_ = { nom: file.name, lu, escadrons: cartec.length ? cartec : valeurs("escadron", true) };
+    uirCalculer();
+    $("#dlg-uir").showModal();
+  } catch (x) { alert(x.message); }
+});
+function uirCalculer() {
+  ui_.liens ||= {}; ui_.refus ||= new Set(); ui_.garder ||= new Set();
+  ui_.plan = planUIR(ui_.lu, state.data, ui_.escadrons, ui_.liens); renderUIR();
+}
+function renderUIR() {
+  const { plan, lu } = ui_, L = plan.lignes, par = (...st) => L.filter(l => st.includes(l.statut));
+  const ouverts = new Set([...document.querySelectorAll("#uir-details details[open]")].map(d => d.dataset.sec));
+  $("#uir-fichier").textContent = `${ui_.nom} · ${lu.lignes.length} personne(s) · ${lu.colonnes.length} colonne(s) reprise(s)`;
+  $("#uir-escs").innerHTML = valeurs("escadron", true).map(e => `<label class="check" style="margin:0"><input type="checkbox" data-esc="${esc(e)}" ${ui_.escadrons.includes(e) ? "checked" : ""}> ${esc(e)}</label>`).join("");
+  const retenues = par("ok", "probable", "manuel"), nbAj = retenues.reduce((t, l) => t + l.ajouts.length, 0), nbDiff = retenues.reduce((t, l) => t + l.differences.length, 0);
+  $("#uir-resume").innerHTML = `<div><b>${retenues.filter(l => l.ajouts.length || l.differences.length).length}</b>fiche(s) à compléter</div><div><b>${nbAj}</b>case(s) vide(s) remplie(s)</div>
+    <div><b>${nbDiff}</b>valeur(s) différente(s)</div><div><b>${plan.sansDonnees.length}</b>fiche(s) sans données UIR</div><div><b>${par("hors").length}</b>ligne(s) hors de nos escadrons</div>`;
+  const coche = cle => `<label class="check" style="margin:0"><input type="checkbox" data-cle="${esc(cle)}" ${ui_.refus.has(cle) ? "" : "checked"}></label>`;
+  const lien = l => selectFiche({ cle: l.cle, courant: l.p, premier: ["aucun", "Pas dans nos escadrons"],
+    prioritaires: [["Sans données UIR", plan.sansDonnees]], candidats: state.data.personnes.filter(p => ui_.escadrons.includes(p.v.escadron)) });
+  const section = (id, titre, n, contenu, attention, outils = "") => n ? `<details class="ca-sec${attention ? " attention" : ""}" data-sec="${id}"${ouverts.has(id) || (attention && !ouverts.size) ? " open" : ""}>
+    <summary>${esc(titre)}<span class="n">${n}</span></summary>${outils}<div class="st-scroll">${contenu}</div></details>` : "";
+  const tbl = (entete, lignes) => `<table class="st-tbl"><thead><tr>${entete.map(t => `<th>${t}</th>`).join("")}</tr></thead><tbody>${lignes.join("")}</tbody></table>`;
+  const nomU = l => `${esc(`${(l.u.nom || "").toUpperCase()} ${l.u.prenom || ""}`)}<br><small>ligne ${l.u.ligne}</small>`;
+  const aVerifier = par("probable", "manuel"), diffs = retenues.filter(l => l.differences.length), ajouts = retenues.filter(l => l.ajouts.length);
+  const illisibles = lu.lignes.filter(u => u.illisibles.length);
+  $("#uir-details").innerHTML =
+    section("verif", "À vérifier : même personne ?", aVerifier.length, tbl(["Appliquer", "Fichier UIR", "Fiche du suivi"], aVerifier.map(l =>
+      `<tr><td>${coche(l.cle)}</td><td>${nomU(l)}</td><td>${lien(l)}${l.statut === "manuel" ? "<br><small>choisi à la main</small>" : ""}</td></tr>`)), true)
+    + section("diff", "Valeurs différentes : laquelle garder ?", diffs.reduce((t, l) => t + l.differences.length, 0), tbl(["Personne", "Champ", "Valeur à garder"], diffs.flatMap(l =>
+      l.differences.map(x => { const k = l.cle + "|" + x.f.id, garde = ui_.garder.has(k);
+        return `<tr><td>${esc(nomPersonne(l.p.v))}</td><td>${esc(x.f.label)}</td><td><div class="choix-val">
+          <label><input type="radio" name="uv-${esc(k)}" data-garder="${esc(k)}" value="suivi" ${garde ? "checked" : ""}><span>${esc(valText(x.f, x.avant))}<small>suivi</small></span></label>
+          <label><input type="radio" name="uv-${esc(k)}" data-garder="${esc(k)}" value="uir" ${garde ? "" : "checked"}><span>${esc(valText(x.f, x.apres))}<small>fichier UIR</small></span></label></div></td></tr>`; }))), true,
+      `<div class="ca-outils"><button type="button" class="btn" data-tout-garder="suivi">Tout garder : suivi</button><button type="button" class="btn" data-tout-garder="uir">Tout prendre : UIR</button></div>`)
+    + section("ajouts", "Cases vides remplies", ajouts.length, tbl(["Appliquer", "Personne", "Champs remplis"], ajouts.map(l =>
+      `<tr><td>${coche(l.cle)}</td><td>${esc(nomPersonne(l.p.v))}</td><td>${esc(l.ajouts.map(x => x.f.label).join(", "))}</td></tr>`)), false)
+    + section("sans", "Fiches sans données dans le fichier UIR", plan.sansDonnees.length, tbl(["Personne", "Rattachement"], plan.sansDonnees.sort(parGrade).map(p =>
+      `<tr><td>${esc(nomPersonne(p.v))}</td><td class="nowrap">${esc([p.v.escadron, p.v.peloton].filter(Boolean).join(" · "))}</td></tr>`)), false)
+    + section("hors", "Hors de nos escadrons (ignorées)", par("hors").length, tbl(["Fichier UIR", "Si c'est une de nos fiches"], par("hors").map(l =>
+      `<tr><td>${nomU(l)}</td><td>${lien(l)}</td></tr>`)), false)
+    + section("autres", "Non traités (à corriger à la main)", par("ambigu", "doublon").length + illisibles.length, tbl(["Fichier UIR", "Raison"], [
+      ...par("ambigu", "doublon").map(l => `<tr><td>${nomU(l)}</td><td>${l.statut === "ambigu" ? "Plusieurs fiches portent ce nom" : "Une autre ligne du fichier correspond déjà à cette fiche"}</td></tr>`),
+      ...illisibles.map(u => `<tr><td>${esc(`${u.nom.toUpperCase()} ${u.prenom}`)}<br><small>ligne ${u.ligne}</small></td><td>Date illisible, ignorée : ${esc(u.illisibles.join(" ; "))}</td></tr>`)]), true);
+  $("#uir-go").disabled = !ui_.escadrons.length;
+}
+$("#uir-escs").addEventListener("change", e => {
+  const c = e.target.closest("[data-esc]"); if (!c) return;
+  ui_.escadrons = c.checked ? [...ui_.escadrons, c.dataset.esc] : ui_.escadrons.filter(x => x !== c.dataset.esc);
+  ui_.liens = {}; uirCalculer();
+});
+$("#uir-details").addEventListener("change", e => {
+  const s_ = e.target.closest("[data-lien]");
+  if (s_) { ui_.liens[s_.dataset.lien] = s_.value; ui_.refus.delete(s_.dataset.lien); return uirCalculer(); }
+  const g = e.target.closest("[data-garder]");
+  if (g) { if (g.value === "suivi") ui_.garder.add(g.dataset.garder); else ui_.garder.delete(g.dataset.garder); return; }
+  const c = e.target.closest("[data-cle]");
+  if (c) { if (c.checked) ui_.refus.delete(c.dataset.cle); else ui_.refus.add(c.dataset.cle); }
+});
+$("#uir-details").addEventListener("click", e => {
+  const b = e.target.closest("[data-tout-garder]"); if (!b) return;
+  document.querySelectorAll(`#uir-details input[data-garder][value="${b.dataset.toutGarder}"]`).forEach(i => { i.checked = true; i.dispatchEvent(new Event("change", { bubbles: true })); });
+});
+$("#form-uir").addEventListener("submit", e => {
+  e.preventDefault();
+  if (!ui_ || !ui_.escadrons.length) return;
+  const label = `Données complétées depuis le fichier UIR (${ui_.nom})`;
+  modif(label);
+  const r = appliquerUIR(state.data, ui_.plan, ui_.refus, ui_.garder);
+  state.data.journal.at(-1).quoi = `${label} — ${r.fiches} fiche(s), ${r.valeurs} valeur(s)`;
+  r.details.forEach(x => journaliser(state.data, state.auteur, `UIR : ${x.texte}`, [x.id]));
+  ui_ = null; $("#dlg-uir").close();
+  markDirty(); render();
+  toast(`Fichier UIR : ${r.fiches} fiche(s) complétée(s), ${r.valeurs} valeur(s).`);
+});
+$("#dlg-uir").addEventListener("close", () => { ui_ = null; $("#uir-details").innerHTML = ""; });
 
 /* ---------- Import ---------- */
 $("#btn-import").addEventListener("click", () => $("#imp-input").click());
@@ -3734,7 +4053,7 @@ $("#ls-export").addEventListener("click", () => {
     { grp: "Personnel", label: "Nom", w: 18, cell: (p, z) => X((p.v.nom || "").toUpperCase(), Zs("nom", z)) },
     { grp: "Personnel", label: "Prénom", w: 16, cell: (p, z) => X(p.v.prenom || "", Zs("txt", z)) },
     ...cols.flatMap(f => [{ grp: f.groupe, label: f.label, w: largeurChamp(f, P), cell: (p, z) => xCell(p, f, z) },
-      ...(etat && f.type === "date" && f.validite ? [{ grp: f.groupe, label: "État", w: 11, cell: p => xEtat(p, f) }] : [])])
+      ...(etat && aEcheance(f) ? [{ grp: f.groupe, label: "État", w: 11, cell: p => xEtat(p, f) }] : [])])
   ];
   const F = feuille(nom);
   titreXlsx(F, nom, `${P.length} personne${P.length > 1 ? "s" : ""} · exporté le ${dateJour()} · ${state.data.meta.titre}`, desc.length);
@@ -3847,7 +4166,7 @@ function syGroupes(pel) {
 /* Totaux d'une colonne : dates à échéance = à jour / renseignés ; autres = renseignés / effectif */
 function syTotal(P, f) {
   const r = P.filter(p => p.v[f.id]).length;
-  if (f.type === "date" && f.validite) return `${P.filter(p => statusOf(p, f).k === "ok").length}/${r}<small>à jour / renseignés</small>`;
+  if (aEcheance(f)) return `${P.filter(p => statusOf(p, f).k === "ok").length}/${r}<small>à jour / renseignés</small>`;
   return `${r}/${P.length}<small>renseignés</small>`;
 }
 function renderSynth() {
@@ -3920,7 +4239,7 @@ $("#synth").addEventListener("keydown", e => { if (e.key === "Enter") syOuvrir(e
 $("#sy-print").addEventListener("click", () => window.print());
 function syTotalTxt(P, f) {
   const r = P.filter(p => p.v[f.id]).length;
-  return f.type === "date" && f.validite ? `${P.filter(p => statusOf(p, f).k === "ok").length}/${r} à jour` : `${r}/${P.length} renseignés`;
+  return aEcheance(f) ? `${P.filter(p => statusOf(p, f).k === "ok").length}/${r} à jour` : `${r}/${P.length} renseignés`;
 }
 $("#sy-export").addEventListener("click", () => {
   if (!confirm(AVERT_EXPORT)) return;

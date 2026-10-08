@@ -50,17 +50,24 @@ mis à jour sans marquer le fichier comme modifié).
   kdf: { name: "PBKDF2", hash: "SHA-256", iterations, salt (base64) },
   iv (base64), data (base64, JSON chiffré) }
 
-### Modèle de données (une fois déchiffré, schéma 3)
+### Modèle de données (une fois déchiffré, schéma 4)
 - meta : { titre, alerteJours (défaut 30), verrouMinutes (défaut 15, 0 = jamais), enregAuto (défaut vrai), schema, reglesPermisV,
   cree, modifie, demo? (données fictives) }
-- champs : [{ id, label, groupe, type, validite?, alerte?, options?, alias?, fixe? }]
+- champs : [{ id, label, groupe, type, validite?, limite?, alerte?, sensible?, calcul?, options?, alias?, fixe? }]
+  - limite : date = fin de validité (VMP, fin de contrat), surveillée sans durée. aEcheance(f) = date avec validite
+    OU limite ; expiration(f, v). Toujours passer par aEcheance / expiration, jamais f.validite seul.
+  - sensible : exclu des exports (champsExportables : xlsxPersonnel, csvPersonnel), exportable seulement via
+    « Préparer une liste » ; le journal n'en recopie pas la valeur (UIR). Réglable (« Sensible » dans les réglages).
+  - calcul : "age" | "anciennete" → durée affichée sous la date dans la fiche (duree, calculHtml)
   - alerte : seuil « à prévoir » en jours propre au champ (date avec validité) ; seuilAlerte(f) = alerte ?? meta.alerteJours
   - types : texte, long, liste (suggestions), tel, mail, date,
     permis (date ISO, "oui" = obtenu sans date, "?" = à vérifier), ouinon ("oui"/"non")
   - validite : en mois, seulement pour le type date (null = sans échéance).
     Tirs, PSC1, SC1, atmosphère viciée : 12 mois.
   - champs fixes (non supprimables) : nom, prenom, grade, escadron, peloton
-  - groupes : Identité, Contact, Carrière, Personne à prévenir, Santé, Permis,
+  - groupes : Identité (+ naissance, lieu, matricule, SAP), Contact, Carrière (+ cyber, CPR), Famille (situation,
+    nb enfants, conjoint, enfants 1-5), Personne à prévenir (+ lien), Administratif (carte d'identité militaire,
+    diplôme civil), Santé (+ VMP), Permis,
     NRBC (ANP, T3P, atmosphère viciée), Habillement (béret, veste, pantalon, gants,
     chaussures), Famas, HK, Glock, Autres armes (MAG, Minimi, 12,7, SCAR, MMP, Milan, Eryx), Divers
   - stats : true = répartition des valeurs dans le tableau de situation (tailles NRBC par défaut)
@@ -84,7 +91,9 @@ mis à jour sans marquer le fichier comme modifié).
   = noms proches déjà validés, plus redemandés
 - Migrations à l'ouverture (normalize) : v1 (types + personnes à plat) → champs ;
   schéma 2 → 3 (migrerV3, idempotente) : gants / chaussures de NRBC vers Habillement,
-  ajout béret, veste, pantalon, Eryx, règles de permis par défaut.
+  ajout béret, veste, pantalon, Eryx, règles de permis par défaut ; schéma 3 → 4 (migrerV4, idempotente) : champs
+  IDENTITE_V4 / CARRIERE_V4 / FAMILLE_V4 / ADMIN_V4 + vmp + pap_lien insérés à leur place, drapeaux limite / sensible /
+  calcul posés sur les champs existants s'ils n'ont jamais été réglés (fin de contrat : limite, alerte 90 j).
 
 ### Règles d'import (fichier Excel de l'escadron, ex. CDCTest.xlsx)
 - .xlsx lu directement (zip + XML, DecompressionStream), ou CSV (UTF-8 ou Windows-1252)
@@ -146,6 +155,21 @@ Statuts : expiré (bad), à prévoir si moins de seuilAlerte(f) jours (warn),
   - appliquerCartec(data, unites, plan, corresp, refus) : refus = cases décochées (clé de ligne ou id d'absent), ligne
     non appliquée ; probable / manuel appliqués → alias mémorisé ; écrit reo.cartec, meta.cartecUnites, meta.cartecAlias. Un seul modif() (une annulation),
     puis une entrée de journal par fiche (ids → historique de la fiche).
+- Compléter depuis le fichier UIR (v3.6, « gestion du personnel », menu « Fichier et réglages », #dlg-uir) — logique pure :
+  - lireUIR(grid, champs) : en-tête = ligne NOM + PRENOM puis 0 à 2 lignes de sous-en-têtes (jusqu'à la première ligne
+    avec un nom). Chemin de colonne « niveau 1 › 2 › 3 » : un libellé vaut pour les colonnes suivantes (cellules fusionnées)
+    jusqu'au libellé suivant du même niveau ou d'un niveau au-dessus ; le dernier niveau n'est pas reporté.
+    UIR_COLONNES : règles chemin → champ (le reste est ignoré). Dates : anyDate (série Excel ou JJ/MM/AAAA), date
+    illisible signalée ; « NEANT », « - »… = vide ; situation familiale normalisée (SITFAM). Deux colonnes pour un champ
+    (téléphone du conjoint) : la première remplie.
+  - planUIR(lu, data, escadrons, liens) : uniquement les fiches des escadrons choisis (par défaut ceux de CARTEC), jamais
+    de création. Lien manuel (« aucun » = pas dans nos escadrons), SAP, alias (meta.uirAlias), nom + prénom, puis nom
+    proche (probable). ajouts = cases vides remplies ; differences = valeurs différentes (memeValeur : téléphone aux
+    chiffres près, texte aux accents / casse près = pas une différence) ; sansDonnees = fiches absentes du fichier.
+  - appliquerUIR(data, plan, refus, garder) : garder = « cléLigne|champ » où l'on garde la valeur du suivi (UIR par
+    défaut, boutons « Tout garder : suivi / Tout prendre : UIR ») ; alias mémorisé pour probable / manuel.
+  - selectFiche : menu « Même personne que… » commun à CARTEC et UIR (groupes prioritaires puis par grade décroissant).
+- CARTEC lit aussi la colonne SAP : rapprochement par SAP en premier, SAP enregistré dans la fiche.
 - Page « Qualité des données » (controleQualite, logique pure) : doublons probables (nom + prénom, prénom
   préfixe, même mail), mail / téléphone mal formés, date dans le futur (sauf libellés « fin », « échéance »…),
   date avant 1950, sans escadron / peloton, nom ou prénom manquant, grade hors GRADES. Clic = fiche ; export Excel.
@@ -260,7 +284,8 @@ Polices Barlow / Barlow Condensed. Couleurs de statut : vert, ambre, rouge, gris
   annuler, archives, journal, exports, session verrouillée, conflit, mot de passe, qualité, historique,
   enregistrement automatique, mise à niveau 310 000 → 600 000, mot de passe changé ailleurs). Le scénario est
   injecté comme second script : son empreinte est ajoutée à la CSP de la page de test.
-  Les tests CARTEC utilisent un faux fichier (fauxCartec dans run.mjs, grille dans ui.mjs), jamais le vrai.
+  Les tests CARTEC et UIR utilisent de faux fichiers (fauxCartec, fauxUIR dans run.mjs, grilles dans ui.mjs), jamais
+  les vrais (nePasMettreSurLeRepo/ : CARTEC 2026.xlsx, testData.xlsx = modèle du fichier UIR).
 - `node tests/csp.mjs` : met à jour l'empreinte du script dans la CSP (--verifier : contrôle seul).
   Dans le scénario, attendre avec quand() (MessageChannel), pas setTimeout : Chrome accélère
   le temps virtuel alors que PBKDF2 prend du vrai temps (une boucle de messages garde la page occupée ;

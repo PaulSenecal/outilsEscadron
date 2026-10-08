@@ -16,7 +16,8 @@ const L = vm.runInContext(`({ state, emptyData, normalize, donneesDemo, encryptD
   planImport, computeImport, applyImport, personKey, xlsxPersonnel, csvPersonnel, lignesDepuisTexte, rapprocher, permisChamps,
   permisEtat, defaultReglesPermis, seanceChangements, echeances, diffFiche, journaliser, JOURNAL_MAX, statFormation, statutTaux,
   statusOf, reoBlocs, groupesPeloton, defaultChamps, SCHEMA, fusionner, ITER, forceMotDePasse, controleQualite, historiquePersonne,
-  seuilAlerte, isoLocal, today, lireCartec, planCartec, appliquerCartec, escadronPropose, reoBlocs })`, ctx);
+  seuilAlerte, isoLocal, today, lireCartec, planCartec, appliquerCartec, escadronPropose, reoBlocs, lireUIR, planUIR, appliquerUIR,
+  duree, aEcheance })`, ctx);
 
 let ok = 0, ko = 0;
 async function test(nom, fn) {
@@ -388,6 +389,91 @@ await test("CARTEC : nom double et lettres inversées, lien corrigé à la main"
   egal([d.personnes.find(p => p.id === "k").v.spe, d.personnes.find(p => p.id === "f").v.escadron], ["TIREUR 1A", "4ESC"]);
   const plan2 = L.planCartec(U, d, corresp);
   egal(["Kilowatt", "FHILO/GENEVAUX"].map(n => plan2.lignes.find(x => x.e.nom === n).statut), ["identique", "identique"], "liens mémorisés");
+});
+
+await test("Schéma 4 : nouveaux champs ajoutés aux anciens fichiers, fin de contrat surveillée", () => {
+  const d = L.emptyData("v3");
+  const ajoutes = ["naissance", "lieu_naissance", "matricule", "sap", "cyber", "cpr", "sitfam", "conj_nom", "enf5_naissance", "pap_lien", "cim_num", "vmp"];
+  d.champs = d.champs.filter(c => !ajoutes.includes(c.id)).map(c => { const x = { ...c }; delete x.limite; delete x.sensible; delete x.calcul; delete x.alerte; return x; });
+  d.meta.schema = 3;
+  const n = L.normalize(d), ids = n.champs.map(c => c.id);
+  vrai(ajoutes.every(id => ids.includes(id)), "champs ajoutés");
+  egal(ids.indexOf("sap"), ids.indexOf("patrouille") + 4, "à leur place (Identité)");
+  const fc = n.champs.find(c => c.id === "fincontrat");
+  egal([fc.limite, fc.alerte, n.champs.find(c => c.id === "nsecu").sensible], [true, 90, true]);
+  egal(L.normalize(n).champs.length, n.champs.length, "idempotent");
+});
+
+await test("Date limite (VMP, fin de contrat), âge et ancienneté", () => {
+  const d = demo(), vmp = d.champs.find(c => c.id === "vmp");
+  const dans = j => { const t = L.today(); t.setDate(t.getDate() + j); return L.isoLocal(t); };
+  vrai(L.aEcheance(vmp) && !vmp.validite, "VMP : date limite");
+  egal([dans(-1), dans(30), dans(200), ""].map(x => L.statusOf({ v: { vmp: x } }, vmp).k), ["bad", "warn", "ok", "none"]);
+  vrai(L.echeances([{ id: "z", v: { vmp: dans(10) } }], [vmp], null, false)[0].items[0].days === 10, "dans « À faire »");
+  const t = L.today(), il_y_a = (a, m) => L.isoLocal(new Date(t.getFullYear() - a, t.getMonth() - m, t.getDate()));
+  egal([L.duree(il_y_a(34, 0)), L.duree(il_y_a(3, 2)), L.duree(il_y_a(0, 5)), L.duree("")], ["34 ans", "3 ans 2 mois", "5 mois", ""]);
+});
+
+await test("Données sensibles exclues des exports Personnel", async () => {
+  const d = demo(); d.personnes[0].v.nsecu = "1 99 99 99 999 999 99"; d.personnes[0].v.conj_nom = "Conjointfictif";
+  const csv = L.csvPersonnel(d);
+  vrai(!csv.includes("999 999") && !csv.includes("Conjointfictif") && !csv.includes("Sécurité sociale"), "CSV sans données sensibles");
+  const grid = await L.readXlsx(await buffer(L.xlsxPersonnel(d)));
+  vrai(!JSON.stringify(grid).includes("Conjointfictif"), "Excel sans données sensibles");
+});
+
+/* Faux fichier UIR (noms fictifs) : en-tête sur 3 lignes avec cellules fusionnées, comme le vrai */
+function fauxUIR() {
+  const g = [], L_ = c => { const r = []; Object.entries(c).forEach(([k, v]) => { r[k.charCodeAt(0) - 65] = v; }); g.push(r); };
+  L_({ A: "NOM", B: "PRENOM", C: "ENTREE EN SERVICE ", D: "SANTE", F: "FIN DE CONTRAT RDC", G: "GRADE", I: "SAP", J: "N° PORTABLE", K: "CONJOINT",
+    N: "ENFANTS", P: "PERSONNE A PREVENIR EN CAS D'ACCIDENT", S: "N° SECURITE SOCIALE", T: "AFFECTATION" });
+  L_({ D: "VMP", E: "PSC", G: "GRADE", H: "DEPUIS LE", K: "NOM", L: "TELEPHONE", N: 1 });
+  L_({ M: "PORTABLE", N: "PRENOM", O: "DATE DE NAISSANCE", P: "LIEN", Q: "NOM" });
+  L_({ A: "ALPHA", B: "Albert", C: 43770, D: "30/04/2027", F: 47000, G: "cne", H: "01/08/2022", I: 90000001, J: "06 11 22 33 44", K: "Conj", M: "06 99 88 77 66",
+    N: "Léo", O: "24/06/2015", P: "EPOUSE", Q: "ALPHA Conj", R: "06 99 88 77 66", S: "1 99 99", T: "ECL" });
+  L_({ A: "Bravo", B: "Bernard", D: "pas une date", J: "0655555555", I: 90000002 });
+  L_({ A: "Ailleurs", B: "Paul", D: "01/01/2027" });
+  L_({ A: "CHARLY", B: "Claire", J: "0612345678" });
+  return g;
+}
+await test("Fichier UIR : lecture de l'en-tête sur 3 lignes", () => {
+  const d = L.emptyData("u"), lu = L.lireUIR(fauxUIR(), d.champs);
+  egal(lu.colonnes.map(c => c.f.id), ["entree", "vmp", "fincontrat", "grade", "dategrade", "sap", "tel", "conj_nom", "conj_tel", "conj_tel",
+    "enf1_prenom", "enf1_naissance", "pap_lien", "pap_nom", "pap_tel", "nsecu"], "colonnes reprises (PSC, affectation ignorées)");
+  const a = lu.lignes[0].valeurs;
+  egal([a.entree, a.vmp, a.grade, a.dategrade, a.sap, a.conj_tel, a.enf1_naissance, a.pap_tel], ["2019-11-01", "2027-04-30", "CNE", "2022-08-01", "90000001", "06 99 88 77 66", "2015-06-24", "06 99 88 77 66"]);
+  egal(lu.lignes[1].illisibles.length, 1, "date illisible signalée");
+});
+await test("Fichier UIR : rapprochement, choix des valeurs, sans création", () => {
+  const d = L.emptyData("u"); L.state.data = d;
+  d.personnes.push({ id: "a", v: { nom: "Alpha", prenom: "Albert", escadron: "5ESC", tel: "06.11.22.33.44", grade: "LTN" } },
+    { id: "b", v: { nom: "Bravo", prenom: "Bernard", escadron: "7ESC", sap: "90000002" } },
+    { id: "c", v: { nom: "Charlie", prenom: "Claire", escadron: "5ESC", tel: "0600000000" } },
+    { id: "z", v: { nom: "Zoulou", prenom: "Zoé", escadron: "5ESC" } },
+    { id: "p", v: { nom: "Ailleurs", prenom: "Paul", escadron: "9ESC" } });
+  const lu = L.lireUIR(fauxUIR(), d.champs), plan = L.planUIR(lu, d, ["5ESC", "7ESC"]);
+  const l = n => plan.lignes.find(x => x.u.nom === n);
+  egal(["ALPHA", "Bravo", "Ailleurs", "CHARLY"].map(n => l(n).statut), ["ok", "ok", "hors", "probable"], "SAP, nom, autre escadron, nom proche");
+  egal(plan.sansDonnees.map(p => p.id), ["z"]);
+  egal(l("ALPHA").differences.map(x => x.f.id), ["grade"], "téléphone identique aux séparateurs près : pas une différence");
+  const r = L.appliquerUIR(d, plan, new Set([l("CHARLY").cle]), new Set([l("ALPHA").cle + "|grade"]));
+  const a = d.personnes.find(p => p.id === "a").v;
+  egal([a.grade, a.vmp, a.nsecu, a.tel], ["LTN", "2027-04-30", "1 99 99", "06.11.22.33.44"], "grade gardé (choix), cases vides remplies, téléphone inchangé");
+  egal(d.personnes.find(p => p.id === "c").v.tel, "0600000000", "ligne décochée");
+  egal(d.personnes.length, 5, "aucune création");
+  vrai(!r.details.some(x => x.texte.includes("1 99 99")) && r.details.some(x => x.texte.includes("N° Sécurité sociale mis à jour")), "journal sans valeur sensible");
+  const plan2 = L.planUIR(lu, d, ["5ESC", "7ESC"], { [l("CHARLY").cle]: "c" });
+  egal(plan2.lignes.find(x => x.u.nom === "CHARLY").statut, "manuel");
+  L.appliquerUIR(d, plan2);
+  egal(L.planUIR(lu, d, ["5ESC", "7ESC"]).lignes.find(x => x.u.nom === "CHARLY").statut, "ok", "lien mémorisé");
+});
+await test("CARTEC : rapprochement par SAP", () => {
+  const d = L.emptyData("t"); L.state.data = d;
+  d.personnes.push({ id: "s", v: { nom: "Nom-Change", prenom: "Autre", escadron: "4ESC", sap: "777" } });
+  const g = fauxCartec(); g[7][10] = 777;   // SAP du commandant d'unité (Alpha Albert)
+  g[0][10] = "SAP";
+  const U = L.lireCartec(g), plan = L.planCartec(U, d, { "00C99AA": "4ESC" });
+  egal(plan.lignes.find(x => x.e.nom === "Alpha").p?.id, "s");
 });
 
 console.log(`\n${ok} réussi(s), ${ko} échoué(s)`);

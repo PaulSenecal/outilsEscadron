@@ -207,6 +207,24 @@ const valeur = (sel, v) => { const e = document.querySelector(sel); e.value = v;
   clic("#btn-undo");
   verif("CARTEC : annulé en une fois", state.data.personnes.length === avantCartec && !state.data.reo.cartec && erreurs.length === 0, erreurs.join(" | "));
 
+  // Compléter depuis le fichier UIR (faux fichier : deux personnes de la démo, une personne d'une autre unité)
+  const PU = state.data.personnes.filter(p => p.v.escadron === E).slice(2, 4), autreTel = "07 00 00 00 01";
+  const gU = [["NOM", "PRENOM", "SANTE", null, "N° PORTABLE", "N° SECURITE SOCIALE", "DATE DE NAISSANCE"], [null, null, "VMP", "PSC"], [],
+    [PU[0].v.nom, PU[0].v.prenom, "30/04/2027", null, autreTel, "1 99 99 99", "10/05/1990"],
+    [PU[1].v.nom, PU[1].v.prenom, "01/01/2020"], ["Inconnu", "Hors", "01/01/2027"]];
+  ui_ = { nom: "uir-test.xlsx", lu: lireUIR(gU, state.data.champs), escadrons: [E] };
+  uirCalculer(); $("#dlg-uir").showModal();
+  const radio = document.querySelector('#uir-details input[data-garder][value="suivi"]');
+  verif("UIR : aperçu (différence au choix, hors escadron)", radio && $("#uir-resume").textContent.includes("1ligne(s) hors"), $("#uir-resume").textContent);
+  radio.click();
+  $("#form-uir").requestSubmit();
+  const u0 = state.data.personnes.find(p => p.id === PU[0].id).v, u1 = state.data.personnes.find(p => p.id === PU[1].id).v;
+  verif("UIR : valeurs appliquées, choix respecté", u0.vmp === "2027-04-30" && u0.nsecu === "1 99 99 99" && u0.tel !== autreTel && u1.vmp === "2020-01-01" && !$("#dlg-uir").open, JSON.stringify([u0.vmp, u0.tel]));
+  openPerson(PU[0].id);
+  verif("Fiche : âge calculé, VMP surveillée", $("#p-body [data-calcul='naissance']").textContent.startsWith("Âge :") && !!document.querySelector('#p-body [data-statut="vmp"]'));
+  $("#dlg-person").close();
+  verif("UIR : VMP expirée dans « À faire »", echeances([state.data.personnes.find(p => p.id === PU[1].id)], suivis(), null, false)[0]?.items.some(i => i.f.id === "vmp" && i.k === "bad"));
+
   // Enregistrement automatique (fichier ouvert via File System Access)
   const disque = [];
   const fauxFichier = () => ({ getFile: async () => ({ text: async () => disque.at(-1) || "" }), createWritable: async () => ({ write: async c => disque.push(c), close: async () => {} }) });
