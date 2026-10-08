@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <!-- Politique de sécurité : aucune requête réseau (sauf Google Fonts), seul le script de ce fichier peut s'exécuter
      (empreinte sha256 : après toute modification du script, lancer « node tests/csp.mjs » pour la mettre à jour). -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Ht2oGTd6enTBd9IqJXRjsbIw5weWaPVZvYhvyWt8m2c='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-OAoM7dvJs5CcX2BxqQF0MnznJMbGX7Pta927xgdOHJA='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
 <title>Suivi du personnel</title>
 <meta name="theme-color" content="#0B1629">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%2313233F'/%3E%3Cpath d='M32 9l18 7v13c0 12-8 21-18 26-10-5-18-14-18-26V16z' fill='none' stroke='%23C9A227' stroke-width='4'/%3E%3Ccircle cx='32' cy='27' r='6' fill='%23C9A227'/%3E%3Cpath d='M21 44c2-7 6-10 11-10s9 3 11 10' fill='%23C9A227'/%3E%3C/svg%3E">
@@ -3433,16 +3433,21 @@ $("#ca-input").addEventListener("change", async e => {
   } catch (x) { alert(x.message); }
 });
 function caCalculer() { ca.liens ||= {}; ca.refus ||= new Set(); ca.plan = planCartec(ca.unites, state.data, ca.corresp, ca.liens); renderCartec(); }
-/* Menu « Même personne que… » : nouvelle fiche, fiches qui allaient être archivées (en premier), puis toutes les autres */
+/* Menu « Même personne que… » : nouvelle fiche, puis fiches qui allaient être archivées, fiches « En attente » (escadron
+   hors CARTEC), et toutes les autres regroupées par grade décroissant. Dans chaque groupe : grade décroissant puis nom. */
 function caLienSelect(l) {
   const lib = p => `${nomPersonne(p.v)}${p.v.escadron || p.v.peloton ? ` (${[p.v.escadron, p.v.peloton].filter(Boolean).join(" · ")})` : ""}`;
-  const absents = ca.plan.absents.filter(p => p.id !== l.p?.id).sort((a, b) => norm(a.v.nom).localeCompare(norm(b.v.nom), "fr"));
-  const ids = new Set([l.p?.id, ...absents.map(p => p.id)]);
-  const autres = state.data.personnes.filter(p => !ids.has(p.id)).sort((a, b) => norm(a.v.nom).localeCompare(norm(b.v.nom), "fr"));
   const opt = p => `<option value="${esc(p.id)}"${p.id === l.p?.id ? " selected" : ""}>${esc(lib(p))}</option>`;
+  const groupe = (titre, P) => P.length ? `<optgroup label="${esc(titre)}">${P.sort(parGrade).map(opt).join("")}</optgroup>` : "";
+  const vus = new Set(l.p ? [l.p.id] : []), prendre = P => P.filter(p => !vus.has(p.id) && vus.add(p.id));
+  const absents = prendre(ca.plan.absents);
+  const enAttente = prendre(state.data.personnes.filter(p => !ca.plan.escadrons.includes(p.v.escadron)));
+  const parGr = new Map();
+  prendre(state.data.personnes).forEach(p => { const g = p.v.grade || "Sans grade"; if (!parGr.has(g)) parGr.set(g, []); parGr.get(g).push(p); });
+  const grades = [...parGr.keys()].sort((a, b) => GRADES.indexOf(b) - GRADES.indexOf(a) || a.localeCompare(b));   // grade inconnu en dernier
   return `<select data-lien="${esc(l.cle)}" aria-label="Même personne que"><option value="nouveau"${l.p ? "" : " selected"}>Nouvelle fiche</option>
-    ${l.p ? `<optgroup label="Choix actuel">${opt(l.p)}</optgroup>` : ""}${absents.length ? `<optgroup label="Absentes de CARTEC">${absents.map(opt).join("")}</optgroup>` : ""}
-    <optgroup label="Autres fiches">${autres.map(opt).join("")}</optgroup></select>`;
+    ${l.p ? groupe("Choix actuel", [l.p]) : ""}${groupe("Absentes de CARTEC", absents)}${groupe("En attente / hors CARTEC", enAttente)}
+    ${grades.map(g => groupe(g, parGr.get(g))).join("")}</select>`;
 }
 function renderCartec() {
   const { plan, unites } = ca, L = plan.lignes, par = st => L.filter(l => l.statut === st);

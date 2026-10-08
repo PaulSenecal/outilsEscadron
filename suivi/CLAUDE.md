@@ -141,7 +141,8 @@ Statuts : expiré (bad), à prévoir si moins de seuilAlerte(f) jours (warn),
     sinon nouveau. Champs comparés : escadron, peloton, golf, spe (CHAMPS_CARTEC) — jamais grade, dates, contacts.
     absents = fiches des escadrons concernés non retrouvées → archivées (motif « Absent de CARTEC ») par défaut.
   - liens (4e paramètre de planCartec, ca.liens dans l'aperçu) : { cléLigne: id | "nouveau" } choisi dans le menu
-    « Déjà dans le suivi ? » / « Fiche du suivi » (caLienSelect : absents de CARTEC en premier) → statut « manuel ».
+    « Déjà dans le suivi ? » / « Fiche du suivi » (caLienSelect : absents de CARTEC, puis « En attente » / hors CARTEC,
+    puis un groupe par grade décroissant ; tri parGrade dans chaque groupe) → statut « manuel ».
   - appliquerCartec(data, unites, plan, corresp, refus) : refus = cases décochées (clé de ligne ou id d'absent), ligne
     non appliquée ; probable / manuel appliqués → alias mémorisé ; écrit reo.cartec, meta.cartecUnites, meta.cartecAlias. Un seul modif() (une annulation),
     puis une entrée de journal par fiche (ids → historique de la fiche).

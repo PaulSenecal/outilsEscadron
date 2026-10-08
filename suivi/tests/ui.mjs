@@ -191,6 +191,9 @@ const valeur = (sel, v) => { const e = document.querySelector(sel); e.value = v;
   verif("CARTEC : aperçu (escadron proposé, sections)", ca.corresp["00C99AA"] === E && document.querySelectorAll("#ca-details .ca-sec").length >= 3 && !$("#ca-go").disabled, $("#ca-resume").textContent);
   // « Nouveau Fictif » est en fait une fiche existante (qui allait être archivée) : lien corrigé à la main
   const cible = ca.plan.absents[0].id, sel = document.querySelector('#ca-details select[data-lien]');
+  const grp = [...sel.querySelectorAll("optgroup")].map(g => g.label), gr = grp.slice(1).filter(g => GRADES.includes(g));
+  verif("CARTEC : menu classé (archivées d'abord, puis grades décroissants)", grp[0] === "Absentes de CARTEC"
+    && gr.every((g, i) => !i || GRADES.indexOf(gr[i - 1]) > GRADES.indexOf(g)), grp.join(" | "));
   sel.value = cible; sel.dispatchEvent(new Event("change", { bubbles: true }));
   verif("CARTEC : lien corrigé à la main", ca.plan.lignes.some(l => l.statut === "manuel" && l.p.id === cible) && !ca.plan.absents.some(p => p.id === cible));
   $("#form-cartec").requestSubmit();
