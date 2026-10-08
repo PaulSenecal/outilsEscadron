@@ -1,5 +1,8 @@
 # Outils escadron
 
+**Site en ligne : https://paulsenecal.github.io/outilsEscadron/**
+(Suivi du personnel : https://paulsenecal.github.io/outilsEscadron/suivi/)
+
 Applications web statiques, publiées via GitHub Pages. Aucune dépendance, aucun serveur,
 aucune donnée transmise : tout s'exécute dans le navigateur.
 
