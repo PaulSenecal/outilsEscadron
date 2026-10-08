@@ -244,6 +244,26 @@ const valeur = (sel, v) => { const e = document.querySelector(sel); e.value = v;
   verif("Enregistrement automatique annoncé", $("#dirty").textContent.includes("automatique"), $("#dirty").textContent);
   await attendre(AUTO_DELAI + 5000); await quand(() => disque.length === 1);
   verif("Enregistrement automatique effectué", disque.length === 1 && !state.dirty, disque.length);
+
+  // Actualisation automatique : un collègue enregistre pendant qu'on travaille
+  const versionAilleurs = async (modifier, quand_) => { const D = JSON.parse(state.base); modifier(D); D.journal.push({ t: new Date().toISOString(), qui: "Collègue", quoi: "Fiche modifiée" });
+    const moi = state.data; state.data = D; const x = await encryptData(quand_); state.data = moi; disque.push(x); };
+  const gant = i => state.data.personnes[i].v.gant;
+  verif("Actualisation : onglet visible", document.visibilityState === "visible", document.visibilityState);
+  await versionAilleurs(D => { D.personnes[5].v.gant = "13"; }, "2026-10-08T12:00:00.000Z");
+  await actualiser();
+  verif("Actualisation : sa modification reprise (rien de modifié chez moi)", gant(5) === "13" && !state.dirty && $("#toast").textContent.includes("Collègue"), $("#toast").textContent);
+  await versionAilleurs(D => { D.personnes[6].v.gant = "14"; }, "2026-10-08T12:01:00.000Z");
+  state.data.personnes[7].v.gant = "15"; state.dirty = true;
+  await actualiser();
+  verif("Actualisation : fusion avec mes modifications en cours", gant(6) === "14" && gant(7) === "15" && state.dirty);
+  await versionAilleurs(D => { D.personnes[7].v.gant = "16"; }, "2026-10-08T12:02:00.000Z");
+  const nbDisque = disque.length, act = actualiser(); await quand(() => $("#dlg-fusion").open);
+  verif("Actualisation : même case modifiée des deux côtés → fenêtre de choix", $("#dlg-fusion").open);
+  $("#form-fusion").requestSubmit(); await act;
+  verif("Actualisation : ma version gardée puis enregistrée", gant(7) === "15" && gant(6) === "14" && !state.dirty && disque.length === nbDisque + 1);
+  const avantRien = disque.length; await actualiser();
+  verif("Actualisation : rien à faire si le fichier n'a pas changé", disque.length === avantRien && !state.dirty);
   state.handle = null;
 
   // Ancien fichier (310 000 itérations) : relu, puis mis à niveau à l'enregistrement

@@ -170,6 +170,12 @@ Statuts : expiré (bad), à prévoir si moins de seuilAlerte(f) jours (warn),
     où l'on choisit la valeur UIR (boutons « Tout garder : suivi / Tout prendre : UIR ») ; cases vides toujours remplies ; alias mémorisé pour probable / manuel.
   - selectFiche : menu « Même personne que… » commun à CARTEC et UIR (groupes prioritaires puis par grade décroissant).
 - CARTEC lit aussi la colonne SAP : rapprochement par SAP en premier, SAP enregistré dans la fiche.
+- Actualisation automatique (v3.10) : actualiser() toutes les ACTU_DELAI = 30 s et au retour sur l'onglet
+  (visibilitychange). lireDisque(true) compare l'IV (pas de déchiffrement si inchangé). Fichier réécrit ailleurs :
+  rien de modifié chez moi → sa version reprise ; modifications en cours → fusionner(base, disque, moi) appliqué en
+  mémoire (la version du disque devient state.base, state.dirty reste vrai) ; conflit → save() (fenêtre #dlg-fusion).
+  Jamais pendant une fenêtre ouverte, un enregistrement (enregEnCours), une session verrouillée ni onglet caché.
+  Autre mot de passe : signalé une fois (state.ivSignale), fusion à l'enregistrement. Historique « Annuler » vidé.
 - Page « Qualité des données » (controleQualite, logique pure) : doublons probables (nom + prénom, prénom
   préfixe, même mail), mail / téléphone mal formés, date dans le futur (sauf libellés « fin », « échéance »…),
   date avant 1950, sans escadron / peloton, nom ou prénom manquant, grade hors GRADES. Clic = fiche ; export Excel.
@@ -302,7 +308,9 @@ Polices Barlow / Barlow Condensed. Couleurs de statut : vert, ambre, rouge, gris
 - Lancer les deux après chaque évolution. Ne jamais mettre de données réelles dans tests/.
 
 ## Limites connues
-- Pas de temps réel : on voit les modifications des autres en enregistrant ou en rouvrant.
+- Pas de temps réel : les modifications des autres arrivent par l'actualisation (30 s + délai de synchronisation
+  Google Drive), en enregistrant ou en rouvrant. Deux enregistrements simultanés avant synchronisation Drive peuvent
+  encore produire un fichier « (1) » côté Drive.
   La fusion ne marche qu'avec un fichier ouvert via File System Access (Chrome/Edge, dossier
   Google Drive pour ordinateur) et le même mot de passe ; délai de synchronisation Drive.
 - Sur Firefox, Safari et mobile, l'enregistrement passe par un téléchargement.

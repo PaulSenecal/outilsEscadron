@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <!-- Politique de sécurité : aucune requête réseau (sauf Google Fonts), seul le script de ce fichier peut s'exécuter
      (empreinte sha256 : après toute modification du script, lancer « node tests/csp.mjs » pour la mettre à jour). -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-CGOJZOek5+irOyKtakgFOuGXbcQPbNnWTfOsNYjmb8A='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-oo+GrQIGx7paIJooa63thhrNn5qnVcbMwpqYTsHRUrc='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
 <title>Suivi du personnel</title>
 <meta name="theme-color" content="#0B1629">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%2313233F'/%3E%3Cpath d='M32 9l18 7v13c0 12-8 21-18 26-10-5-18-14-18-26V16z' fill='none' stroke='%23C9A227' stroke-width='4'/%3E%3Ccircle cx='32' cy='27' r='6' fill='%23C9A227'/%3E%3Cpath d='M21 44c2-7 6-10 11-10s9 3 11 10' fill='%23C9A227'/%3E%3C/svg%3E">
@@ -1050,10 +1050,13 @@ const enc = new TextEncoder(), dec = new TextDecoder();
 const FORMAT = "suivi-personnel";
 const ITER = 600000;          // PBKDF2 (OWASP 2023). Un fichier plus ancien est relu avec ses itérations et mis à niveau au prochain enregistrement
 const SCHEMA = 4;
-const VERSION = "3.9";
+const VERSION = "3.10";
 /* Historique affiché par le bouton « Nouveautés » : à chaque évolution, incrémenter VERSION
    et ajouter une entrée EN TÊTE de cette liste. */
 const NOUVEAUTES = [
+  { v: "3.10", date: "08/10/2026", items: [
+    "Actualisation automatique (fichier ouvert depuis l'ordinateur, Chrome / Edge) : toutes les 30 secondes, les modifications enregistrées par un collègue sont intégrées, même si vous n'avez rien modifié.",
+    "Si vous avez aussi des modifications en cours, elles sont fusionnées avec les siennes ; seules les cases modifiées différemment des deux côtés vous sont demandées."] },
   { v: "3.9", date: "08/10/2026", items: [
     "Fiche d'une personne réorganisée : un bandeau en haut (rattachement, poste, téléphone, mail, dates expirées ou à prévoir) et des onglets Essentiel, Tirs et formations, Équipement, Permis, Personnel.",
     "Une pastille rouge ou orange sur un onglet signale une date expirée ou à prévoir ; l'onglet consulté est retenu d'une fiche à l'autre (pratique pour vérifier les tirs de tout un peloton).",
@@ -2887,6 +2890,43 @@ async function enregistrerAuto() {
   if (document.querySelector("dialog[open]")) return planifierAuto();   // fiche, import… en cours : on réessaie plus tard
   await save(true);
 }
+/* ---------- Actualisation automatique : modifications enregistrées par quelqu'un d'autre ---------- */
+/* Toutes les ACTU_DELAI (et au retour sur l'onglet), si le fichier a été réécrit ailleurs (autre IV) :
+   - rien de modifié de mon côté : sa version est reprise telle quelle ;
+   - mes modifications non enregistrées : fusion (fusionner) ; sans conflit, appliquée en mémoire, la version du disque
+     devient la nouvelle base, mes modifications restent à enregistrer ; avec conflit : enregistrement normal (fenêtre
+     de choix). Jamais pendant une saisie (fenêtre ouverte), un enregistrement, une session verrouillée, ni onglet caché.
+   Coût quand rien n'a changé : lecture du fichier local et comparaison de l'IV, sans déchiffrement. */
+const ACTU_DELAI = 30000;
+let actuEnCours = false;
+async function actualiser() {
+  if (actuEnCours || enregEnCours || !state.data || !state.handle || !state.lastIv || !state.base || session
+    || document.visibilityState !== "visible" || document.querySelector("dialog[open]")) return;
+  actuEnCours = true;
+  try {
+    const disque = await lireDisque(true);
+    if (!disque.change || document.querySelector("dialog[open]") || !state.data) return;
+    if (!disque.data) {   // autre mot de passe : signalé une fois, la fusion se fera à l'enregistrement
+      if (state.ivSignale !== disque.iv) { state.ivSignale = disque.iv; toast("Le fichier a été enregistré ailleurs avec un autre mot de passe : enregistrez pour fusionner."); }
+      return;
+    }
+    const qui = disque.qui || "une autre personne";
+    if (!state.dirty) {
+      state.data = disque.data;
+    } else {
+      const f = fusionner(JSON.parse(state.base), disque.data, state.data);
+      if (f.conflits.length) { toast(`Modifications de ${qui} sur les mêmes cases que vous : choisissez ce qu'il faut garder.`); await save(); return; }
+      state.data = normalize(f.data);
+    }
+    state.base = JSON.stringify(disque.data); state.lastIv = disque.iv;
+    undo.length = 0; majUndo();   // les instantanés d'avant ne correspondent plus au fichier
+    render(); majNouveautes();
+    toast(`Mise à jour : modifications de ${qui} intégrées${state.dirty ? " (les vôtres restent à enregistrer)" : ""}.`);
+    if (state.dirty) planifierAuto();
+  } finally { actuEnCours = false; }
+}
+setInterval(actualiser, ACTU_DELAI);
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") actualiser(); });
 function suspendreAuto(raison) { state.autoSuspendu = raison; renderHeader(); toast(`Enregistrement automatique suspendu : ${raison}. Enregistrez à la main.`); }
 
 /* Relit le fichier sur le disque : a-t-il été réécrit ailleurs depuis l'ouverture ? (chaque enregistrement change l'IV)
@@ -2907,7 +2947,7 @@ async function lireDisque(auto = false) {
   const qui = [...(data?.journal || [])].reverse().find(j => j.qui && j.qui !== state.auteur)?.qui || der?.qui || "";
   const info = data ? `Une autre version a été enregistrée le ${data.meta?.modifie ? fmtStamp(data.meta.modifie) : "?"}${qui ? ` par ${qui}` : ""}${der ? ` (dernière modification : « ${der.quoi.slice(0, 120)} »)` : ""}.`
     : "Une autre version du fichier a été enregistrée depuis que vous l'avez ouvert (avec un autre mot de passe : impossible de la lire pour fusionner).";
-  return { change: true, data, qui, info };
+  return { change: true, data, qui, info, iv: o.iv };
 }
 /* Le fichier sur le disque a un autre sel : on demande son mot de passe pour le lire et fusionner.
    Si c'est un changement fait ailleurs (pas de nouveau mot de passe de mon côté), on l'adopte pour écrire. */
