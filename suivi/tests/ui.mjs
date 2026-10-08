@@ -189,10 +189,15 @@ const valeur = (sel, v) => { const e = document.querySelector(sel); e.value = v;
   ca.corresp["00C99AA"] = escadronPropose(ca.unites[0], state.data);
   caCalculer(); $("#dlg-cartec").showModal();
   verif("CARTEC : aperçu (escadron proposé, sections)", ca.corresp["00C99AA"] === E && document.querySelectorAll("#ca-details .ca-sec").length >= 3 && !$("#ca-go").disabled, $("#ca-resume").textContent);
+  // « Nouveau Fictif » est en fait une fiche existante (qui allait être archivée) : lien corrigé à la main
+  const cible = ca.plan.absents[0].id, sel = document.querySelector('#ca-details select[data-lien]');
+  sel.value = cible; sel.dispatchEvent(new Event("change", { bubbles: true }));
+  verif("CARTEC : lien corrigé à la main", ca.plan.lignes.some(l => l.statut === "manuel" && l.p.id === cible) && !ca.plan.absents.some(p => p.id === cible));
   $("#form-cartec").requestSubmit();
   const p1 = state.data.personnes.find(p => p.id === PE[1].id);
-  verif("CARTEC : rattachement, spécialité, création, archivage", !$("#dlg-cartec").open && p1.v.spe === "NOUVEAU POSTE TEST" && p1.v.peloton === "PCL"
-    && state.data.personnes.some(p => p.v.nom === "Nouveau") && state.data.archives.some(a => a.archive?.motif === "Absent de CARTEC"));
+  verif("CARTEC : rattachement, spécialité, lien, archivage", !$("#dlg-cartec").open && p1.v.spe === "NOUVEAU POSTE TEST" && p1.v.peloton === "PCL"
+    && state.data.personnes.find(p => p.id === cible)?.v.spe === "CAVALIER TEST" && !state.data.personnes.some(p => p.v.nom === "Nouveau")
+    && state.data.archives.some(a => a.archive?.motif === "Absent de CARTEC"));
   verif("CARTEC : historique de la fiche", historiquePersonne(state.data.journal, p1).some(j => j.quoi.includes("NOUVEAU POSTE TEST")));
   reoEsc = E; setView("reo");
   verif("CARTEC : REO (groupe, poste à pourvoir)", $("#reo").innerHTML.includes("Groupe de commandement") && $("#reo").textContent.includes("Poste à pourvoir — POSTE VIDE TEST"), $("#reo").textContent.slice(0, 200));

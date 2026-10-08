@@ -364,8 +364,30 @@ await test("CARTEC : décocher dans l'aperçu", () => {
   const r = L.appliquerCartec(d, U, plan, corresp, new Set([cle("Echo"), cle("Foxtrot"), "x"]));
   vrai(d.personnes.some(p => p.id === "x"), "absent non archivé");
   vrai(!d.personnes.some(p => p.v.nom === "Foxtrot"), "nouvelle fiche refusée");
-  egal(d.personnes.filter(p => p.v.nom === "Echo").length, 2, "nom proche refusé : nouvelle fiche distincte");
+  egal(d.personnes.filter(p => p.v.nom === "Echo").map(p => p.v.spe), [undefined], "nom proche décoché : rien n'est fait");
   egal(r.archives, 0);
+});
+
+await test("CARTEC : nom double et lettres inversées, lien corrigé à la main", () => {
+  const d = L.emptyData("t"); L.state.data = d;
+  d.personnes.push({ id: "f", v: { nom: "Filho", prenom: "Charlene", escadron: "En attente" } },
+    { id: "k", v: { nom: "Kilo", prenom: "Karine", escadron: "4ESC" } }, { id: "m", v: { nom: "Mike", prenom: "Marc", escadron: "4ESC" } });
+  const g = fauxCartec();
+  g.splice(g.length - 4, 0, Object.assign([], { 5: "PILOTE 1A", 11: "BCH", 12: "FHILO/GENEVAUX", 13: "Charlène" }),
+    Object.assign([], { 5: "TIREUR 1A", 11: "1CL", 12: "Kilowatt", 13: "Karen" }));
+  const U = L.lireCartec(g), corresp = { "00C99AA": "4ESC" };
+  let plan = L.planCartec(U, d, corresp);
+  const l = n => plan.lignes.find(x => x.e.nom === n);
+  egal([l("FHILO/GENEVAUX").statut, l("FHILO/GENEVAUX").p?.id], ["probable", "f"], "nom double + lettres inversées, escadron « En attente »");
+  egal(l("Kilowatt").statut, "nouveau", "trop différent : pas de rapprochement automatique");
+  vrai(plan.absents.some(p => p.id === "k"), "Kilo serait archivée");
+  plan = L.planCartec(U, d, corresp, { [l("Kilowatt").cle]: "k", [l("Echo").cle]: "nouveau" });
+  egal([l("Kilowatt").statut, l("Kilowatt").p.id, l("Echo").statut], ["manuel", "k", "nouveau"], "liens choisis à la main");
+  vrai(!plan.absents.some(p => p.id === "k"), "Kilo n'est plus archivée");
+  L.appliquerCartec(d, U, plan, corresp);
+  egal([d.personnes.find(p => p.id === "k").v.spe, d.personnes.find(p => p.id === "f").v.escadron], ["TIREUR 1A", "4ESC"]);
+  const plan2 = L.planCartec(U, d, corresp);
+  egal(["Kilowatt", "FHILO/GENEVAUX"].map(n => plan2.lignes.find(x => x.e.nom === n).statut), ["identique", "identique"], "liens mémorisés");
 });
 
 console.log(`\n${ok} réussi(s), ${ko} échoué(s)`);

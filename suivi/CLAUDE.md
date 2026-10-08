@@ -136,11 +136,14 @@ Statuts : expiré (bad), à prévoir si moins de seuilAlerte(f) jours (warn),
     COMPAGNIE 3 → 7ESC).
   - planCartec(unites, data, corresp) : alias validé, puis nom + prénom (cleNom : accents, casse, tirets ignorés) ;
     homonymes = ambigu (non traité) ; deux lignes CARTEC pour une fiche = doublon ; sinon archives (restaurer), sinon
-    nom proche (même nom et prénom préfixe / distance ≤ 2, ou même prénom et nom à distance ≤ 2) = probable (à confirmer),
+    nom proche (nomsProches : une partie du nom — « FHILO/GENEVAUX » = 2 parties — identique ou à distance ≤ 2, et
+    prenomsProches) parmi les fiches du même escadron ou d'un escadron hors CARTEC (« En attente ») = probable (à confirmer),
     sinon nouveau. Champs comparés : escadron, peloton, golf, spe (CHAMPS_CARTEC) — jamais grade, dates, contacts.
     absents = fiches des escadrons concernés non retrouvées → archivées (motif « Absent de CARTEC ») par défaut.
-  - appliquerCartec(data, unites, plan, corresp, refus) : refus = cases décochées (clé de ligne ou id d'absent) ; probable
-    refusé = nouvelle fiche ; écrit reo.cartec, meta.cartecUnites, meta.cartecAlias. Un seul modif() (une annulation),
+  - liens (4e paramètre de planCartec, ca.liens dans l'aperçu) : { cléLigne: id | "nouveau" } choisi dans le menu
+    « Déjà dans le suivi ? » / « Fiche du suivi » (caLienSelect : absents de CARTEC en premier) → statut « manuel ».
+  - appliquerCartec(data, unites, plan, corresp, refus) : refus = cases décochées (clé de ligne ou id d'absent), ligne
+    non appliquée ; probable / manuel appliqués → alias mémorisé ; écrit reo.cartec, meta.cartecUnites, meta.cartecAlias. Un seul modif() (une annulation),
     puis une entrée de journal par fiche (ids → historique de la fiche).
 - Page « Qualité des données » (controleQualite, logique pure) : doublons probables (nom + prénom, prénom
   préfixe, même mail), mail / téléphone mal formés, date dans le futur (sauf libellés « fin », « échéance »…),
