@@ -214,7 +214,8 @@ Statuts : expiré (bad), à prévoir si moins de seuilAlerte(f) jours (warn),
   renseignée ; compteurs calculés sur l'escadron / peloton filtré ; un clic filtre la liste
 - Liste : recherche (toutes valeurs), filtres escadron, peloton, champ + état,
   tri par colonne, première colonne figée, colonnes affichées par groupe (puces)
-- Fiche personne dans une modale <dialog>, sections par groupe
+- Fiche personne dans une modale <dialog>, sections par groupe (groupesFiche : GROUPES_FIN = Famille, Personne à
+  prévenir, Administratif affichés à la fin ; l'ordre des champs, du tableau et des exports n'est pas changé)
 - « Champs et réglages » : groupes, libellés, validités, ajout / retrait de champs
 - En-tête : date du dernier enregistrement (meta.modifie) ; à l'ouverture, date de
   modification du fichier choisi (métadonnée système, lisible sans mot de passe)

@@ -220,6 +220,8 @@ const valeur = (sel, v) => { const e = document.querySelector(sel); e.value = v;
   const u0 = state.data.personnes.find(p => p.id === PU[0].id).v, u1 = state.data.personnes.find(p => p.id === PU[1].id).v;
   verif("UIR : valeurs appliquées, choix respecté", u0.vmp === "2027-04-30" && u0.nsecu === "1 99 99 99" && u0.tel !== autreTel && u1.vmp === "2020-01-01" && !$("#dlg-uir").open, JSON.stringify([u0.vmp, u0.tel]));
   openPerson(PU[0].id);
+  const legendes = [...document.querySelectorAll("#p-body fieldset legend")].map(l => l.textContent);
+  verif("Fiche : famille, personne à prévenir, administratif à la fin", legendes.slice(-3).join("|") === "Famille|Personne à prévenir|Administratif", legendes.join(" | "));
   verif("Fiche : âge calculé, VMP surveillée", $("#p-body [data-calcul='naissance']").textContent.startsWith("Âge :") && !!document.querySelector('#p-body [data-statut="vmp"]'));
   $("#dlg-person").close();
   verif("UIR : VMP expirée dans « À faire »", echeances([state.data.personnes.find(p => p.id === PU[1].id)], suivis(), null, false)[0]?.items.some(i => i.f.id === "vmp" && i.k === "bad"));

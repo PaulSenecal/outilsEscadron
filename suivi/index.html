@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <!-- Politique de sécurité : aucune requête réseau (sauf Google Fonts), seul le script de ce fichier peut s'exécuter
      (empreinte sha256 : après toute modification du script, lancer « node tests/csp.mjs » pour la mettre à jour). -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-L0XTJvL/rlvJGZk9Obv9MVu2IZEcb0Lx43MkpwXNqxU='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-r/EC6y2YDSctwTUQIBrcUUUy5WjTLPZp2MmPMSNnl+0='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
 <title>Suivi du personnel</title>
 <meta name="theme-color" content="#0B1629">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%2313233F'/%3E%3Cpath d='M32 9l18 7v13c0 12-8 21-18 26-10-5-18-14-18-26V16z' fill='none' stroke='%23C9A227' stroke-width='4'/%3E%3Ccircle cx='32' cy='27' r='6' fill='%23C9A227'/%3E%3Cpath d='M21 44c2-7 6-10 11-10s9 3 11 10' fill='%23C9A227'/%3E%3C/svg%3E">
@@ -1033,10 +1033,11 @@ const enc = new TextEncoder(), dec = new TextDecoder();
 const FORMAT = "suivi-personnel";
 const ITER = 600000;          // PBKDF2 (OWASP 2023). Un fichier plus ancien est relu avec ses itérations et mis à niveau au prochain enregistrement
 const SCHEMA = 4;
-const VERSION = "3.7";
+const VERSION = "3.8";
 /* Historique affiché par le bouton « Nouveautés » : à chaque évolution, incrémenter VERSION
    et ajouter une entrée EN TÊTE de cette liste. */
 const NOUVEAUTES = [
+  { v: "3.8", date: "08/10/2026", items: ["Fiche d'une personne : Famille, Personne à prévenir et Administratif sont regroupés à la fin, après les formations et l'habillement."] },
   { v: "3.7", date: "08/10/2026", items: [
     "Fichier UIR : en cas de valeur différente, c'est désormais le fichier de suivi qui est gardé par défaut. Choisissez « fichier UIR » au cas par cas, ou « Tout prendre : UIR ». Les cases vides restent remplies automatiquement."] },
   { v: "3.6", date: "08/10/2026", items: [
@@ -3280,12 +3281,16 @@ function historiqueHtml(p) {
     + (H.length > 100 ? `<p class="hint">… ${H.length - 100} entrée(s) plus anciennes dans le journal.</p>` : "")
     : `<p class="hint">Aucune modification enregistrée dans le journal pour cette fiche.</p>`}</details>`;
 }
+/* Groupes de la fiche : informations moins consultées (famille, personne à prévenir, administratif) à la fin */
+const GROUPES_FIN = ["Famille", "Personne à prévenir", "Administratif"];
+const groupesFiche = C => { const G = groupes(C), fin = g => GROUPES_FIN.indexOf(g);
+  return [...G.filter(([g]) => fin(g) < 0), ...G.filter(([g]) => fin(g) >= 0).sort(([a], [b]) => fin(a) - fin(b))]; };
 function openPerson(id, preset = {}) {
   editingId = id;
   const v = id ? state.data.personnes.find(x => x.id === id).v : { ...preset };
   $("#dlg-person-title").textContent = id ? `${v.grade ? v.grade + " " : ""}${v.nom || ""} ${v.prenom || ""}`.trim() : "Nouvelle personne";
   const C = state.data.champs;
-  $("#p-body").innerHTML = groupes(C).map(([g, fs]) =>
+  $("#p-body").innerHTML = groupesFiche(C).map(([g, fs]) =>
     `<fieldset class="fs"><legend>${esc(g)}</legend><div class="fgrid">${fs.map(f => inputHtml(f, v[f.id] || "")).join("")}</div></fieldset>`).join("") +
     C.filter(f => f.type === "liste").map(f => `<datalist id="dl-${esc(f.id)}">${valeurs(f.id).map(o => `<option value="${esc(o)}">`).join("")}</datalist>`).join("") +
     (id ? historiqueHtml(state.data.personnes.find(x => x.id === id)) : "");
