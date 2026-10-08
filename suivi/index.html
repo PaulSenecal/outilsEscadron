@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <!-- Politique de sécurité : aucune requête réseau (sauf Google Fonts), seul le script de ce fichier peut s'exécuter
      (empreinte sha256 : après toute modification du script, lancer « node tests/csp.mjs » pour la mettre à jour). -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-r/EC6y2YDSctwTUQIBrcUUUy5WjTLPZp2MmPMSNnl+0='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-CGOJZOek5+irOyKtakgFOuGXbcQPbNnWTfOsNYjmb8A='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
 <title>Suivi du personnel</title>
 <meta name="theme-color" content="#0B1629">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%2313233F'/%3E%3Cpath d='M32 9l18 7v13c0 12-8 21-18 26-10-5-18-14-18-26V16z' fill='none' stroke='%23C9A227' stroke-width='4'/%3E%3Ccircle cx='32' cy='27' r='6' fill='%23C9A227'/%3E%3Cpath d='M21 44c2-7 6-10 11-10s9 3 11 10' fill='%23C9A227'/%3E%3C/svg%3E">
@@ -40,6 +40,22 @@ a{color:var(--navy)}
 .force[data-score="4"] i{width:100%;background:var(--ok)}
 .force-label{font-size:13px;font-weight:600;color:var(--muted)}
 .force-conseil{margin:0;font-size:12.5px;color:var(--muted)}
+/* Champ calculé (ancienneté de grade) : lecture seule */
+.fld input[readonly]{background:var(--info-bg);border-style:dashed;cursor:default}
+/* Fiche : bandeau et onglets */
+.fiche-tete{padding-bottom:0}
+.fiche-bandeau{display:flex;flex-wrap:wrap;gap:4px 16px;align-items:baseline;margin:2px 0 8px;font-size:14px;color:var(--muted)}
+.fiche-bandeau .rat{font-weight:600;color:var(--ink)}
+.fiche-bandeau a{color:var(--navy)}
+.fiche-alertes{flex-basis:100%;display:flex;flex-wrap:wrap;gap:4px 6px}
+.fiche-alertes span{border-radius:999px;padding:1px 8px;font-size:12.5px;font-weight:600}
+.fiche-alertes .bad{background:var(--bad-bg);color:var(--bad)} .fiche-alertes .warn{background:var(--warn-bg);color:var(--warn)}
+.fiche-onglets{display:flex;gap:2px;overflow-x:auto;margin:0 -4px;scrollbar-width:thin}
+.fiche-onglets button{border:0;border-bottom:3px solid transparent;background:none;padding:8px 12px;font-family:var(--cond);font-size:16px;font-weight:600;color:var(--muted);cursor:pointer;white-space:nowrap;display:flex;gap:6px;align-items:center}
+.fiche-onglets button[aria-selected="true"]{color:var(--navy);border-bottom-color:var(--gold)}
+.fiche-onglets .pastille{font-family:var(--body);font-size:11px;font-weight:700;border-radius:999px;padding:0 6px;line-height:1.6}
+.fiche-onglets .pastille.bad{background:var(--bad);color:#fff} .fiche-onglets .pastille.warn{background:var(--warn-bg);color:var(--warn)}
+.fiche-panneau{display:grid;gap:12px}
 /* Historique d'une fiche */
 .historique summary{cursor:pointer;font-family:var(--cond);font-weight:600;font-size:16px;color:var(--navy)}
 .historique .journal-row{font-size:13.5px}
@@ -780,7 +796,8 @@ details summary{cursor:pointer;font-weight:600;color:var(--navy)}
 <!-- ============ Fiche personne ============ -->
 <dialog id="dlg-person" class="wide">
   <form id="form-person" autocomplete="off">
-    <div class="dlg-head"><h2 id="dlg-person-title"></h2></div>
+    <div class="dlg-head fiche-tete"><h2 id="dlg-person-title"></h2><div id="p-bandeau"></div>
+      <div class="fiche-onglets" id="p-onglets" role="tablist" aria-label="Rubriques de la fiche"></div></div>
     <div class="dlg-body" id="p-body"></div>
     <div class="dlg-foot">
       <button type="button" class="btn btn-danger left" id="btn-del">Supprimer</button>
@@ -1033,10 +1050,14 @@ const enc = new TextEncoder(), dec = new TextDecoder();
 const FORMAT = "suivi-personnel";
 const ITER = 600000;          // PBKDF2 (OWASP 2023). Un fichier plus ancien est relu avec ses itérations et mis à niveau au prochain enregistrement
 const SCHEMA = 4;
-const VERSION = "3.8";
+const VERSION = "3.9";
 /* Historique affiché par le bouton « Nouveautés » : à chaque évolution, incrémenter VERSION
    et ajouter une entrée EN TÊTE de cette liste. */
 const NOUVEAUTES = [
+  { v: "3.9", date: "08/10/2026", items: [
+    "Fiche d'une personne réorganisée : un bandeau en haut (rattachement, poste, téléphone, mail, dates expirées ou à prévoir) et des onglets Essentiel, Tirs et formations, Équipement, Permis, Personnel.",
+    "Une pastille rouge ou orange sur un onglet signale une date expirée ou à prévoir ; l'onglet consulté est retenu d'une fiche à l'autre (pratique pour vérifier les tirs de tout un peloton).",
+    "L'ancienneté de grade est calculée automatiquement à partir de la date de grade."] },
   { v: "3.8", date: "08/10/2026", items: ["Fiche d'une personne : Famille, Personne à prévenir et Administratif sont regroupés à la fin, après les formations et l'habillement."] },
   { v: "3.7", date: "08/10/2026", items: [
     "Fichier UIR : en cas de valeur différente, c'est désormais le fichier de suivi qui est gardé par défaut. Choisissez « fichier UIR » au cas par cas, ou « Tout prendre : UIR ». Les cases vides restent remplies automatiquement."] },
@@ -1142,8 +1163,8 @@ function defaultChamps() {
     c("adresse", "Adresse", "Contact", "texte", { sensible: true }),
     c("entree", "Entrée en service", "Carrière", "date", { calcul: "anciennete" }),
     c("fincontrat", "Fin de contrat", "Carrière", "date", { limite: true, alerte: 90 }),
-    c("dategrade", "Date de grade", "Carrière", "date", { calcul: "anciennete" }),
-    c("anciennete", "Ancienneté grade", "Carrière", "texte"),
+    c("dategrade", "Date de grade", "Carrière", "date"),
+    c("anciennete", "Ancienneté de grade", "Carrière", "texte", { calculDe: "dategrade" }),
     ...CARRIERE_V4.map(x => c(...x)),
     ...FAMILLE_V4.map(x => c(...x)),
     c("pap_lien", "Lien", "Personne à prévenir", "texte", { sensible: true }),
@@ -1370,6 +1391,9 @@ function normalize(d) {
   }
   if ((d.meta.schema || 2) < 3) migrerV3(d.champs);
   if ((d.meta.schema || 2) < 4) migrerV4(d.champs);
+  // Ancienneté de grade calculée depuis la date de grade (le calcul n'est plus affiché sous la date elle-même)
+  const anc = d.champs.find(c => c.id === "anciennete"), dg = d.champs.find(c => c.id === "dategrade");
+  if (anc && anc.calculDe === undefined) { anc.calculDe = "dategrade"; if (anc.label === "Ancienneté grade") anc.label = "Ancienneté de grade"; if (dg?.calcul === "anciennete") delete dg.calcul; }
   const ids = new Set(d.champs.map(c => c.id));
   defaultChamps().filter(c => FIXES.includes(c.id) && !ids.has(c.id)).reverse().forEach(c => d.champs.unshift(c));
   d.champs.forEach(c => {
@@ -1419,13 +1443,15 @@ function duree(iso) {
   return a ? `${a} an${a > 1 ? "s" : ""}${mois ? ` ${mois} mois` : ""}` : `${mois} mois`;
 }
 const champsExportables = C => C.filter(f => !f.sensible);
+/* Valeur affichée : calculée (ex. ancienneté de grade depuis la date de grade), sinon la valeur saisie */
+const valeurAffichee = (p, f) => (f.calculDe && duree(p.v[f.calculDe])) || p.v[f.id] || "";
 /* Seuil « à prévoir » d'un champ : son propre réglage, sinon le réglage général */
 const seuilAlerte = f => f.alerte ?? state.data.meta.alerteJours;
 /* Statut d'une valeur : bad, warn, ok, none, info */
 function statusOf(p, f) {
   const v = p.v[f.id] || "";
   if (aEcheance(f)) {
-    if (!v) return { k: "none", txt: f.limite ? "Non renseigné" : "À faire" };
+    if (!v) return { k: "none", txt: f.limite ? "" : "À faire" };
     const exp = expiration(f, v);
     const days = Math.round((exp - today()) / 864e5);
     if (days < 0) return { k: "bad", days, txt: -days > 365 ? "Expiré depuis plus d'un an" : `Expiré depuis ${-days} j` };
@@ -2476,7 +2502,7 @@ function classeurXlsx(feuilles) {
 
 /* Cellule Excel d'un champ, avec la couleur du statut */
 function xCell(p, f, z) {
-  const v = p.v[f.id] || "", Z = z ? "Z" : "";
+  const v = valeurAffichee(p, f), Z = z ? "Z" : "";
   if (aEcheance(f)) {
     if (!v) return X("", "ctr" + Z);
     const k = statusOf(p, f).k;
@@ -2529,7 +2555,7 @@ function xlsxPersonnel(d) {
 }
 function csvPersonnel(d) {
   const C = champsExportables(d.champs), lines = [C.map(f => f.groupe), C.map(f => f.label)];
-  d.personnes.forEach(p => lines.push(C.map(f => csvVal(f, p.v[f.id]))));
+  d.personnes.forEach(p => lines.push(C.map(f => csvVal(f, valeurAffichee(p, f)))));
   return "\ufeff" + lines.map(r => r.map(csvCell).join(";")).join("\r\n");
 }
 
@@ -2677,7 +2703,7 @@ document.addEventListener("keydown", e => { if (e.key === "Escape") fermerMenus(
 /* Retire de la page tout ce qui contient des données personnelles */
 function viderAffichage() {
   document.querySelectorAll("dialog[open]").forEach(d => d.close());
-  ["#tbl", "#board", "#p-body", "#reo", "#synth", "#sy-avant", "#stats", "#todo", "#qualite", "#qu-resume", "#ca-details", "#ca-unites", "#uir-details", "#journal-list", "#archives-list", "#se-match",
+  ["#tbl", "#board", "#p-body", "#p-bandeau", "#p-onglets", "#reo", "#synth", "#sy-avant", "#stats", "#todo", "#qualite", "#qu-resume", "#ca-details", "#ca-unites", "#uir-details", "#journal-list", "#archives-list", "#se-match",
    "#ls-match", "#ls-result", "#ls-champs", "#imp-map", "#imp-warn"].forEach(id => { const e = $(id); if (e) e.innerHTML = ""; });
   ["#ls-texte", "#se-texte", "#f-q"].forEach(id => { const e = $(id); if (e) e.value = ""; });
   $("#viz-tip").hidden = true;
@@ -3155,8 +3181,9 @@ function matches(p) {
 /* Clé de tri : null = vide (toujours en bas) */
 function sortKey(p, id) {
   if (id === "nom") return norm((p.v.nom || "") + " " + (p.v.prenom || ""));
-  const f = champById(id), v = p.v[id] || "";
+  const f = champById(id), v = f ? valeurAffichee(p, f) : "";
   if (!v || !f) return null;
+  if (f.calculDe && duree(p.v[f.calculDe])) return p.v[f.calculDe];   // ancienneté : triée par date (la plus ancienne d'abord)
   if (aEcheance(f)) return statusOf(p, f).days;
   if (f.type === "liste") { const i = (f.options || []).indexOf(v); if (i >= 0) return i; }
   if (f.type === "permis") return v === "?" ? "0" : v === "oui" ? "1" : v;
@@ -3170,7 +3197,7 @@ function compare(a, b) {
 }
 
 function cellHtml(p, f, g0) {
-  const v = p.v[f.id] || "", cls = g0 ? " g0" : "";
+  const v = valeurAffichee(p, f), cls = g0 ? " g0" : "";
   if (aEcheance(f)) {
     const s = statusOf(p, f);
     return `<td class="d d-${s.k}${cls}"><span class="dv">${v ? fmtIso(v) : "—"}</span>${s.txt ? `<span class="ds">${esc(s.txt)}</span>` : ""}</td>`;
@@ -3250,9 +3277,11 @@ function statutFiche(f, v) {
   const s = statusOf({ v: { [f.id]: v } }, f);
   return { k: s.k, html: `<span class="fstat fs-${s.k}" data-statut="${esc(f.id)}">${esc(s.txt || "")}</span>` };
 }
-/* Âge (date de naissance) ou ancienneté (entrée en service, date de grade), recalculés à la saisie */
+/* Champ calculé (ancienneté de grade) en lecture seule ; la valeur saisie autrefois est gardée dans un champ caché */
+const calcLectureHtml = (f, val) => `<input value="${esc(val)}" readonly data-calc-de="${esc(f.calculDe)}" aria-label="${esc(f.label)}" title="Calculé depuis ${esc(champById(f.calculDe)?.label || f.calculDe)}">`;
+/* Âge (date de naissance) ou ancienneté (entrée en service), recalculés à la saisie */
 const calculHtml = (f, v) => `<small class="calc" data-calcul="${esc(f.id)}">${v && duree(v) ? `${f.calcul === "age" ? "Âge" : "Ancienneté"} : ${esc(duree(v))}` : ""}</small>`;
-function inputHtml(f, v) {
+function inputHtml(f, v, fiche = {}) {
   const lab = `<span>${esc(f.label)}${aEcheance(f) ? ` <small>(${esc(libEcheanceChamp(f))})</small>` : ""}</span>`;
   const a = `data-f="${esc(f.id)}" aria-label="${esc(f.label)}"`;
   switch (f.type) {
@@ -3270,7 +3299,9 @@ function inputHtml(f, v) {
       const m = !v ? "" : v === "oui" || v === "?" ? v : "date";
       return `<div class="fld" data-f="${esc(f.id)}" data-permis>${lab}<select data-pmode aria-label="${esc(f.label)}">${options([["", "Non renseigné"], ["date", "Date d'obtention"], ["oui", "Oui, date inconnue"], ["?", "À vérifier"]], m)}</select><input type="date" aria-label="${esc(f.label)} – date d'obtention" value="${m === "date" ? esc(v) : ""}" ${m === "date" ? "" : "hidden"}></div>`;
     }
-    default: return `<label class="fld">${lab}<input ${a} value="${esc(v)}"></label>`;
+    default:
+      if (f.calculDe && duree(fiche[f.calculDe])) return `<label class="fld">${lab}${calcLectureHtml(f, duree(fiche[f.calculDe]))}<input type="hidden" ${a} value="${esc(v)}"></label>`;
+      return `<label class="fld">${lab}<input ${a} value="${esc(v)}"${f.calculDe ? ` data-calc-de="${esc(f.calculDe)}"` : ""}></label>`;
   }
 }
 /* Historique de la fiche (journal), replié par défaut */
@@ -3285,27 +3316,94 @@ function historiqueHtml(p) {
 const GROUPES_FIN = ["Famille", "Personne à prévenir", "Administratif"];
 const groupesFiche = C => { const G = groupes(C), fin = g => GROUPES_FIN.indexOf(g);
   return [...G.filter(([g]) => fin(g) < 0), ...G.filter(([g]) => fin(g) >= 0).sort(([a], [b]) => fin(a) - fin(b))]; };
+/* Onglets de la fiche. Un groupe ajouté à la main va dans « Tirs et formations » s'il a des dates à échéance,
+   sinon dans « Personnel ». L'historique est dans « Personnel ». */
+const ONGLETS_FICHE = [
+  { id: "essentiel", label: "Essentiel", groupes: ["Identité", "Contact", "Carrière", "Santé"] },
+  { id: "tirs", label: "Tirs et formations", groupes: ["Famas", "HK", "Glock", "Autres armes (dernier tir)", "Dates"] },
+  { id: "equipement", label: "Équipement", groupes: ["NRBC", "Habillement"] },
+  { id: "permis", label: "Permis", groupes: ["Permis"] },
+  { id: "personnel", label: "Personnel", groupes: ["Famille", "Personne à prévenir", "Administratif", "Divers"] }];
+const ongletDuGroupe = (g, fs) => (ONGLETS_FICHE.find(o => o.groupes.includes(g)) || (fs.some(aEcheance) ? ONGLETS_FICHE[1] : ONGLETS_FICHE[4])).id;
+let ficheOnglet = "essentiel";   // dernier onglet consulté (en mémoire) : on le retrouve en passant d'une fiche à l'autre
+/* Valeurs saisies dans la fiche (aussi pour les pastilles d'alerte pendant la saisie) */
+function lireFiche() {
+  const v = {};
+  $("#p-body").querySelectorAll("[data-f]").forEach(el => {
+    let x;
+    if (el.hasAttribute("data-permis")) {
+      const m = el.querySelector("[data-pmode]").value;
+      x = m === "date" ? el.querySelector('input[type="date"]').value : m;
+    } else x = el.value.trim();
+    if (x) v[el.dataset.f] = x;
+  });
+  return v;
+}
+/* Dates expirées / à prévoir de la fiche : pastilles des onglets et ligne d'alertes du bandeau */
+function majAlertesFiche() {
+  const v = lireFiche(), C = state.data.champs, par = {};
+  const alertes = C.filter(f => aEcheance(f) || f.type === "permis").map(f => ({ f, k: statusOf({ v }, f).k })).filter(x => x.k === "bad" || x.k === "warn");
+  alertes.forEach(({ f, k }) => { const o = ongletDuGroupe(f.groupe, C.filter(c => c.groupe === f.groupe)); (par[o] ||= { bad: 0, warn: 0 })[k]++; });
+  document.querySelectorAll("#p-onglets [data-onglet]").forEach(b => {
+    const n = par[b.dataset.onglet], p_ = b.querySelector(".pastille");
+    p_.hidden = !n; if (n) { p_.textContent = n.bad + n.warn; p_.className = "pastille " + (n.bad ? "bad" : "warn"); p_.title = `${n.bad} expirée(s), ${n.warn} à prévoir`; }
+  });
+  const lib = f => f.groupe === f.label || ["Santé", "NRBC", "Carrière"].includes(f.groupe) ? f.label : `${f.groupe} ${f.label}`;
+  const al = $("#p-bandeau .fiche-alertes");
+  if (al) al.innerHTML = alertes.sort((a, b) => (a.k === "bad" ? 0 : 1) - (b.k === "bad" ? 0 : 1))
+    .map(({ f, k }) => `<span class="${k}" title="${k === "bad" ? "Expiré" : "À prévoir"}">${k === "bad" ? "✗" : "⚠"} ${esc(lib(f))}</span>`).join("");
+}
+function choisirOnglet(o) {
+  ficheOnglet = o;
+  document.querySelectorAll("#p-onglets [data-onglet]").forEach(b => b.setAttribute("aria-selected", String(b.dataset.onglet === o)));
+  document.querySelectorAll("#p-body [data-panneau]").forEach(p => { p.hidden = p.dataset.panneau !== o; });
+  $("#p-body").scrollTop = 0;
+}
 function openPerson(id, preset = {}) {
   editingId = id;
   const v = id ? state.data.personnes.find(x => x.id === id).v : { ...preset };
-  $("#dlg-person-title").textContent = id ? `${v.grade ? v.grade + " " : ""}${v.nom || ""} ${v.prenom || ""}`.trim() : "Nouvelle personne";
-  const C = state.data.champs;
-  $("#p-body").innerHTML = groupesFiche(C).map(([g, fs]) =>
-    `<fieldset class="fs"><legend>${esc(g)}</legend><div class="fgrid">${fs.map(f => inputHtml(f, v[f.id] || "")).join("")}</div></fieldset>`).join("") +
-    C.filter(f => f.type === "liste").map(f => `<datalist id="dl-${esc(f.id)}">${valeurs(f.id).map(o => `<option value="${esc(o)}">`).join("")}</datalist>`).join("") +
-    (id ? historiqueHtml(state.data.personnes.find(x => x.id === id)) : "");
+  $("#dlg-person-title").textContent = id ? `${v.grade ? v.grade + " " : ""}${(v.nom || "").toUpperCase()} ${v.prenom || ""}`.trim() : "Nouvelle personne";
+  const C = state.data.champs, G = groupesFiche(C);
+  const rat = [v.escadron, v.peloton, v.golf !== undefined && v.golf !== "" ? "golf " + v.golf : ""].filter(Boolean).join(" · ");
+  $("#p-bandeau").innerHTML = `<div class="fiche-bandeau">${rat ? `<span class="rat">${esc(rat)}</span>` : ""}${v.spe ? `<span>${esc(v.spe)}</span>` : ""}
+    ${v.tel ? `<a href="tel:${esc(v.tel.replace(/[^\d+]/g, ""))}">📞 ${esc(v.tel)}</a>` : ""}${v.mail ? `<a href="mailto:${esc(v.mail)}">✉ ${esc(v.mail)}</a>` : ""}
+    <div class="fiche-alertes"></div></div>`;
+  const onglets = ONGLETS_FICHE.map(o => ({ ...o, G: G.filter(([g, fs]) => ongletDuGroupe(g, fs) === o.id) }))
+    .filter(o => o.G.length || (o.id === "personnel" && id));
+  if (!id || !onglets.some(o => o.id === ficheOnglet)) ficheOnglet = "essentiel";
+  $("#p-onglets").innerHTML = onglets.map(o => `<button type="button" role="tab" data-onglet="${o.id}" aria-controls="pan-${o.id}">${esc(o.label)}<span class="pastille" hidden></span></button>`).join("");
+  $("#p-body").innerHTML = onglets.map(o => `<div class="fiche-panneau" role="tabpanel" id="pan-${o.id}" data-panneau="${o.id}">${o.G.map(([g, fs]) =>
+    `<fieldset class="fs"><legend>${esc(g)}</legend><div class="fgrid">${fs.map(f => inputHtml(f, v[f.id] || "", v)).join("")}</div></fieldset>`).join("")}${
+    o.id === "personnel" && id ? historiqueHtml(state.data.personnes.find(x => x.id === id)) : ""}</div>`).join("") +
+    C.filter(f => f.type === "liste").map(f => `<datalist id="dl-${esc(f.id)}">${valeurs(f.id).map(o => `<option value="${esc(o)}">`).join("")}</datalist>`).join("");
+  choisirOnglet(ficheOnglet); majAlertesFiche();
   $("#btn-del").hidden = !id; $("#btn-archiver").hidden = !id;
   $("#dlg-person").showModal();
-  $("#p-body").scrollTop = 0;
-  $('#p-body [data-f="nom"]').focus();
+  if (ficheOnglet === "essentiel") $('#p-body [data-f="nom"]').focus();
+  else document.querySelector(`#p-onglets [data-onglet="${ficheOnglet}"]`).focus();
 }
+$("#p-onglets").addEventListener("click", e => { const b = e.target.closest("[data-onglet]"); if (b) choisirOnglet(b.dataset.onglet); });
+$("#p-onglets").addEventListener("keydown", e => {   // flèches gauche / droite entre les onglets
+  if (!["ArrowLeft", "ArrowRight"].includes(e.key)) return;
+  const B = [...document.querySelectorAll("#p-onglets [data-onglet]")], i = B.findIndex(b => b.dataset.onglet === ficheOnglet);
+  const b = B[(i + (e.key === "ArrowRight" ? 1 : B.length - 1)) % B.length]; choisirOnglet(b.dataset.onglet); b.focus();
+});
+$("#p-body").addEventListener("change", majAlertesFiche);
 $("#p-body").addEventListener("input", e => {
   const t = e.target, f = t.matches('input[type="date"][data-f]') && champById(t.dataset.f);
   if (f?.calcul) t.parentElement.querySelector("[data-calcul]").outerHTML = calculHtml(f, t.value);
+  if (f) document.querySelectorAll(`#p-body input[data-calc-de="${f.id}"]`).forEach(i => {
+    if (i.readOnly) { i.value = duree(t.value); return; }
+    if (!duree(t.value)) return;
+    const c = champById(i.dataset.f);   // champ jusque-là saisi à la main : devient calculé, la saisie est gardée en caché
+    i.insertAdjacentHTML("beforebegin", calcLectureHtml(c, duree(t.value)));
+    i.type = "hidden"; i.removeAttribute("data-calc-de");
+  });
   if (!f || !aEcheance(f)) return;
   const st = statutFiche(f, t.value);
   t.className = "in-" + st.k;
   t.parentElement.querySelector("[data-statut]").outerHTML = st.html;
+  majAlertesFiche();
 });
 $("#p-body").addEventListener("change", e => {
   if (!e.target.matches("[data-pmode]")) return;
@@ -3317,16 +3415,8 @@ $("#btn-add").addEventListener("click", () => openPerson(null));
 
 $("#form-person").addEventListener("submit", e => {
   e.preventDefault();
-  const v = {};
-  $("#p-body").querySelectorAll("[data-f]").forEach(el => {
-    let x;
-    if (el.hasAttribute("data-permis")) {
-      const m = el.querySelector("[data-pmode]").value;
-      x = m === "date" ? el.querySelector('input[type="date"]').value : m;
-    } else x = el.value.trim();
-    if (x) v[el.dataset.f] = x;
-  });
-  if (!v.nom) { $('#p-body [data-f="nom"]').focus(); return; }
+  const v = lireFiche();
+  if (!v.nom) { choisirOnglet("essentiel"); $('#p-body [data-f="nom"]').focus(); return; }
   if (editingId) {
     const p = state.data.personnes.find(x => x.id === editingId), diff = diffFiche(state.data.champs, p.v, v);
     if (diff.length) { modif(`Fiche ${nomPersonne(v)}`, diff, [editingId]); state.data.personnes.find(x => x.id === editingId).v = v; }

@@ -214,8 +214,15 @@ Statuts : expiré (bad), à prévoir si moins de seuilAlerte(f) jours (warn),
   renseignée ; compteurs calculés sur l'escadron / peloton filtré ; un clic filtre la liste
 - Liste : recherche (toutes valeurs), filtres escadron, peloton, champ + état,
   tri par colonne, première colonne figée, colonnes affichées par groupe (puces)
-- Fiche personne dans une modale <dialog>, sections par groupe (groupesFiche : GROUPES_FIN = Famille, Personne à
-  prévenir, Administratif affichés à la fin ; l'ordre des champs, du tableau et des exports n'est pas changé)
+- Fiche personne (v3.9) dans une modale <dialog> : titre + bandeau (#p-bandeau : rattachement, poste, tél., mail,
+  alertes bad / warn) et onglets (#p-onglets, ONGLETS_FICHE : Essentiel = Identité, Contact, Carrière, Santé ; Tirs et
+  formations ; Équipement = NRBC, Habillement ; Permis ; Personnel = Divers, Famille, Personne à prévenir, Administratif
+  + historique). Groupe ajouté à la main : Tirs s'il a des dates à échéance, sinon Personnel (ongletDuGroupe).
+  Tous les panneaux restent dans le DOM (lireFiche lit tout [data-f]). majAlertesFiche recalcule pastilles et
+  bandeau pendant la saisie. ficheOnglet = dernier onglet consulté (gardé d'une fiche à l'autre). Flèches ← → au clavier.
+- Champ calculé : calculDe (ancienneté de grade ← dategrade) → valeurAffichee(p, f) dans le tableau, les exports et le
+  tri ; dans la fiche, lecture seule (la valeur saisie autrefois reste dans un champ caché). calcul : "age" | "anciennete"
+  = durée affichée sous la date (naissance, entrée en service).
 - « Champs et réglages » : groupes, libellés, validités, ajout / retrait de champs
 - En-tête : date du dernier enregistrement (meta.modifie) ; à l'ouverture, date de
   modification du fichier choisi (métadonnée système, lisible sans mot de passe)

@@ -414,6 +414,17 @@ await test("Date limite (VMP, fin de contrat), âge et ancienneté", () => {
   egal([L.duree(il_y_a(34, 0)), L.duree(il_y_a(3, 2)), L.duree(il_y_a(0, 5)), L.duree("")], ["34 ans", "3 ans 2 mois", "5 mois", ""]);
 });
 
+await test("Ancienneté de grade calculée depuis la date de grade", () => {
+  const d = L.emptyData("x"); d.champs.find(c => c.id === "anciennete").calculDe = undefined;
+  d.champs.find(c => c.id === "anciennete").label = "Ancienneté grade";
+  const n = L.normalize(d), f = n.champs.find(c => c.id === "anciennete");
+  egal([f.calculDe, f.label], ["dategrade", "Ancienneté de grade"], "ancien fichier mis à jour");
+  const t = L.today(), iso = L.isoLocal(new Date(t.getFullYear() - 3, t.getMonth(), t.getDate()));
+  n.personnes = [{ id: "a", v: { nom: "A", dategrade: iso, anciennete: "ancienne saisie" } }, { id: "b", v: { nom: "B", anciennete: "2 ans" } }];
+  const csv = L.csvPersonnel(n);
+  vrai(csv.includes(";3 ans") && csv.includes(";2 ans") && !csv.includes("ancienne saisie"), "calculée, sinon valeur saisie");
+});
+
 await test("Données sensibles exclues des exports Personnel", async () => {
   const d = demo(); d.personnes[0].v.nsecu = "1 99 99 99 999 999 99"; d.personnes[0].v.conj_nom = "Conjointfictif";
   const csv = L.csvPersonnel(d);
