@@ -76,7 +76,12 @@ mis à jour sans marquer le fichier comme modifié).
 - archives : [{ id, v, archive: { date, motif } }] — personnes parties, exclues de tous les tableaux
 - journal : [{ t (ISO), qui, quoi, p? (ids des personnes concernées) }] — 3000 entrées max, chiffré avec le reste.
   modif(label, détails, ids) : passer les ids pour l'historique de la fiche (historiquePersonne : par id, sinon par nom)
-- reo : { noms: { "PELOTON|GOLF": nom affiché }, postes: { "PELOTON|GOLF": nb de postes prévus } }
+- reo : { noms: { "PELOTON|GOLF": nom affiché }, postes: { "PELOTON|GOLF": nb de postes prévus },
+  cartec?: { date, escadrons: { [escadron]: { unite, groupes: { "PEL|GOLF": nom }, vacants: { "PEL|GOLF": [libellés] } } } } }
+  Pour un escadron présent dans reo.cartec (cartecEsc), les noms de groupes et postes à pourvoir viennent de CARTEC
+  (prioritaires sur reo.noms ; reo.postes ignoré) ; groupesPeloton renvoie aussi postesVacants (libellés).
+- meta.cartecUnites : { codeUnitéCARTEC: escadron } (mémorisé) ; meta.cartecAlias : { "nom|prénom" CARTEC (cleNom) : id }
+  = noms proches déjà validés, plus redemandés
 - Migrations à l'ouverture (normalize) : v1 (types + personnes à plat) → champs ;
   schéma 2 → 3 (migrerV3, idempotente) : gants / chaussures de NRBC vers Habillement,
   ajout béret, veste, pantalon, Eryx, règles de permis par défaut.
@@ -120,6 +125,23 @@ Statuts : expiré (bad), à prévoir si moins de seuilAlerte(f) jours (warn),
   En automatique, jamais de fenêtre : conflit de fusion, fichier illisible ou erreur d'écriture = suspendreAuto
   (state.autoSuspendu, message dans la barre du haut) jusqu'au prochain enregistrement manuel. save() est protégé
   contre deux enregistrements simultanés (enregEnCours).
+- Mise à jour depuis CARTEC (v3.5, menu « Fichier et réglages », #dlg-cartec) — logique pure, testée :
+  - lireCartec(grid) : en-tête = ligne NOM + PRENOM ; colonne LIBELLE (emploi), GRADE. En-têtes « CODE : LIBELLÉ »
+    sur trois colonnes (les 3 dernières avant LIBELLE) = unité (B), peloton (C), groupe (D). Ligne avec nom = personne,
+    sans nom mais avec libellé = poste à pourvoir, sans libellé = même poste que la ligne au-dessus. Seules les unités
+    qui ont un « COMMANDANT D'UNITE » sont gardées (l'état-major en tête est ignoré). idPeloton : commandement → PCL,
+    « 1ER / 1ERE / 2E… » → P1, P2… Golf = rang du groupe dans le peloton (0 = commandement). Noms de groupes remis
+    en minuscules avec accents courants (ACCENTS_CARTEC). Lignes surlignées en bleu (moins actifs) : importées normalement.
+  - escadronPropose : réglage mémorisé, sinon escadron le plus fréquent des personnes retrouvées (ex. ESC BLINDE 4 → 5ESC,
+    COMPAGNIE 3 → 7ESC).
+  - planCartec(unites, data, corresp) : alias validé, puis nom + prénom (cleNom : accents, casse, tirets ignorés) ;
+    homonymes = ambigu (non traité) ; deux lignes CARTEC pour une fiche = doublon ; sinon archives (restaurer), sinon
+    nom proche (même nom et prénom préfixe / distance ≤ 2, ou même prénom et nom à distance ≤ 2) = probable (à confirmer),
+    sinon nouveau. Champs comparés : escadron, peloton, golf, spe (CHAMPS_CARTEC) — jamais grade, dates, contacts.
+    absents = fiches des escadrons concernés non retrouvées → archivées (motif « Absent de CARTEC ») par défaut.
+  - appliquerCartec(data, unites, plan, corresp, refus) : refus = cases décochées (clé de ligne ou id d'absent) ; probable
+    refusé = nouvelle fiche ; écrit reo.cartec, meta.cartecUnites, meta.cartecAlias. Un seul modif() (une annulation),
+    puis une entrée de journal par fiche (ids → historique de la fiche).
 - Page « Qualité des données » (controleQualite, logique pure) : doublons probables (nom + prénom, prénom
   préfixe, même mail), mail / téléphone mal formés, date dans le futur (sauf libellés « fin », « échéance »…),
   date avant 1950, sans escadron / peloton, nom ou prénom manquant, grade hors GRADES. Clic = fiche ; export Excel.
@@ -234,6 +256,7 @@ Polices Barlow / Barlow Condensed. Couleurs de statut : vert, ambre, rouge, gris
   annuler, archives, journal, exports, session verrouillée, conflit, mot de passe, qualité, historique,
   enregistrement automatique, mise à niveau 310 000 → 600 000, mot de passe changé ailleurs). Le scénario est
   injecté comme second script : son empreinte est ajoutée à la CSP de la page de test.
+  Les tests CARTEC utilisent un faux fichier (fauxCartec dans run.mjs, grille dans ui.mjs), jamais le vrai.
 - `node tests/csp.mjs` : met à jour l'empreinte du script dans la CSP (--verifier : contrôle seul).
   Dans le scénario, attendre avec quand() (MessageChannel), pas setTimeout : Chrome accélère
   le temps virtuel alors que PBKDF2 prend du vrai temps (une boucle de messages garde la page occupée ;

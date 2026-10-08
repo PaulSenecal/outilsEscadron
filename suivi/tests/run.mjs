@@ -16,7 +16,7 @@ const L = vm.runInContext(`({ state, emptyData, normalize, donneesDemo, encryptD
   planImport, computeImport, applyImport, personKey, xlsxPersonnel, csvPersonnel, lignesDepuisTexte, rapprocher, permisChamps,
   permisEtat, defaultReglesPermis, seanceChangements, echeances, diffFiche, journaliser, JOURNAL_MAX, statFormation, statutTaux,
   statusOf, reoBlocs, groupesPeloton, defaultChamps, SCHEMA, fusionner, ITER, forceMotDePasse, controleQualite, historiquePersonne,
-  seuilAlerte, isoLocal, today })`, ctx);
+  seuilAlerte, isoLocal, today, lireCartec, planCartec, appliquerCartec, escadronPropose, reoBlocs })`, ctx);
 
 let ok = 0, ko = 0;
 async function test(nom, fn) {
@@ -280,6 +280,92 @@ await test("Historique d'une personne", () => {
   L.journaliser(d, "C", `Ancienne entrée — ${p.v.nom.toUpperCase()} ${p.v.prenom} ; autre`);
   const H = L.historiquePersonne(d.journal, p);
   egal(H.map(j => j.qui), ["C", "A"], "par identifiant ou par nom, plus récent d'abord");
+});
+
+/* Faux fichier CARTEC (noms fictifs), même découpage que le vrai : colonnes B unité, C peloton, D groupe,
+   F libellé, L grade, M nom, N prénom ; un état-major en tête (ignoré) */
+function fauxCartec() {
+  const g = [], L = (c = {}) => { const r = []; Object.entries(c).forEach(([k, v]) => { r["ABCDEFGHIJKLMN".indexOf(k)] = v; }); g.push(r); };
+  L({ D: "NIV", E: "CODE", F: "LIBELLE ETR", G: "MILITAIRES", K: "SAP", L: "GRADE", M: "NOM", N: "PRENOM" }); L({ G: "OFF" });
+  L({ A: "00C9000 ECL" }); L({ C: "OMT", F: "OFFICIER ADJOINT 5B", L: "LCL", M: "Etat", N: "Major" });
+  L({ B: "00C99AA : 1ER RCH - ESCADRON DE TEST 4" });
+  L({ C: "00C99AB : PELOTON DE COMMANDEMENT" });
+  L({ D: "00C99AC : GROUPE DE COMMANDEMENT" });
+  L({ C: "OMT", F: "COMMANDANT D'UNITE COMBAT TERRESTRE 4", L: "CNE", M: "Alpha", N: "Albert" });
+  L({ D: "00C99AD : GROUPE SANTE" });
+  L({ C: "SAN", F: "INFIRMIER EN SOINS GENERAUX 2", L: "MDL", M: "Bravo", N: "Bernard" });
+  L({ C: "SAN", F: "AUXILIAIRE SANITAIRE 1C" });                                    // poste à pourvoir
+  L({ C: "00C99AE : 1ER PELOTON DE RECONNAISSANCE ET D'INTERVENTION" });
+  L({ D: "00C99AF : PATROUILLE DE COMMANDEMENT" });
+  L({ C: "OMT", F: "CHEF DE PELOTON 4", L: "LTN", M: "Charlie", N: "Claire" });
+  L({ L: "ADC", M: "Delta", N: "Denis" });                                          // même poste (ligne sans libellé)
+  L({ D: "00C99AG : PATROUILLE D'ECLAIRAGE" });
+  L({ C: "OMT", F: "CAVALIER BLINDE PILOTE 1A", L: "1CL", M: "Echo", N: "Jean-Marc" }); // prénom plus long que la fiche
+  L({ C: "OMT", F: "CAVALIER BLINDE TIREUR 1A", L: "CHA", M: "Foxtrot", N: "Fanny" });  // nouvelle
+  L({ C: "OMT", F: "CAVALIER BLINDE TIREUR 1A", L: "1CL", M: "Golfe", N: "Gilles" });   // archivé
+  L({ C: "OMT", F: "CAVALIER BLINDE TIREUR 1A", L: "1CL", M: "Hotel", N: "Henri" });    // deux fiches homonymes
+  L({ B: "00C99ZZ : AUTRE UNITE SANS COMMANDANT" });
+  L({ C: "00C99ZY : SECTION X" }); L({ D: "00C99ZX : GROUPE Y" });
+  L({ C: "OMT", F: "AGENT 1A", L: "1CL", M: "Ignore", N: "Igor" });
+  return g;
+}
+
+await test("CARTEC : lecture du découpage (unité, peloton, groupe, postes)", () => {
+  const U = L.lireCartec(fauxCartec());
+  egal(U.length, 1, "seule l'unité avec un commandant d'unité, sans l'état-major");
+  const u = U[0];
+  egal([u.code, u.entrees.length, u.vacants.length], ["00C99AA", 8, 1]);
+  egal(u.entrees.map(e => e.peloton + "/" + e.golf), ["PCL/0", "PCL/1", "P1/0", "P1/0", "P1/1", "P1/1", "P1/1", "P1/1"]);
+  egal(u.entrees[3].spe, "CHEF DE PELOTON 4", "ligne sans libellé = même poste");
+  egal(u.vacants[0], { peloton: "PCL", golf: "1", libelle: "AUXILIAIRE SANITAIRE 1C" });
+  egal([u.groupes["PCL|1"], u.groupes["P1|1"]], ["Groupe santé", "Patrouille d'éclairage"]);
+});
+
+await test("CARTEC : rapprochement, mise à jour, archivage, REO", () => {
+  const d = L.emptyData("t"); L.state.data = d;
+  const P = (id, v) => d.personnes.push({ id, v: { escadron: "4ESC", ...v } });
+  P("a", { nom: "ALPHA", prenom: "Albert", peloton: "PCL", golf: "0", spe: "COMMANDANT D'UNITE COMBAT TERRESTRE 4", grade: "CNE" });   // identique
+  P("b", { nom: "Bravo", prenom: "Bernard", peloton: "P2", golf: "3", spe: "ANCIEN POSTE", grade: "SGT", tel: "0600000000" });   // à mettre à jour
+  P("c", { nom: "Charlie", prenom: "Claire", peloton: "P1", golf: "0", spe: "CHEF DE PELOTON 4" });
+  P("e", { nom: "Echo", prenom: "Jean", peloton: "P1", golf: "1", spe: "CAVALIER BLINDE PILOTE 1A" });   // prénom proche
+  P("h1", { nom: "Hotel", prenom: "Henri", peloton: "P3" }); P("h2", { nom: "Hotel", prenom: "Henri", peloton: "P4" });
+  P("x", { nom: "Parti", prenom: "Paul", peloton: "P1" });                                            // absent de CARTEC
+  d.personnes.push({ id: "y", v: { nom: "Autre", prenom: "Unite", escadron: "9ESC" } });             // autre escadron : intact
+  d.archives.push({ id: "g", v: { nom: "Golfe", prenom: "Gilles", escadron: "4ESC" }, archive: { date: "2025-01-01", motif: "x" } });
+  const U = L.lireCartec(fauxCartec());
+  egal(L.escadronPropose(U[0], d), "4ESC", "escadron proposé d'après les fiches retrouvées");
+  const corresp = { "00C99AA": "4ESC" }, plan = L.planCartec(U, d, corresp);
+  const st = n => plan.lignes.find(l => l.e.nom === n).statut;
+  egal(["Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot", "Golfe", "Hotel"].map(st),
+    ["identique", "maj", "identique", "nouveau", "probable", "nouveau", "restaurer", "ambigu"]);
+  egal(plan.absents.map(p => p.id), ["x"], "absent de CARTEC (pas les homonymes non tranchés, pas l'autre escadron)");
+  const r = L.appliquerCartec(d, U, plan, corresp, new Set(), "2026-10-08");
+  egal([r.maj, r.crees, r.restaures, r.archives], [2, 2, 1, 1]);
+  const b = d.personnes.find(p => p.id === "b").v;
+  egal([b.peloton, b.golf, b.spe, b.grade, b.tel], ["PCL", "1", "INFIRMIER EN SOINS GENERAUX 2", "SGT", "0600000000"], "rattachement et spécialité seulement");
+  vrai(d.archives.some(p => p.id === "x" && p.archive.motif === "Absent de CARTEC") && d.personnes.some(p => p.id === "g"), "archivé / restauré");
+  vrai(d.personnes.find(p => p.v.nom === "Foxtrot").v.grade === "CHA", "nouvelle fiche avec son grade");
+  egal(d.personnes.find(p => p.id === "y").v, { nom: "Autre", prenom: "Unite", escadron: "9ESC" }, "autre escadron intact");
+  // Second passage : tout est à jour, le nom proche validé n'est plus redemandé
+  const plan2 = L.planCartec(U, d, corresp);
+  egal([...new Set(plan2.lignes.map(l => l.statut))].sort(), ["ambigu", "identique"]);
+  egal(plan2.absents.length, 0);
+  // REO : noms des groupes CARTEC et postes à pourvoir avec leur libellé
+  const B = L.reoBlocs(d.personnes, "4ESC", d.reo);
+  const sante = B.flatMap(x => x.groupes).find(g => g.peloton === "PCL" && g.golf === "1");
+  egal([B[0].label, sante.nom, sante.vacants, sante.postesVacants], ["Groupe de commandement", "Groupe santé", 1, ["AUXILIAIRE SANITAIRE 1C"]]);
+});
+
+await test("CARTEC : décocher dans l'aperçu", () => {
+  const d = L.emptyData("t"); L.state.data = d;
+  d.personnes.push({ id: "e", v: { nom: "Echo", prenom: "Jean", escadron: "4ESC" } }, { id: "x", v: { nom: "Parti", prenom: "Paul", escadron: "4ESC" } });
+  const U = L.lireCartec(fauxCartec()), corresp = { "00C99AA": "4ESC" }, plan = L.planCartec(U, d, corresp);
+  const cle = n => plan.lignes.find(l => l.e.nom === n).cle;
+  const r = L.appliquerCartec(d, U, plan, corresp, new Set([cle("Echo"), cle("Foxtrot"), "x"]));
+  vrai(d.personnes.some(p => p.id === "x"), "absent non archivé");
+  vrai(!d.personnes.some(p => p.v.nom === "Foxtrot"), "nouvelle fiche refusée");
+  egal(d.personnes.filter(p => p.v.nom === "Echo").length, 2, "nom proche refusé : nouvelle fiche distincte");
+  egal(r.archives, 0);
 });
 
 console.log(`\n${ok} réussi(s), ${ko} échoué(s)`);

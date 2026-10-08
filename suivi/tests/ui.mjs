@@ -177,6 +177,28 @@ const valeur = (sel, v) => { const e = document.querySelector(sel); e.value = v;
   verif("Fiche : historique de la personne", hist && /Historique \\([1-9]/.test(hist.querySelector("summary").textContent) && hist.textContent.includes("corrige@example.org"), hist?.textContent.slice(0, 200));
   $("#dlg-person").close();
 
+  // Mise à jour depuis CARTEC (faux fichier : deux personnes de la démo, une nouvelle, un poste vide)
+  const E = state.data.personnes[0].v.escadron, PE = state.data.personnes.filter(p => p.v.escadron === E).slice(0, 2);
+  const gC = [[, , , "NIV", , "LIBELLE ETR", , , , , , "GRADE", "NOM", "PRENOM"], [, "00C99AA : ESCADRON DE TEST"],
+    [, , "00C99AB : PELOTON DE COMMANDEMENT"], [, , , "00C99AC : GROUPE DE COMMANDEMENT"],
+    [, , , , , "COMMANDANT D'UNITE COMBAT TERRESTRE 4", , , , , , PE[0].v.grade, PE[0].v.nom, PE[0].v.prenom],
+    [, , , , , "NOUVEAU POSTE TEST", , , , , , PE[1].v.grade, PE[1].v.nom, PE[1].v.prenom],
+    [, , , , , "CAVALIER TEST", , , , , , "1CL", "Nouveau", "Fictif"], [, , , , , "POSTE VIDE TEST"]];
+  const avantCartec = state.data.personnes.length;
+  ca = { nom: "cartec-test.xlsx", unites: lireCartec(gC), corresp: {} };
+  ca.corresp["00C99AA"] = escadronPropose(ca.unites[0], state.data);
+  caCalculer(); $("#dlg-cartec").showModal();
+  verif("CARTEC : aperçu (escadron proposé, sections)", ca.corresp["00C99AA"] === E && document.querySelectorAll("#ca-details .ca-sec").length >= 3 && !$("#ca-go").disabled, $("#ca-resume").textContent);
+  $("#form-cartec").requestSubmit();
+  const p1 = state.data.personnes.find(p => p.id === PE[1].id);
+  verif("CARTEC : rattachement, spécialité, création, archivage", !$("#dlg-cartec").open && p1.v.spe === "NOUVEAU POSTE TEST" && p1.v.peloton === "PCL"
+    && state.data.personnes.some(p => p.v.nom === "Nouveau") && state.data.archives.some(a => a.archive?.motif === "Absent de CARTEC"));
+  verif("CARTEC : historique de la fiche", historiquePersonne(state.data.journal, p1).some(j => j.quoi.includes("NOUVEAU POSTE TEST")));
+  reoEsc = E; setView("reo");
+  verif("CARTEC : REO (groupe, poste à pourvoir)", $("#reo").innerHTML.includes("Groupe de commandement") && $("#reo").textContent.includes("Poste à pourvoir — POSTE VIDE TEST"), $("#reo").textContent.slice(0, 200));
+  clic("#btn-undo");
+  verif("CARTEC : annulé en une fois", state.data.personnes.length === avantCartec && !state.data.reo.cartec && erreurs.length === 0, erreurs.join(" | "));
+
   // Enregistrement automatique (fichier ouvert via File System Access)
   const disque = [];
   const fauxFichier = () => ({ getFile: async () => ({ text: async () => disque.at(-1) || "" }), createWritable: async () => ({ write: async c => disque.push(c), close: async () => {} }) });

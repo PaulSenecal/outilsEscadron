@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <!-- Politique de sécurité : aucune requête réseau (sauf Google Fonts), seul le script de ce fichier peut s'exécuter
      (empreinte sha256 : après toute modification du script, lancer « node tests/csp.mjs » pour la mettre à jour). -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-PGubnnlp9/jKPpR0nV0pJGY1GX3Vl7TsZdO94o+xsVM='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-SgQIwCFpbT7Z9LGdwOAE54tfO2Nt0ZLLkdUtr1nX3j0='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
 <title>Suivi du personnel</title>
 <meta name="theme-color" content="#0B1629">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%2313233F'/%3E%3Cpath d='M32 9l18 7v13c0 12-8 21-18 26-10-5-18-14-18-26V16z' fill='none' stroke='%23C9A227' stroke-width='4'/%3E%3Ccircle cx='32' cy='27' r='6' fill='%23C9A227'/%3E%3Cpath d='M21 44c2-7 6-10 11-10s9 3 11 10' fill='%23C9A227'/%3E%3C/svg%3E">
@@ -43,6 +43,18 @@ a{color:var(--navy)}
 /* Historique d'une fiche */
 .historique summary{cursor:pointer;font-family:var(--cond);font-weight:600;font-size:16px;color:var(--navy)}
 .historique .journal-row{font-size:13.5px}
+/* Mise à jour CARTEC */
+.ca-unites{display:grid;gap:8px;margin:10px 0}
+.ca-unite{display:grid;grid-template-columns:1fr 160px;gap:10px;align-items:end;padding:8px 10px;border:1px solid var(--line);border-radius:8px}
+.ca-unite b{display:block;font-size:14px} .ca-unite small{color:var(--muted)}
+.ca-sec{border:1px solid var(--line);border-radius:8px;margin-top:10px;background:var(--surface)}
+.ca-sec summary{cursor:pointer;padding:8px 12px;font-weight:600}
+.ca-sec summary .n{display:inline-block;min-width:24px;text-align:center;margin-left:6px;border-radius:999px;padding:0 6px;font-size:12.5px;background:var(--none-bg)}
+.ca-sec.attention summary .n{background:var(--warn-bg);color:var(--warn)}
+.ca-sec .st-tbl{margin:0 0 8px}
+.ca-sec td small{color:var(--muted)}
+.ca-sec .ch{display:block;font-size:13px}
+.ca-sec .ch s{color:var(--muted)}
 /* Qualité des données */
 .qu-resume{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
 .qu-resume button{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:4px 12px;cursor:pointer;font-size:14px}
@@ -527,6 +539,7 @@ details summary{cursor:pointer;font-weight:600;color:var(--navy)}
         <button type="button" class="sb-fichier-btn dd-btn" aria-haspopup="menu" aria-expanded="false">☰ Fichier et réglages</button>
         <div class="dd-menu" role="menu" hidden>
           <button type="button" role="menuitem" id="btn-import">Importer (Excel ou CSV)…</button>
+          <button type="button" role="menuitem" id="btn-cartec">Mettre à jour depuis CARTEC…</button>
           <button type="button" role="menuitem" data-clic="#btn-export">Exporter tout (Excel)</button>
           <button type="button" role="menuitem" data-clic="#btn-export-csv">Exporter tout (CSV)</button>
           <hr>
@@ -901,7 +914,7 @@ details summary{cursor:pointer;font-weight:600;color:var(--navy)}
 <dialog id="dlg-reo" class="wide">
   <form id="form-reo" autocomplete="off">
     <div class="dlg-head"><h2>Groupes du REO</h2>
-      <p>Nom affiché pour chaque peloton / golf, et nombre de postes prévus. Les postes non occupés apparaissent en lignes « Poste à pourvoir ». Ces réglages valent pour tous les escadrons.</p></div>
+      <p>Nom affiché pour chaque peloton / golf, et nombre de postes prévus. Les postes non occupés apparaissent en lignes « Poste à pourvoir ». Ces réglages valent pour tous les escadrons, sauf ceux mis à jour depuis CARTEC (noms des groupes et postes à pourvoir repris de CARTEC).</p></div>
     <div class="dlg-body"><div id="reo-list" style="display:grid;gap:8px"></div></div>
     <div class="dlg-foot">
       <button type="button" class="btn" data-close>Annuler</button>
@@ -934,6 +947,26 @@ details summary{cursor:pointer;font-weight:600;color:var(--navy)}
     </div>
   </form>
 </dialog>
+
+<!-- ============ Mise à jour depuis CARTEC ============ -->
+<dialog id="dlg-cartec" class="wide">
+  <form id="form-cartec" autocomplete="off">
+    <div class="dlg-head"><h2>Mise à jour depuis CARTEC</h2>
+      <p>Escadron, peloton, golf et spécialité de chacun d'après CARTEC. Les grades, dates, tailles et coordonnées des fiches existantes ne sont pas modifiés. Rien n'est appliqué avant de valider.</p></div>
+    <div class="dlg-body">
+      <p class="hint" id="ca-fichier" style="margin:0"></p>
+      <div id="ca-unites" class="ca-unites"></div>
+      <datalist id="dl-ca-esc"></datalist>
+      <div id="ca-resume" class="stats"></div>
+      <div id="ca-details"></div>
+    </div>
+    <div class="dlg-foot">
+      <button type="button" class="btn" data-close>Annuler</button>
+      <button type="submit" class="btn btn-gold" id="ca-go">Appliquer la mise à jour</button>
+    </div>
+  </form>
+</dialog>
+<input type="file" id="ca-input" accept=".xlsx" hidden>
 
 <!-- ============ Import ============ -->
 <dialog id="dlg-import" class="wide">
@@ -973,10 +1006,15 @@ const enc = new TextEncoder(), dec = new TextDecoder();
 const FORMAT = "suivi-personnel";
 const ITER = 600000;          // PBKDF2 (OWASP 2023). Un fichier plus ancien est relu avec ses itérations et mis à niveau au prochain enregistrement
 const SCHEMA = 3;
-const VERSION = "3.4";
+const VERSION = "3.5";
 /* Historique affiché par le bouton « Nouveautés » : à chaque évolution, incrémenter VERSION
    et ajouter une entrée EN TÊTE de cette liste. */
 const NOUVEAUTES = [
+  { v: "3.5", date: "08/10/2026", items: [
+    "Mise à jour depuis CARTEC (menu « Fichier et réglages ») : escadron, peloton, golf et spécialité de chacun sont repris du fichier CARTEC, à partir du commandant d'unité.",
+    "Les nouvelles personnes sont créées, celles qui ne figurent plus dans CARTEC sont archivées (restaurables), et tout est présenté avant d'être appliqué.",
+    "Les noms proches (faute de frappe, prénom composé) sont à confirmer une seule fois : ils sont reconnus aux mises à jour suivantes.",
+    "REO : noms des groupes et postes à pourvoir (avec leur intitulé) repris de CARTEC pour chaque escadron."] },
   { v: "3.4", date: "08/10/2026", items: [
     "Enregistrement automatique : un fichier ouvert depuis l'ordinateur (Chrome, Edge) est enregistré tout seul quelques secondes après chaque modification. Réglable dans « Champs et réglages ».",
     "Seuil d'alerte par formation : par exemple 60 jours pour le tir et 30 pour le secourisme (colonne « Alerte » dans « Champs et réglages »).",
@@ -1546,28 +1584,35 @@ function nomParDefaut(pel, golf) {
   return (pel === "PCL" ? "Groupe " : "Patrouille ") + golf;
 }
 const nomGroupe = (reo, pel, golf) => reo.noms[pel + "|" + golf] || nomParDefaut(pel, golf);
+/* Organisation d'un escadron issue de CARTEC : { groupes: { "PEL|GOLF": nom }, vacants: { "PEL|GOLF": [libellés] } } */
+const cartecEsc = (reo, escadron) => reo.cartec?.escadrons?.[escadron] || null;
 const ordrePeloton = p => p === "" ? 999 : ORDRE_PELOTONS.includes(p) ? ORDRE_PELOTONS.indexOf(p) : 100;
 const ordreGolf = g => g === "" ? Infinity : isNaN(+g) ? 1e6 : +g;
 const parGrade = (a, b) => GRADES.indexOf(b.v.grade) - GRADES.indexOf(a.v.grade) || norm(a.v.nom).localeCompare(norm(b.v.nom), "fr")
   || norm(a.v.prenom).localeCompare(norm(b.v.prenom), "fr");
 
-/* Clés « peloton|golf » d'un escadron : occupées, ou avec des postes prévus */
+/* Clés « peloton|golf » d'un escadron : occupées, ou avec des postes prévus (CARTEC pour l'escadron, sinon réglage REO) */
 function clesEscadron(P, escadron, reo) {
   const cles = new Set(P.filter(p => (p.v.escadron || "") === escadron).map(p => (p.v.peloton || "") + "|" + (p.v.golf || "")));
-  Object.keys(reo.postes).forEach(k => { if (reo.postes[k] > 0) cles.add(k); });
+  const ce = cartecEsc(reo, escadron);
+  if (ce) [...Object.keys(ce.groupes), ...Object.keys(ce.vacants)].forEach(k => cles.add(k));
+  else Object.keys(reo.postes).forEach(k => { if (reo.postes[k] > 0) cles.add(k); });
   return [...cles];
 }
 function pelotonsEscadron(P, escadron, reo) {
   return [...new Set(clesEscadron(P, escadron, reo).map(k => k.split("|")[0]))]
     .sort((a, b) => ordrePeloton(a) - ordrePeloton(b) || a.localeCompare(b, "fr", { numeric: true }));
 }
-/* Groupes (golfs) d'un peloton : [{ peloton, golf, nom, personnes (triées par grade), vacants }] */
+/* Groupes (golfs) d'un peloton : [{ peloton, golf, nom, personnes (triées par grade), vacants, postesVacants (libellés CARTEC) }] */
 function groupesPeloton(P, escadron, pel, reo) {
+  const ce = cartecEsc(reo, escadron);
   return clesEscadron(P, escadron, reo).filter(k => k.split("|")[0] === pel).map(k => k.split("|")[1])
     .sort((a, b) => ordreGolf(a) - ordreGolf(b)).map(golf => {
+      const k = pel + "|" + golf;
       const personnes = P.filter(p => (p.v.escadron || "") === escadron && (p.v.peloton || "") === pel && (p.v.golf || "") === golf).sort(parGrade);
-      return { peloton: pel, golf, nom: nomGroupe(reo, pel, golf), personnes,
-        vacants: Math.max(0, (reo.postes[pel + "|" + golf] || 0) - personnes.length) };
+      const postesVacants = ce ? ce.vacants[k] || [] : [];
+      return { peloton: pel, golf, nom: ce?.groupes[k] || nomGroupe(reo, pel, golf), personnes, postesVacants,
+        vacants: ce ? postesVacants.length : Math.max(0, (reo.postes[k] || 0) - personnes.length) };
     });
 }
 /* Blocs du REO d'un escadron : [{ label, bandes, groupes }] */
@@ -1576,11 +1621,170 @@ function reoBlocs(P, escadron, reo) {
   for (const pel of pelotonsEscadron(P, escadron, reo)) {
     const groupes = groupesPeloton(P, escadron, pel, reo);
     if (pel === "PCL" && groupes[0]?.golf === "0") {
-      blocs.unshift({ label: nomGroupe(reo, "PCL", "0"), bandes: false, groupes: [groupes.shift()] });
+      blocs.unshift({ label: groupes[0].nom, bandes: false, commandement: true, groupes: [groupes.shift()] });
     }
     if (groupes.length) blocs.push({ label: pel || "Non affectés", bandes: true, groupes });
   }
   return blocs;
+}
+
+/* ---------- CARTEC : rattachement et spécialité de chacun ---------- */
+/* Le fichier CARTEC est découpé en en-têtes « CODE : LIBELLÉ » sur trois colonnes : unité (escadron / compagnie),
+   peloton (ou section), groupe (ou patrouille). Suivent les postes : libellé de l'emploi, grade, nom, prénom
+   (poste sans nom = poste à pourvoir). Seules les unités qui ont un « commandant d'unité » sont reprises
+   (le haut du fichier, l'état-major, est ignoré). Golf = rang du groupe dans le peloton (0 = commandement). */
+const ENTETE_CARTEC = /^\s*([0-9A-Z]{5,10})\s*:\s*(.+?)\s*$/;
+const cleNom = s => norm(s).replace(/[-'’.]/g, " ").replace(/\s+/g, " ").trim();
+function idPeloton(label) {
+  const n = norm(label);
+  if (/commandement/.test(n)) return "PCL";
+  const m = /^(\d+)\s*(?:er|ere|re|e|eme)?\b/.exec(n);
+  return m ? "P" + m[1] : label;
+}
+/* « PATROUILLE D'ECLAIRAGE » → « Patrouille d'éclairage » (les accents absents de CARTEC sont rétablis pour les mots courants) */
+const ACCENTS_CARTEC = { eclairage: "éclairage", echelon: "échelon", sante: "santé", portee: "portée", equipe: "équipe", "1re": "1re",
+  securite: "sécurité", generale: "générale", reserve: "réserve", ravitaillement: "ravitaillement", deminage: "déminage", element: "élément" };
+const nomGroupeCartec = label => label.toLowerCase().replace(/[a-z0-9]+/g, w => ACCENTS_CARTEC[w] || w)
+  .replace(/\b(sic|ccl|nrbc|mmp|vbl|pc)\b/g, x => x.toUpperCase()).replace(/^./, c => c.toUpperCase());
+function lireCartec(grid) {
+  const h = grid.findIndex((r, i) => i < 15 && (r || []).some(c => norm(cellText(c)) === "nom") && (r || []).some(c => norm(cellText(c)).startsWith("prenom")));
+  if (h < 0) throw new Error("Fichier CARTEC non reconnu : colonnes « NOM » et « PRENOM » introuvables.");
+  const H = Array.from(grid[h], c => norm(cellText(c))), col = f => H.findIndex(f);
+  const cNom = col(x => x === "nom"), cPrenom = col(x => x.startsWith("prenom")), cGrade = col(x => x === "grade"), cLib = col(x => x.startsWith("libelle"));
+  if (cLib < 0) throw new Error("Fichier CARTEC non reconnu : colonne « LIBELLE » (emploi) introuvable.");
+  // Colonnes des en-têtes « CODE : LIBELLÉ » : les trois dernières = unité, peloton, groupe
+  const colsEntete = new Set();
+  grid.slice(h + 1).forEach(r => (r || []).forEach((c, i) => { if (i < cLib && typeof c === "string" && ENTETE_CARTEC.test(c)) colsEntete.add(i); }));
+  const niv = [...colsEntete].sort((a, b) => a - b).slice(-3);
+  if (niv.length < 3) throw new Error("Fichier CARTEC non reconnu : découpage unité / peloton / groupe introuvable.");
+  const unites = [];
+  let u = null, pel = null, grp = null, lib = "";
+  for (const r of grid.slice(h + 1)) {
+    if (!r || !r.length) continue;
+    const t = i => i < 0 ? "" : cellText(r[i]);
+    const entete = i => { const m = typeof r[i] === "string" && ENTETE_CARTEC.exec(r[i]); return m ? { code: m[1], label: m[2] } : null; };
+    const nom = t(cNom), libelle = t(cLib);
+    if (!nom && !libelle) {
+      let e;
+      if ((e = entete(niv[0]))) { u = { ...e, entrees: [], vacants: [], groupes: {}, cdu: false }; unites.push(u); pel = grp = null; lib = ""; }
+      else if (u && (e = entete(niv[1]))) { pel = { ...e, id: idPeloton(e.label), n: 0 }; grp = null; lib = ""; }
+      else if (u && pel && (e = entete(niv[2]))) { grp = { ...e, golf: String(pel.n++) }; u.groupes[pel.id + "|" + grp.golf] = nomGroupeCartec(e.label); lib = ""; }
+      continue;
+    }
+    if (!u || !pel) continue;                 // avant la première unité : état-major, ignoré
+    if (libelle) lib = libelle;               // ligne sans libellé : même poste que la ligne au-dessus
+    if (/^commandant d.unite/.test(norm(lib))) u.cdu = true;
+    const golf = grp ? grp.golf : "";
+    if (nom) u.entrees.push({ nom, prenom: t(cPrenom), grade: t(cGrade).toUpperCase(), peloton: pel.id, golf, spe: lib });
+    else u.vacants.push({ peloton: pel.id, golf, libelle: lib });
+  }
+  return unites.filter(x => x.cdu).map(({ cdu, ...x }) => x);
+}
+/* Escadron proposé pour une unité CARTEC : réglage mémorisé, sinon l'escadron le plus fréquent parmi les personnes retrouvées */
+function escadronPropose(u, d) {
+  const memo = d.meta.cartecUnites?.[u.code];
+  if (memo) return memo;
+  const n = new Map(), idx = new Map(d.personnes.map(p => [cleNom(p.v.nom) + "|" + cleNom(p.v.prenom), p]));
+  u.entrees.forEach(e => { const e_ = idx.get(cleNom(e.nom) + "|" + cleNom(e.prenom))?.v.escadron; if (e_) n.set(e_, (n.get(e_) || 0) + 1); });
+  return [...n].sort((a, b) => b[1] - a[1])[0]?.[0] || "";
+}
+const distance = (a, b) => {   // distance d'édition (fautes de frappe)
+  const m = Array.from({ length: a.length + 1 }, (_, i) => [i]);
+  for (let j = 1; j <= b.length; j++) m[0][j] = j;
+  for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++)
+    m[i][j] = Math.min(m[i - 1][j] + 1, m[i][j - 1] + 1, m[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+  return m[a.length][b.length];
+};
+const CHAMPS_CARTEC = [["escadron", "Escadron"], ["peloton", "Peloton"], ["golf", "Golf"], ["spe", "Spécialité"]];
+/* Plan de mise à jour. corresp : { codeUnité: escadron }.
+   lignes : [{ cle, e (entrée CARTEC + escadron), p? (fiche), statut, changements: [{ champ, label, avant, apres }], cands? }]
+   statut : maj | identique | nouveau | restaurer (fiche archivée) | probable (prénom ou nom proche) | ambigu | doublon
+   absents : fiches des escadrons concernés absentes de CARTEC (à archiver) */
+function planCartec(unites, d, corresp) {
+  const cle = p => cleNom(p.v.nom) + "|" + cleNom(p.v.prenom);
+  const index = L => { const m = new Map(); L.forEach(p => { const k = cle(p); if (!m.has(k)) m.set(k, []); m.get(k).push(p); }); return m; };
+  const iP = index(d.personnes), iA = index(d.archives), pris = new Set(), escs = new Set(), lignes = [];
+  const diff = (p, e) => CHAMPS_CARTEC.filter(([k]) => (k !== "escadron" || e.escadron) && (p.v[k] || "") !== (e[k] || ""))
+    .map(([k, label]) => ({ champ: k, label, avant: p.v[k] || "", apres: e[k] || "" }));
+  unites.forEach(u => {
+    const escadron = corresp[u.code] || ""; if (escadron) escs.add(escadron);
+    u.entrees.forEach((e0, i) => lignes.push({ cle: u.code + "#" + i, e: { ...e0, escadron, unite: u.code } }));
+  });
+  // 1. Correspondance déjà validée (nom proche accepté lors d'une mise à jour précédente), puis même nom et même prénom
+  const alias = d.meta.cartecAlias || {};
+  lignes.forEach(l => {
+    const a = d.personnes.find(p => p.id === alias[cleNom(l.e.nom) + "|" + cleNom(l.e.prenom)]);
+    const c = a ? [a] : iP.get(cleNom(l.e.nom) + "|" + cleNom(l.e.prenom)) || [];
+    if (c.length > 1) Object.assign(l, { statut: "ambigu", cands: c.map(p => p.id) });
+    else if (c.length === 1) {
+      if (pris.has(c[0].id)) l.statut = "doublon";
+      else { pris.add(c[0].id); l.p = c[0]; }
+    }
+  });
+  // 2. Fiches archivées, puis noms proches (faute de frappe, prénom composé) parmi les fiches non retrouvées
+  lignes.filter(l => !l.statut && !l.p).forEach(l => {
+    const a = (iA.get(cleNom(l.e.nom) + "|" + cleNom(l.e.prenom)) || []).filter(p => !pris.has(p.id));
+    if (a.length === 1) { pris.add(a[0].id); Object.assign(l, { p: a[0], statut: "restaurer" }); return; }
+    const n = cleNom(l.e.nom), pr = cleNom(l.e.prenom);
+    const proche = d.personnes.filter(p => !pris.has(p.id) && (p.v.escadron === l.e.escadron || !p.v.escadron || !l.e.escadron)).filter(p => {
+      const pn = cleNom(p.v.nom), pp = cleNom(p.v.prenom);
+      if (pn === n) return pp && pr && (pp.startsWith(pr) || pr.startsWith(pp) || distance(pp, pr) <= 2);
+      return pp === pr && pn.length > 3 && distance(pn, n) <= 2;
+    });
+    if (proche.length === 1) { pris.add(proche[0].id); Object.assign(l, { p: proche[0], statut: "probable" }); }
+    else l.statut = "nouveau";
+  });
+  lignes.forEach(l => {
+    if (!l.p || l.statut === "ambigu" || l.statut === "doublon") return;
+    l.changements = diff(l.p, l.e);
+    l.statut ||= l.changements.length ? "maj" : "identique";
+  });
+  lignes.forEach(l => { l.changements ||= []; });
+  const absents = d.personnes.filter(p => escs.has(p.v.escadron) && !pris.has(p.id) && !lignes.some(l => l.cands?.includes(p.id)));
+  return { lignes, absents, escadrons: [...escs] };
+}
+/* Applique le plan. refus : clés des lignes (ou ids des absents) décochées dans l'aperçu.
+   Une ligne « probable » refusée devient une nouvelle fiche. Renvoie { maj, crees, restaures, archives, ids, details: [{ id, texte }] }. */
+function appliquerCartec(d, unites, plan, corresp, refus = new Set(), date = isoLocal(today())) {
+  const r = { maj: 0, crees: 0, restaures: 0, archives: 0, ids: [], details: [] };
+  const champsE = e => clean({ escadron: e.escadron, peloton: e.peloton, golf: e.golf, spe: e.spe });
+  for (const l of plan.lignes) {
+    if (!l.e.escadron || l.statut === "ambigu" || l.statut === "doublon" || l.statut === "identique") continue;
+    const accepte = !refus.has(l.cle);
+    if ((l.statut === "nouveau" || (l.statut === "probable" && !accepte))) {
+      if (l.statut === "nouveau" && !accepte) continue;
+      const v = clean({ nom: l.e.nom, prenom: l.e.prenom, grade: l.e.grade, ...champsE(l.e) }), id = uid();
+      d.personnes.push({ id, v }); r.crees++; r.ids.push(id); r.details.push({ id, texte: `Création : ${nomPersonne(v)} (${[v.escadron, v.peloton, v.spe].filter(Boolean).join(" · ")})` });
+      continue;
+    }
+    if (!accepte) continue;
+    if (l.statut === "probable") (d.meta.cartecAlias ||= {})[cleNom(l.e.nom) + "|" + cleNom(l.e.prenom)] = l.p.id;   // ne plus redemander
+    if (l.statut === "restaurer") {
+      d.archives = d.archives.filter(p => p.id !== l.p.id);
+      const { archive, ...actif } = l.p; d.personnes.push(actif); l.p = actif; r.restaures++;
+      r.details.push({ id: l.p.id, texte: `Retour des archives : ${nomPersonne(l.p.v)}` });
+    } else r.maj++;
+    const p = d.personnes.find(x => x.id === l.p.id);
+    l.changements.forEach(c => { if (c.apres) p.v[c.champ] = c.apres; else delete p.v[c.champ]; });
+    r.ids.push(p.id);
+    if (l.changements.length) r.details.push({ id: p.id, texte: `${nomPersonne(p.v)} : ${l.changements.map(c => `${c.label} ${c.avant || "vide"} → ${c.apres || "vide"}`).join(", ")}` });
+  }
+  plan.absents.filter(p => !refus.has(p.id)).forEach(p => {
+    d.personnes = d.personnes.filter(x => x.id !== p.id);
+    d.archives.push({ ...p, archive: { date, motif: "Absent de CARTEC" } });
+    r.archives++; r.ids.push(p.id); r.details.push({ id: p.id, texte: `Archivage (absent de CARTEC) : ${nomPersonne(p.v)}` });
+  });
+  // Organisation par escadron (noms des groupes, postes à pourvoir) pour le REO
+  d.reo.cartec ||= { escadrons: {} };
+  d.reo.cartec.date = date;
+  unites.forEach(u => {
+    const e = corresp[u.code]; if (!e) return;
+    const vacants = {};
+    u.vacants.forEach(x => { (vacants[x.peloton + "|" + x.golf] ||= []).push(x.libelle); });
+    d.reo.cartec.escadrons[e] = { unite: u.label, groupes: { ...u.groupes }, vacants };
+  });
+  d.meta.cartecUnites = { ...(d.meta.cartecUnites || {}), ...corresp };
+  return r;
 }
 
 /* ---------- Tableaux par peloton : NRBC et CATI ---------- */
@@ -1635,7 +1839,7 @@ function libelleVertical(label, court, lignes, hLigne, pxCar) {
   return label.length * pxCar + 16 <= lignes * hLigne ? label : court;
 }
 /* Libellé court d'un golf pour la colonne verticale */
-const libelleGolf = (reo, pel, golf) => reo.noms[pel + "|" + golf] || (golf === "0" ? "Commandement" : golf === "" ? "Sans golf" : "Golf " + golf);
+const libelleGolf = (reo, pel, golf, escadron) => cartecEsc(reo, escadron)?.groupes[pel + "|" + golf] || reo.noms[pel + "|" + golf] || (golf === "0" ? "Commandement" : golf === "" ? "Sans golf" : "Golf " + golf);
 
 /* ---------- Permis : détention et éligibilité ---------- */
 /* Champs affichés dans l'onglet Permis : permis civil (oui/non) puis tous les champs de type permis */
@@ -3205,6 +3409,75 @@ $("#form-champs").addEventListener("submit", e => {
   markDirty(); render();
 });
 
+/* ---------- Mise à jour depuis CARTEC ---------- */
+let ca = null;   // { nom, unites, corresp, plan, refus }
+$("#btn-cartec").addEventListener("click", () => $("#ca-input").click());
+$("#ca-input").addEventListener("change", async e => {
+  const file = e.target.files[0]; e.target.value = ""; if (!file) return;
+  try {
+    const unites = lireCartec(await readXlsx(await file.arrayBuffer()));
+    if (!unites.length) throw new Error("Aucune unité avec un « commandant d'unité » dans ce fichier CARTEC.");
+    ca = { nom: file.name, unites, corresp: Object.fromEntries(unites.map(u => [u.code, escadronPropose(u, state.data)])) };
+    caCalculer();
+    $("#dlg-cartec").showModal();
+  } catch (x) { alert(x.message); }
+});
+function caCalculer() { ca.plan = planCartec(ca.unites, state.data, ca.corresp); ca.refus = new Set(); renderCartec(); }
+function renderCartec() {
+  const { plan, unites } = ca, L = plan.lignes, par = st => L.filter(l => l.statut === st);
+  const vac = unites.reduce((t, u) => t + (ca.corresp[u.code] ? u.vacants.length : 0), 0);
+  $("#ca-fichier").textContent = `${ca.nom} · ${unites.length} unité(s) à partir du commandant d'unité`;
+  $("#dl-ca-esc").innerHTML = valeurs("escadron").map(v => `<option value="${esc(v)}">`).join("");
+  $("#ca-unites").innerHTML = unites.map(u => `<div class="ca-unite"><div><b>${esc(u.label)}</b><small>${esc(u.code)} · ${u.entrees.length} personne(s) · ${u.vacants.length} poste(s) à pourvoir</small></div>
+    <label class="fld"><span>Escadron dans le suivi</span><input data-unite="${esc(u.code)}" list="dl-ca-esc" value="${esc(ca.corresp[u.code] || "")}" placeholder="Ex. 5ESC" required></label></div>`).join("");
+  const sansEsc = unites.filter(u => !ca.corresp[u.code]);
+  const nb = { maj: par("maj").length, nouveau: par("nouveau").length, probable: par("probable").length, restaurer: par("restaurer").length,
+    identique: par("identique").length, autre: par("ambigu").length + par("doublon").length };
+  $("#ca-resume").innerHTML = `<div><b>${nb.maj + nb.probable + nb.restaurer}</b>fiche(s) mise(s) à jour</div><div><b>${nb.nouveau}</b>nouvelle(s) fiche(s)</div>
+    <div><b>${plan.absents.length}</b>archivée(s) : absentes de CARTEC</div><div><b>${nb.identique}</b>déjà à jour</div><div><b>${vac}</b>poste(s) à pourvoir (REO)</div>`;
+  const nomEsc = l => `${l.e.escadron || "?"} · ${l.e.peloton}${l.e.golf !== "" ? " · golf " + l.e.golf : ""}`;
+  const chg = l => l.changements.map(c => `<span class="ch">${esc(c.label)} : <s>${esc(c.avant || "vide")}</s> → ${esc(c.apres || "vide")}</span>`).join("");
+  const coche = (cle, txt = "") => `<label class="check" style="margin:0"><input type="checkbox" data-cle="${esc(cle)}" ${ca.refus.has(cle) ? "" : "checked"}> ${txt}</label>`;
+  const section = (titre, lignes, entete, ligne, attention, ouvert) => lignes.length ? `<details class="ca-sec${attention ? " attention" : ""}"${ouvert ? " open" : ""}><summary>${esc(titre)}<span class="n">${lignes.length}</span></summary>
+    <div class="st-scroll"><table class="st-tbl"><thead><tr>${entete.map(t => `<th>${t}</th>`).join("")}</tr></thead><tbody>${lignes.map(ligne).join("")}</tbody></table></div></details>` : "";
+  const P = id => state.data.personnes.find(p => p.id === id);
+  $("#ca-details").innerHTML = (sansEsc.length ? `<p class="lock-error">Indiquez l'escadron du suivi pour : ${sansEsc.map(u => esc(u.label)).join(", ")}.</p>` : "")
+    + section("À vérifier : nom ou prénom proche", par("probable"), ["Même personne ?", "CARTEC", "Fiche du suivi", "Changements"], l =>
+      `<tr><td>${coche(l.cle, "Oui")}</td><td>${esc(nomPersonne(l.e))}<br><small>${esc(nomEsc(l))}</small></td><td>${esc(nomPersonne(l.p.v))}</td><td>${chg(l)}</td></tr>`, true, true)
+    + section("Mises à jour", par("maj").concat(par("restaurer")), ["", "Personne", "Changements"], l =>
+      `<tr><td>${coche(l.cle)}</td><td>${esc(nomPersonne(l.p.v))}${l.statut === "restaurer" ? "<br><small>revient des archives</small>" : ""}</td><td>${chg(l)}</td></tr>`, false, false)
+    + section("Nouvelles fiches", par("nouveau"), ["", "Personne", "Rattachement", "Spécialité"], l =>
+      `<tr><td>${coche(l.cle)}</td><td>${esc(nomPersonne(l.e))}</td><td class="nowrap">${esc(nomEsc(l))}</td><td>${esc(l.e.spe)}</td></tr>`, false, false)
+    + section("Archivées : absentes de CARTEC", plan.absents, ["Archiver", "Personne", "Rattachement actuel"], p =>
+      `<tr><td>${coche(p.id)}</td><td>${esc(nomPersonne(p.v))}</td><td class="nowrap">${esc([p.v.escadron, p.v.peloton, p.v.golf && "golf " + p.v.golf].filter(Boolean).join(" · "))}</td></tr>`, true, false)
+    + section("Non traités (à corriger à la main)", par("ambigu").concat(par("doublon")), ["Personne CARTEC", "Raison"], l =>
+      `<tr><td>${esc(nomPersonne(l.e))}</td><td>${l.statut === "ambigu" ? `Plusieurs fiches portent ce nom : ${l.cands.map(id => esc(nomPersonne(P(id)?.v || {}))).join(", ")}` : "Apparaît deux fois dans CARTEC : seule la première ligne est reprise"}</td></tr>`, true, false);
+  $("#ca-go").disabled = !!sansEsc.length;
+}
+$("#ca-unites").addEventListener("change", e => {
+  const i = e.target.closest("[data-unite]"); if (!i) return;
+  ca.corresp[i.dataset.unite] = i.value.trim(); caCalculer();
+});
+$("#ca-details").addEventListener("change", e => {
+  const c = e.target.closest("[data-cle]"); if (!c) return;
+  if (c.checked) ca.refus.delete(c.dataset.cle); else ca.refus.add(c.dataset.cle);
+});
+$("#form-cartec").addEventListener("submit", e => {
+  e.preventDefault();
+  if (!ca || ca.unites.some(u => !ca.corresp[u.code])) return;
+  const label = `Mise à jour depuis CARTEC (${ca.nom})`;
+  modif(label);
+  const r = appliquerCartec(state.data, ca.unites, ca.plan, ca.corresp, ca.refus);
+  // Journal : le résumé (entrée d'annulation), puis une ligne par fiche concernée (historique de chaque fiche)
+  const j = state.data.journal.at(-1);
+  j.quoi = `${label} — ${r.maj} mise(s) à jour, ${r.crees} création(s), ${r.restaures} retour(s) des archives, ${r.archives} archivage(s)`;
+  r.details.forEach(x => journaliser(state.data, state.auteur, `CARTEC : ${x.texte}`, [x.id]));
+  ca = null; $("#dlg-cartec").close();
+  markDirty(); render();
+  toast(`CARTEC : ${r.maj} fiche(s) mise(s) à jour, ${r.crees} créée(s), ${r.archives} archivée(s).`);
+});
+$("#dlg-cartec").addEventListener("close", () => { ca = null; $("#ca-details").innerHTML = $("#ca-unites").innerHTML = ""; });
+
 /* ---------- Import ---------- */
 $("#btn-import").addEventListener("click", () => $("#imp-input").click());
 $("#imp-input").addEventListener("change", async e => {
@@ -3465,10 +3738,11 @@ function renderReo() {
           <td>${mail ? `<a href="mailto:${esc(mail)}">${esc(mail)}</a>` : ""}</td></tr>`);
       }
       for (let i = 0; i < g.vacants; i++, vac++) {
-        r.push(`<tr class="reo-vide" data-pel="${esc(g.peloton)}" data-golf="${esc(g.golf)}" tabindex="0" title="Ajouter une personne à ce poste"><td></td><td></td><td></td><td class="poste">Poste à pourvoir</td><td></td><td></td></tr>`);
+        const lib = g.postesVacants[i] || "";
+        r.push(`<tr class="reo-vide" data-pel="${esc(g.peloton)}" data-golf="${esc(g.golf)}" data-spe="${esc(lib)}" tabindex="0" title="Ajouter une personne à ce poste"><td></td><td></td><td></td><td class="poste">Poste à pourvoir${lib ? ` — ${esc(lib)}` : ""}</td><td></td><td></td></tr>`);
       }
     }
-    const court = b.label === nomGroupe(state.data.reo, "PCL", "0") ? "Cdt" : b.label.slice(0, 4);
+    const court = b.commandement ? "Cdt" : b.label.slice(0, 4);
     const side = `<th class="reo-side" rowspan="${r.length}" scope="rowgroup" title="${esc(b.label)}"><span>${esc(libelleVertical(b.label, court, r.length, 30, 11))}</span></th>`;
     return r.map((x, i) => i ? x : x.replace(/^<tr([^>]*)>/, `<tr$1>${side}`)).join("");
   }).join("");
@@ -3484,7 +3758,7 @@ function reoOuvrir(e) {
   const p = e.target.closest(".reo-p");
   if (p) return openPerson(p.dataset.id);
   const v = e.target.closest(".reo-vide");
-  if (v) openPerson(null, clean({ escadron: reoEsc, peloton: v.dataset.pel, golf: v.dataset.golf }));
+  if (v) openPerson(null, clean({ escadron: reoEsc, peloton: v.dataset.pel, golf: v.dataset.golf, spe: v.dataset.spe }));
 }
 $("#reo").addEventListener("click", reoOuvrir);
 $("#reo").addEventListener("keydown", e => { if (e.key === "Enter") reoOuvrir(e); });
@@ -3506,7 +3780,7 @@ $("#reo-export").addEventListener("click", () => {
       g.personnes.forEach(p => { const k = z++ % 2;
         F.ajout([X("", "cote"), X(p.v.grade || "", Zs("ctr", k)), X((p.v.nom || "").toUpperCase(), Zs("nom", k)), X(p.v.prenom || "", Zs("ctr", k)),
           X(p.v.spe || "", Zs("ctr", k)), X(p.v.tel || "", Zs("ctr", k)), X(p.v.mail || "", Zs("ctr", k))]); });
-      for (let i = 0; i < g.vacants; i++) F.ajout([X("", "cote"), X("", "vide"), X("", "vide"), X("", "vide"), X("Poste à pourvoir", "vide"), X("", "vide"), X("", "vide")]);
+      for (let i = 0; i < g.vacants; i++) F.ajout([X("", "cote"), X("", "vide"), X("", "vide"), X("", "vide"), X("Poste à pourvoir" + (g.postesVacants[i] ? " — " + g.postesVacants[i] : ""), "vide"), X("", "vide"), X("", "vide")]);
     });
     if (F.lignes.length > debut) { F.lignes[debut][0] = X(b.label, "cote"); F.fusion(debut, 0, F.lignes.length - 1, 0); }
   });
@@ -3569,7 +3843,7 @@ function renderSynth() {
     let z = 0;
     const corps = groupes.map((g, gi) => {
       const defaut = g.golf === "0" ? "Commandement" : g.golf === "" ? "Sans golf" : "Golf " + g.golf;
-      const r = [], nom = libelleGolf(reo, pel, g.golf), long = nom !== defaut;
+      const r = [], nom = libelleGolf(reo, pel, g.golf, syEsc), long = nom !== defaut;
       const golfCourt = g.golf === "0" ? "Cdt" : g.golf === "" ? "—" : "G" + g.golf;
       if (long) r.push(`<tr class="reo-band"><td colspan="${nbCols}">${esc(nom)}</td></tr>`);
       if (gi || long) r.push(ligneLibelles("sy-colhead"));
@@ -3640,7 +3914,7 @@ $("#sy-export").addEventListener("click", () => {
     groupes.forEach((g, gi) => {
       const debut = F.lignes.length;
       const defaut = g.golf === "0" ? "Commandement" : g.golf === "" ? "Sans golf" : "Golf " + g.golf;
-      const nom = libelleGolf(reo, pel, g.golf), long = nom !== defaut;
+      const nom = libelleGolf(reo, pel, g.golf, syEsc), long = nom !== defaut;
       if (long) { const r = F.ajout([X("", "cote"), X(nom.toUpperCase(), "bande"), ...Array(W - 2).fill(X("", "bande"))]); F.fusion(r, 1, r, W - 1); }
       if (gi || long) F.ajout(libelles(), 30);
       g.personnes.forEach(p => { const k = z++ % 2;
