@@ -166,8 +166,8 @@ Statuts : expiré (bad), à prévoir si moins de seuilAlerte(f) jours (warn),
     de création. Lien manuel (« aucun » = pas dans nos escadrons), SAP, alias (meta.uirAlias), nom + prénom, puis nom
     proche (probable). ajouts = cases vides remplies ; differences = valeurs différentes (memeValeur : téléphone aux
     chiffres près, texte aux accents / casse près = pas une différence) ; sansDonnees = fiches absentes du fichier.
-  - appliquerUIR(data, plan, refus, garder) : garder = « cléLigne|champ » où l'on garde la valeur du suivi (UIR par
-    défaut, boutons « Tout garder : suivi / Tout prendre : UIR ») ; alias mémorisé pour probable / manuel.
+  - appliquerUIR(data, plan, refus, prendre) : PAR DÉFAUT LE FICHIER DE SUIVI A RAISON ; prendre = « cléLigne|champ »
+    où l'on choisit la valeur UIR (boutons « Tout garder : suivi / Tout prendre : UIR ») ; cases vides toujours remplies ; alias mémorisé pour probable / manuel.
   - selectFiche : menu « Même personne que… » commun à CARTEC et UIR (groupes prioritaires puis par grade décroissant).
 - CARTEC lit aussi la colonne SAP : rapprochement par SAP en premier, SAP enregistré dans la fiche.
 - Page « Qualité des données » (controleQualite, logique pure) : doublons probables (nom + prénom, prénom

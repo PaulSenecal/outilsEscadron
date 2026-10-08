@@ -456,9 +456,13 @@ await test("Fichier UIR : rapprochement, choix des valeurs, sans création", () 
   egal(["ALPHA", "Bravo", "Ailleurs", "CHARLY"].map(n => l(n).statut), ["ok", "ok", "hors", "probable"], "SAP, nom, autre escadron, nom proche");
   egal(plan.sansDonnees.map(p => p.id), ["z"]);
   egal(l("ALPHA").differences.map(x => x.f.id), ["grade"], "téléphone identique aux séparateurs près : pas une différence");
-  const r = L.appliquerUIR(d, plan, new Set([l("CHARLY").cle]), new Set([l("ALPHA").cle + "|grade"]));
+  const r = L.appliquerUIR(d, plan, new Set([l("CHARLY").cle]));
   const a = d.personnes.find(p => p.id === "a").v;
-  egal([a.grade, a.vmp, a.nsecu, a.tel], ["LTN", "2027-04-30", "1 99 99", "06.11.22.33.44"], "grade gardé (choix), cases vides remplies, téléphone inchangé");
+  egal([a.grade, a.vmp, a.nsecu, a.tel], ["LTN", "2027-04-30", "1 99 99", "06.11.22.33.44"], "par défaut le suivi a raison (grade gardé), cases vides remplies");
+  const d2 = { ...d, personnes: [{ id: "a", v: { nom: "Alpha", prenom: "Albert", escadron: "5ESC", grade: "LTN" } }], meta: { ...d.meta } };
+  const plan_ = L.planUIR(lu, d2, ["5ESC"]), cleA = plan_.lignes.find(x => x.u.nom === "ALPHA").cle;
+  L.appliquerUIR(d2, plan_, new Set(), new Set([cleA + "|grade"]));
+  egal(d2.personnes[0].v.grade, "CNE", "valeur UIR prise quand on la choisit");
   egal(d.personnes.find(p => p.id === "c").v.tel, "0600000000", "ligne décochée");
   egal(d.personnes.length, 5, "aucune création");
   vrai(!r.details.some(x => x.texte.includes("1 99 99")) && r.details.some(x => x.texte.includes("N° Sécurité sociale mis à jour")), "journal sans valeur sensible");

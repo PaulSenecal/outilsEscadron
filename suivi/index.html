@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <!-- Politique de sécurité : aucune requête réseau (sauf Google Fonts), seul le script de ce fichier peut s'exécuter
      (empreinte sha256 : après toute modification du script, lancer « node tests/csp.mjs » pour la mettre à jour). -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-/Yo+DxktAVhOKU/lQboPTHfDaaG6jDN4a7Mlj7p9eYU='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-L0XTJvL/rlvJGZk9Obv9MVu2IZEcb0Lx43MkpwXNqxU='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
 <title>Suivi du personnel</title>
 <meta name="theme-color" content="#0B1629">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%2313233F'/%3E%3Cpath d='M32 9l18 7v13c0 12-8 21-18 26-10-5-18-14-18-26V16z' fill='none' stroke='%23C9A227' stroke-width='4'/%3E%3Ccircle cx='32' cy='27' r='6' fill='%23C9A227'/%3E%3Cpath d='M21 44c2-7 6-10 11-10s9 3 11 10' fill='%23C9A227'/%3E%3C/svg%3E">
@@ -1033,10 +1033,12 @@ const enc = new TextEncoder(), dec = new TextDecoder();
 const FORMAT = "suivi-personnel";
 const ITER = 600000;          // PBKDF2 (OWASP 2023). Un fichier plus ancien est relu avec ses itérations et mis à niveau au prochain enregistrement
 const SCHEMA = 4;
-const VERSION = "3.6";
+const VERSION = "3.7";
 /* Historique affiché par le bouton « Nouveautés » : à chaque évolution, incrémenter VERSION
    et ajouter une entrée EN TÊTE de cette liste. */
 const NOUVEAUTES = [
+  { v: "3.7", date: "08/10/2026", items: [
+    "Fichier UIR : en cas de valeur différente, c'est désormais le fichier de suivi qui est gardé par défaut. Choisissez « fichier UIR » au cas par cas, ou « Tout prendre : UIR ». Les cases vides restent remplies automatiquement."] },
   { v: "3.6", date: "08/10/2026", items: [
     "Compléter depuis le fichier UIR (menu « Fichier et réglages ») : VMP, entrée en service, fin de contrat, grade et date de grade, attestation cyber, fin de CPR, naissance, matricule, SAP, coordonnées, famille (conjoint, enfants), personne à prévenir, carte d'identité militaire, diplôme civil.",
     "Seules les personnes déjà présentes dans les escadrons choisis sont complétées ; les cases vides sont remplies, et pour chaque valeur différente vous choisissez laquelle garder.",
@@ -1997,9 +1999,9 @@ function planUIR(lu, d, escadrons, liens = {}) {
   const sansDonnees = cible.filter(p => !pris.has(p.id) && !lignes.some(l => l.cands?.includes(p.id)));
   return { lignes, sansDonnees };
 }
-/* Applique le plan. refus : lignes décochées ; garder : « cléLigne|champ » des différences où l'on garde la valeur du suivi
-   (par défaut, la valeur UIR est prise). Renvoie { fiches, valeurs, details: [{ id, texte }] }. */
-function appliquerUIR(d, plan, refus = new Set(), garder = new Set()) {
+/* Applique le plan. refus : lignes décochées ; prendre : « cléLigne|champ » des différences où l'on prend la valeur UIR
+   (par défaut, le fichier de suivi a raison : sa valeur est gardée). Renvoie { fiches, valeurs, details: [{ id, texte }] }. */
+function appliquerUIR(d, plan, refus = new Set(), prendre = new Set()) {
   const r = { fiches: 0, valeurs: 0, details: [] };
   plan.lignes.forEach(l => {
     if (!l.p || refus.has(l.cle) || !["ok", "probable", "manuel"].includes(l.statut)) return;
@@ -2008,7 +2010,7 @@ function appliquerUIR(d, plan, refus = new Set(), garder = new Set()) {
     // Le journal ne recopie pas les données sensibles : seulement le nom du champ
     const faits = [], note = (f, t) => faits.push(f.sensible ? `${f.label} mis à jour` : `${f.label} : ${t}`);
     l.ajouts.forEach(({ f, apres }) => { p.v[f.id] = apres; note(f, valText(f, apres)); });
-    l.differences.filter(x => !garder.has(l.cle + "|" + x.f.id)).forEach(({ f, avant, apres }) => {
+    l.differences.filter(x => prendre.has(l.cle + "|" + x.f.id)).forEach(({ f, avant, apres }) => {
       p.v[f.id] = apres; note(f, `${valText(f, avant)} → ${valText(f, apres)}`);
     });
     if (!faits.length) return;
@@ -3746,7 +3748,7 @@ $("#form-cartec").addEventListener("submit", e => {
 $("#dlg-cartec").addEventListener("close", () => { ca = null; $("#ca-details").innerHTML = $("#ca-unites").innerHTML = ""; });
 
 /* ---------- Compléter depuis le fichier UIR ---------- */
-let ui_ = null;   // { nom, lu, escadrons, liens, plan, refus, garder }
+let ui_ = null;   // { nom, lu, escadrons, liens, plan, refus, prendre }
 $("#btn-uir").addEventListener("click", () => $("#uir-input").click());
 $("#uir-input").addEventListener("change", async e => {
   const file = e.target.files[0]; e.target.value = ""; if (!file) return;
@@ -3760,7 +3762,7 @@ $("#uir-input").addEventListener("change", async e => {
   } catch (x) { alert(x.message); }
 });
 function uirCalculer() {
-  ui_.liens ||= {}; ui_.refus ||= new Set(); ui_.garder ||= new Set();
+  ui_.liens ||= {}; ui_.refus ||= new Set(); ui_.prendre ||= new Set();
   ui_.plan = planUIR(ui_.lu, state.data, ui_.escadrons, ui_.liens); renderUIR();
 }
 function renderUIR() {
@@ -3783,8 +3785,8 @@ function renderUIR() {
   $("#uir-details").innerHTML =
     section("verif", "À vérifier : même personne ?", aVerifier.length, tbl(["Appliquer", "Fichier UIR", "Fiche du suivi"], aVerifier.map(l =>
       `<tr><td>${coche(l.cle)}</td><td>${nomU(l)}</td><td>${lien(l)}${l.statut === "manuel" ? "<br><small>choisi à la main</small>" : ""}</td></tr>`)), true)
-    + section("diff", "Valeurs différentes : laquelle garder ?", diffs.reduce((t, l) => t + l.differences.length, 0), tbl(["Personne", "Champ", "Valeur à garder"], diffs.flatMap(l =>
-      l.differences.map(x => { const k = l.cle + "|" + x.f.id, garde = ui_.garder.has(k);
+    + section("diff", "Valeurs différentes (le suivi est gardé, sauf choix contraire)", diffs.reduce((t, l) => t + l.differences.length, 0), tbl(["Personne", "Champ", "Valeur à garder"], diffs.flatMap(l =>
+      l.differences.map(x => { const k = l.cle + "|" + x.f.id, garde = !ui_.prendre.has(k);
         return `<tr><td>${esc(nomPersonne(l.p.v))}</td><td>${esc(x.f.label)}</td><td><div class="choix-val">
           <label><input type="radio" name="uv-${esc(k)}" data-garder="${esc(k)}" value="suivi" ${garde ? "checked" : ""}><span>${esc(valText(x.f, x.avant))}<small>suivi</small></span></label>
           <label><input type="radio" name="uv-${esc(k)}" data-garder="${esc(k)}" value="uir" ${garde ? "" : "checked"}><span>${esc(valText(x.f, x.apres))}<small>fichier UIR</small></span></label></div></td></tr>`; }))), true,
@@ -3809,7 +3811,7 @@ $("#uir-details").addEventListener("change", e => {
   const s_ = e.target.closest("[data-lien]");
   if (s_) { ui_.liens[s_.dataset.lien] = s_.value; ui_.refus.delete(s_.dataset.lien); return uirCalculer(); }
   const g = e.target.closest("[data-garder]");
-  if (g) { if (g.value === "suivi") ui_.garder.add(g.dataset.garder); else ui_.garder.delete(g.dataset.garder); return; }
+  if (g) { if (g.value === "uir") ui_.prendre.add(g.dataset.garder); else ui_.prendre.delete(g.dataset.garder); return; }
   const c = e.target.closest("[data-cle]");
   if (c) { if (c.checked) ui_.refus.delete(c.dataset.cle); else ui_.refus.add(c.dataset.cle); }
 });
@@ -3822,7 +3824,7 @@ $("#form-uir").addEventListener("submit", e => {
   if (!ui_ || !ui_.escadrons.length) return;
   const label = `Données complétées depuis le fichier UIR (${ui_.nom})`;
   modif(label);
-  const r = appliquerUIR(state.data, ui_.plan, ui_.refus, ui_.garder);
+  const r = appliquerUIR(state.data, ui_.plan, ui_.refus, ui_.prendre);
   state.data.journal.at(-1).quoi = `${label} — ${r.fiches} fiche(s), ${r.valeurs} valeur(s)`;
   r.details.forEach(x => journaliser(state.data, state.auteur, `UIR : ${x.texte}`, [x.id]));
   ui_ = null; $("#dlg-uir").close();
