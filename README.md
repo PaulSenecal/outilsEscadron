@@ -5,6 +5,7 @@ aucune donnée transmise : tout s'exécute dans le navigateur.
 
 | Dossier | Application | Usage |
 |---|---|---|
+| `suivi/` | Suivi du personnel | Dates (tirs, secourisme, NRBC, permis), échéances, REO — données dans un fichier chiffré, jamais dans le dépôt |
 | `quizzer/` | Quiz Editor | Questionnaires de formation |
 | `ccpg/` | Console de piste | Notes CCPG, VMA, VO₂ max, allures d'entraînement |
 
@@ -22,6 +23,11 @@ aucune donnée transmise : tout s'exécute dans le navigateur.
 ├── assets/
 │   ├── hub.css         Styles de l'accueil
 │   └── retour.js       Bouton « ← Escadron » injecté dans chaque application
+├── .gitignore          Bloque les données réelles (xlsx, csv, fichiers de suivi .json)
+├── suivi/
+│   ├── index.html      Suivi du personnel (autonome, avec sa propre politique de sécurité)
+│   ├── CLAUDE.md       Documentation technique de l'outil
+│   └── tests/          Tests (données fictives uniquement) : node suivi/tests/run.mjs, ui.mjs, csp.mjs
 ├── quizzer/index.html
 └── ccpg/index.html
 ```
@@ -56,7 +62,8 @@ Convention : `esc.<application>.<clé>`, par exemple `esc.quizzer.data`.
 > });
 > ```
 
-**Bouton de retour.** Une ligne avant `</body>` dans chaque application :
+**Bouton de retour.** Une ligne avant `</body>` dans chaque application (sauf `suivi/`,
+dont la politique de sécurité n'accepte que son propre script : il a un lien « ← Escadron » en dur) :
 
 ```html
 <script src="../assets/retour.js" defer></script>
@@ -94,4 +101,12 @@ L'ancienne adresse GitHub redirige, mais l'URL du site publié change immédiate
 ## Messages de commit
 
 Préfixer par l'application concernée, ça suffit à s'y retrouver :
-`quizzer:`, `ccpg:`, `hub:`.
+`quizzer:`, `ccpg:`, `suivi:`, `hub:`.
+
+## Suivi du personnel : avant chaque push
+
+```bash
+node suivi/tests/csp.mjs     # empreinte du script (sinon page blanche en ligne)
+node suivi/tests/run.mjs     # logique
+node suivi/tests/ui.mjs      # interface (Chrome, ~75 s)
+```
