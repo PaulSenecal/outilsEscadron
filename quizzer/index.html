@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Quizzer</title>
+<meta name="description" content="Quiz de formation : entraînement en ligne sur le jeu de questions publié, ou éditeur pour rédiger et imprimer les questionnaires.">
+<meta name="theme-color" content="#0B1B33">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@400;600;800&family=Barlow:wght@400;500;600&family=Spline+Sans+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/hub.css">
+<style>
+/* Écran partagé : quiz à gauche, éditeur à droite.
+   Reprend les couleurs et polices du hub (assets/hub.css). */
+html,body{height:100%}
+body{overflow:hidden}
+
+.split{position:relative;z-index:1;display:flex;height:100vh;height:100dvh}
+
+.volet{
+  position:relative;flex:1 1 0;min-width:0;overflow:hidden;isolation:isolate;
+  display:flex;align-items:center;justify-content:center;
+  padding:96px clamp(20px,4vw,56px) 64px;
+  color:inherit;text-decoration:none;
+  transition:flex-grow .55s cubic-bezier(.65,0,.35,1),filter .35s,padding .5s;
+}
+.volet + .volet{border-left:1px solid var(--nuit-3)}
+
+/* halo propre à chaque volet */
+.volet::before{
+  content:"";position:absolute;z-index:-1;inset:0;
+  background:radial-gradient(90% 70% at 50% 62%,var(--halo),transparent 70%);
+  opacity:.5;transition:opacity .45s;
+}
+.volet.quiz{--halo:rgba(201,162,39,.16)}
+.volet.edit{--halo:rgba(143,166,196,.14)}
+
+/* galon doré oblique, comme sur les fiches du hub */
+.volet::after{
+  content:"";position:absolute;z-index:-1;top:-10%;bottom:-10%;left:-40%;
+  width:30%;transform:skewX(-18deg) translateX(-160%);
+  background:linear-gradient(90deg,transparent,rgba(201,162,39,.13),transparent);
+  transition:transform .8s cubic-bezier(.25,.9,.3,1);
+}
+
+.contenu{
+  max-width:400px;display:flex;flex-direction:column;align-items:flex-start;gap:14px;
+  opacity:0;transform:translateY(14px);
+  animation:apparait .6s cubic-bezier(.2,.8,.3,1) forwards;animation-delay:var(--delai);
+  transition:opacity .25s;
+}
+.titre-volet{
+  margin:6px 0 2px;font-family:var(--disp);font-weight:800;text-transform:uppercase;
+  font-size:clamp(54px,7.4vw,112px);line-height:.84;letter-spacing:.005em;
+}
+.titre-volet span{display:block}
+.volet.quiz .titre-volet .creux{color:transparent;-webkit-text-stroke:2px var(--or)}
+@supports not ((-webkit-text-stroke:1px #000)){ .volet.quiz .titre-volet .creux{color:var(--or)} }
+.volet .desc{margin:0;transition:color .3s}
+.volet .meta{margin-top:4px}
+.entrer{
+  margin-top:10px;display:inline-flex;align-items:center;gap:12px;
+  font-family:var(--disp);font-weight:600;font-size:24px;text-transform:uppercase;letter-spacing:.04em;
+  color:var(--or);
+}
+.entrer .fleche{font-size:30px}
+
+/* Survol : le volet visé s'élargit, l'autre s'assombrit */
+@media (hover:hover){
+  .split:hover .volet{filter:brightness(.55) saturate(.6)}
+  .split .volet:hover,.split .volet:focus-visible{flex-grow:1.55;filter:none}
+  .volet:hover::before,.volet:focus-visible::before{opacity:1}
+  .volet:hover::after,.volet:focus-visible::after{transform:skewX(-18deg) translateX(560%)}
+  .volet:hover .desc{color:var(--craie)}
+  .volet:hover .fleche{transform:translateX(8px)}
+}
+.volet:focus-visible{outline:2px solid var(--or-clair);outline-offset:-8px}
+
+/* Clic : le volet choisi prend tout l'écran avant le changement de page */
+.split.part .volet.choisi{flex-grow:1;filter:none}
+.split.part .volet:not(.choisi){flex-grow:.0001;padding-left:0;padding-right:0;filter:brightness(.4)}
+.split.part .volet:not(.choisi) .contenu{opacity:0}
+.split.part ~ .bandeau{opacity:0}
+
+/* bandeau commun, posé au-dessus de la ligne de partage */
+.bandeau{
+  position:fixed;z-index:2;top:max(26px,env(safe-area-inset-top));left:0;right:0;
+  display:flex;justify-content:center;pointer-events:none;transition:opacity .3s;
+}
+.bandeau .fanion{
+  padding:7px 14px;background:rgba(11,27,51,.82);
+  border:1px solid var(--nuit-3);border-radius:999px;
+}
+
+/* téléphone : volets empilés */
+@media (max-width:720px){
+  body{overflow:auto}
+  .split{flex-direction:column;height:auto;min-height:100dvh}
+  .volet{flex:1 0 auto;padding:100px 20px 44px;justify-content:flex-start}
+  .volet + .volet{border-left:none;border-top:1px solid var(--nuit-3);padding-top:44px;padding-bottom:84px}
+  .titre-volet{font-size:clamp(50px,16vw,76px)}
+  .split.part .volet:not(.choisi){padding-top:0;padding-bottom:0}
+}
+</style>
+</head>
+<body>
+
+<div class="champ" aria-hidden="true"></div>
+
+<div class="split" id="split">
+  <a class="volet quiz" href="quiz.html">
+    <div class="contenu" style="--delai:0ms">
+      <span class="code mono">QZR · Entraînement</span>
+      <h2 class="titre-volet"><span>Quiz</span><span class="creux">en ligne</span></h2>
+      <p class="desc">Choisissez vos sujets et le nombre de questions. Correction après chaque réponse, score détaillé à la fin.</p>
+      <span class="meta mono">Jeu de questions publié sur le dépôt</span>
+      <span class="entrer">Commencer <span class="fleche" aria-hidden="true">→</span></span>
+    </div>
+  </a>
+
+  <a class="volet edit" href="editeur.html">
+    <div class="contenu" style="--delai:90ms">
+      <span class="code mono">QZR · Rédaction</span>
+      <h2 class="titre-volet"><span>Éditeur</span></h2>
+      <p class="desc">Rédiger et classer les questions, les imprimer en PDF, exporter le fichier de référence utilisé par le quiz.</p>
+      <span class="meta mono">Sauvegarde locale dans le navigateur</span>
+      <span class="entrer">Ouvrir <span class="fleche" aria-hidden="true">→</span></span>
+    </div>
+  </a>
+</div>
+
+<div class="bandeau" aria-hidden="true">
+  <div class="fanion">
+    <span class="pastille"></span>
+    <span class="mono">Quizzer</span>
+    <span class="sep">/</span>
+    <span class="mono">Formation</span>
+  </div>
+</div>
+
+<script>
+// Au clic, on laisse le volet s'étendre avant de naviguer.
+(function () {
+  var split = document.getElementById('split');
+  var calme = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  split.querySelectorAll('.volet').forEach(function (a) {
+    a.addEventListener('click', function (e) {
+      if (calme || e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+      e.preventDefault();
+      a.classList.add('choisi');
+      split.classList.add('part');
+      setTimeout(function () { location.href = a.getAttribute('href'); }, 520);
+    });
+  });
+  // Retour arrière depuis le cache : rétablir l'écran partagé
+  window.addEventListener('pageshow', function (e) {
+    if (!e.persisted) return;
+    split.classList.remove('part');
+    split.querySelectorAll('.choisi').forEach(function (a) { a.classList.remove('choisi'); });
+  });
+})();
+</script>
+<script src="../assets/retour.js" defer></script>
+</body>
+</html>

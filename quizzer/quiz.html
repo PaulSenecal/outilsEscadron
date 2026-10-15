@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Quiz en ligne</title>
+<meta name="description" content="Entraînement sur le jeu de questions de formation publié : choix des sujets, correction immédiate et score.">
+<meta name="theme-color" content="#0B1B33">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@400;600;800&family=Barlow:wght@400;500;600&family=Spline+Sans+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/hub.css">
+<style>
+/* Quiz en ligne. Couleurs et polices du hub (assets/hub.css),
+   plus deux teintes de correction. */
+:root{
+  --juste:#2FA36B;
+  --juste-fond:rgba(47,163,107,.14);
+  --faux:#E5484D;
+  --faux-fond:rgba(200,16,46,.16);
+}
+
+.wrap{max-width:760px}
+.tete{padding:clamp(28px,5vh,52px) 0 0}
+.fanion a{color:var(--acier);text-decoration:none}
+.fanion a:hover{color:var(--or-clair)}
+h1{font-size:clamp(46px,10vw,96px);margin:14px 0 14px;transition:font-size .3s}
+/* Pendant une question, le titre se réduit pour laisser les réponses visibles */
+body.en-jeu h1{font-size:clamp(30px,5vw,42px);flex-direction:row;gap:.25em;margin:10px 0 4px}
+body.en-jeu h1 .l2{-webkit-text-stroke-width:1px}
+
+.ecran{display:none;padding-bottom:110px}
+.ecran.actif{display:block;animation:apparait-ecran .45s cubic-bezier(.2,.8,.3,1)}
+@keyframes apparait-ecran{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+.panneau{
+  background:linear-gradient(180deg,var(--nuit-2),#0F2340);
+  border:1px solid var(--nuit-3);border-radius:3px;padding:24px;
+}
+
+/* ── réglages ─────────────────────────────────────────────── */
+.choix{display:flex;flex-wrap:wrap;gap:8px}
+.puce{
+  appearance:none;cursor:pointer;font-family:var(--mono);font-size:.72rem;font-weight:600;
+  letter-spacing:.12em;text-transform:uppercase;
+  padding:9px 13px;border-radius:2px;
+  background:transparent;color:var(--acier);border:1px solid var(--nuit-3);
+  transition:border-color .15s,color .15s,background .15s;
+}
+.puce:hover{border-color:var(--acier);color:var(--craie)}
+.puce[aria-pressed="true"]{color:var(--or-clair);border-color:var(--or);background:rgba(201,162,39,.1)}
+.puce .nb{opacity:.6;margin-left:6px}
+.puce:focus-visible,.bouton:focus-visible,.reponse:focus-visible,.bascule input:focus-visible + .piste{outline:2px solid var(--or-clair);outline-offset:3px}
+.puce:disabled{opacity:.35;cursor:not-allowed}
+
+.aide{color:var(--acier);font-size:14px;margin:10px 0 0}
+
+.bascule{display:flex;align-items:center;gap:14px;cursor:pointer;user-select:none}
+.bascule input{position:absolute;opacity:0;width:1px;height:1px}
+.piste{
+  flex:none;width:42px;height:24px;border-radius:999px;background:var(--nuit-3);
+  position:relative;transition:background .2s;
+}
+.piste::after{
+  content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;
+  background:var(--craie);transition:transform .2s;
+}
+.bascule input:checked + .piste{background:var(--or)}
+.bascule input:checked + .piste::after{transform:translateX(18px);background:var(--nuit)}
+.bascule .lib{display:flex;flex-direction:column}
+.bascule .lib small{color:var(--acier);font-size:14px}
+
+.bouton{
+  appearance:none;cursor:pointer;display:inline-flex;align-items:center;gap:12px;
+  font-family:var(--disp);font-weight:600;font-size:24px;text-transform:uppercase;letter-spacing:.04em;
+  padding:12px 24px;border-radius:2px;border:1px solid var(--or);
+  background:var(--or);color:var(--nuit);transition:background .15s,transform .15s;
+}
+.bouton:hover{background:var(--or-clair);transform:translateY(-1px)}
+.bouton.second{background:transparent;color:var(--or);border-color:rgba(201,162,39,.5)}
+.bouton.second:hover{background:rgba(201,162,39,.1);border-color:var(--or)}
+.bouton:disabled{opacity:.4;cursor:not-allowed;transform:none}
+[hidden]{display:none!important}
+.actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:28px;align-items:center}
+.actions .resume{color:var(--acier)}
+
+.message{color:var(--acier)}
+.message b{color:var(--craie)}
+.message.erreur{border-color:rgba(200,16,46,.6)}
+.message.erreur strong{display:block;font-family:var(--disp);font-size:28px;text-transform:uppercase;color:var(--faux);margin-bottom:6px}
+
+/* ── question ─────────────────────────────────────────────── */
+.progres{display:flex;align-items:center;gap:14px;margin:6px 0 18px;color:var(--acier)}
+.barre{flex:1;height:3px;background:var(--nuit-3);border-radius:2px;overflow:hidden}
+.barre i{display:block;height:100%;width:0;background:var(--or);transition:width .4s cubic-bezier(.2,.8,.3,1)}
+.progres .score-live{color:var(--or-clair)}
+
+.enonce{
+  margin:14px 0 6px;font-family:var(--disp);font-weight:600;text-transform:none;
+  font-size:clamp(28px,4.4vw,40px);line-height:1.04;letter-spacing:.005em;
+}
+.consigne{color:var(--acier);margin:0 0 18px}
+.illus{margin:12px 0 18px}
+.illus img{max-width:100%;max-height:320px;border-radius:3px;border:1px solid var(--nuit-3);display:block}
+
+.reponses{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.reponse{
+  appearance:none;width:100%;cursor:pointer;text-align:left;
+  display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:14px;
+  padding:15px 16px;border-radius:3px;
+  font:inherit;color:var(--craie);
+  background:rgba(11,27,51,.55);border:1px solid var(--nuit-3);
+  transition:border-color .15s,background .15s,transform .15s;
+}
+.reponse:hover:not(:disabled){border-color:var(--acier);transform:translateX(3px)}
+.reponse .lettre{
+  font-family:var(--mono);font-size:.72rem;font-weight:600;letter-spacing:.1em;
+  width:30px;height:30px;display:grid;place-items:center;border-radius:2px;
+  border:1px solid var(--nuit-3);color:var(--acier);
+}
+.reponse .etat{font-family:var(--mono);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase}
+.reponse[aria-pressed="true"]{border-color:var(--or);background:rgba(201,162,39,.08)}
+.reponse[aria-pressed="true"] .lettre{border-color:var(--or);color:var(--or-clair)}
+.reponse:disabled{cursor:default}
+.reponse.juste{border-color:var(--juste);background:var(--juste-fond)}
+.reponse.juste .lettre{border-color:var(--juste);color:var(--juste)}
+.reponse.juste .etat{color:var(--juste)}
+.reponse.faux{border-color:var(--faux);background:var(--faux-fond)}
+.reponse.faux .lettre{border-color:var(--faux);color:var(--faux)}
+.reponse.faux .etat{color:var(--faux)}
+.reponse.manque{border-style:dashed;border-color:var(--juste)}
+.reponse.manque .etat{color:var(--juste)}
+.reponse.eteint{opacity:.5}
+
+.verdict{
+  margin-top:18px;padding:14px 16px;border-radius:3px;border-left:3px solid;
+  font-family:var(--disp);font-weight:600;font-size:26px;text-transform:uppercase;letter-spacing:.03em;
+  animation:apparait-ecran .3s ease-out;
+}
+.verdict small{display:block;font-family:var(--texte);font-weight:400;font-size:15px;text-transform:none;letter-spacing:0;color:var(--acier);margin-top:2px}
+.verdict.ok{border-color:var(--juste);background:var(--juste-fond);color:var(--juste)}
+.verdict.ko{border-color:var(--faux);background:var(--faux-fond);color:var(--faux)}
+
+.touches{color:#5d7699;margin-left:auto}
+
+/* ── résultat ─────────────────────────────────────────────── */
+.score-grand{display:flex;align-items:baseline;gap:18px;flex-wrap:wrap}
+.score-grand .val{
+  font-family:var(--disp);font-weight:800;font-size:clamp(90px,20vw,170px);line-height:.85;
+}
+.score-grand .val .sur{color:transparent;-webkit-text-stroke:2px var(--or)}
+.score-grand .pct{font-family:var(--disp);font-weight:600;font-size:40px;color:var(--or)}
+.mention{color:var(--acier);font-size:18px;margin:26px 0 0}
+
+.par-sujet{display:grid;gap:12px;margin:0;padding:0;list-style:none}
+.par-sujet li{display:grid;grid-template-columns:110px 1fr auto;gap:14px;align-items:center}
+.par-sujet .nom{font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--acier)}
+.par-sujet .barre{height:6px}
+.par-sujet .chiffre{font-family:var(--mono);font-size:.78rem;color:var(--craie)}
+
+.erreurs{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+.erreurs li{padding:16px 18px;border:1px solid var(--nuit-3);border-left:3px solid var(--faux);border-radius:3px;background:rgba(11,27,51,.55)}
+.erreurs .q{font-weight:600;margin:6px 0 8px}
+.erreurs .l{font-size:15px;color:var(--acier);margin:2px 0}
+.erreurs .l b{color:var(--juste);font-weight:500}
+.erreurs .l s{color:var(--faux);text-decoration-thickness:1px}
+
+@media(max-width:560px){
+  .panneau{padding:18px 16px}
+  .reponse{padding:13px 12px;gap:12px}
+  .par-sujet li{grid-template-columns:80px 1fr auto}
+  .touches{display:none}
+  .bouton{font-size:21px;padding:11px 20px}
+}
+</style>
+</head>
+<body>
+
+<div class="champ" aria-hidden="true"></div>
+
+<header class="tete">
+  <div class="wrap">
+    <div class="fanion">
+      <span class="pastille"></span>
+      <a class="mono" href="./">← Quizzer</a>
+      <span class="sep">/</span>
+      <span class="mono">Quiz en ligne</span>
+    </div>
+    <h1 id="titre"><span class="l1">Quiz</span><span class="l2">en ligne</span></h1>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- Chargement / erreur -->
+  <section class="ecran actif" id="e-charge">
+    <div class="panneau message" id="charge-msg">Chargement du jeu de questions…</div>
+  </section>
+
+  <!-- Réglages -->
+  <section class="ecran" id="e-reglages">
+    <h2 class="rubrique"><span>Sujets</span></h2>
+    <div class="choix" id="sujets"></div>
+    <p class="aide">Touchez un sujet pour l'ajouter ou le retirer.</p>
+
+    <h2 class="rubrique"><span>Nombre de questions</span></h2>
+    <div class="choix" id="nombres"></div>
+
+    <h2 class="rubrique"><span>Ordre</span></h2>
+    <label class="bascule">
+      <input type="checkbox" id="melange" checked>
+      <span class="piste" aria-hidden="true"></span>
+      <span class="lib">Ordre aléatoire<small>Mélange les questions et l'ordre des réponses.</small></span>
+    </label>
+
+    <div class="actions">
+      <button class="bouton" id="go" type="button">Commencer <span aria-hidden="true">→</span></button>
+      <span class="resume mono" id="resume"></span>
+    </div>
+  </section>
+
+  <!-- Question -->
+  <section class="ecran" id="e-question">
+    <div class="progres mono">
+      <span id="pos"></span>
+      <div class="barre"><i id="barre"></i></div>
+      <span class="score-live" id="live"></span>
+    </div>
+    <div class="panneau">
+      <span class="code mono" id="q-sujet"></span>
+      <h2 class="enonce" id="q-texte"></h2>
+      <p class="consigne" id="q-consigne"></p>
+      <div class="illus" id="q-image" hidden></div>
+      <ul class="reponses" id="q-reponses"></ul>
+      <div id="q-verdict"></div>
+    </div>
+    <div class="actions">
+      <button class="bouton" id="valider" type="button">Valider</button>
+      <button class="bouton" id="suivante" type="button" hidden>Suivante <span aria-hidden="true">→</span></button>
+      <button class="bouton second" id="abandon" type="button">Arrêter</button>
+      <span class="touches mono" id="touches"></span>
+    </div>
+  </section>
+
+  <!-- Résultat -->
+  <section class="ecran" id="e-resultat">
+    <h2 class="rubrique"><span>Résultat</span></h2>
+    <div class="score-grand">
+      <span class="val" id="r-val"></span>
+      <span class="pct" id="r-pct"></span>
+    </div>
+    <p class="mention" id="r-mention"></p>
+
+    <div class="actions">
+      <button class="bouton" id="r-erreurs-btn" type="button">Revoir mes erreurs</button>
+      <button class="bouton second" id="r-refaire" type="button">Refaire ce quiz</button>
+      <button class="bouton second" id="r-nouveau" type="button">Nouveau quiz</button>
+    </div>
+
+    <div id="r-sujets-bloc">
+      <h2 class="rubrique"><span>Par sujet</span></h2>
+      <ul class="par-sujet" id="r-sujets"></ul>
+    </div>
+
+    <div id="r-erreurs-bloc">
+      <h2 class="rubrique"><span>Questions manquées</span></h2>
+      <ul class="erreurs" id="r-erreurs"></ul>
+    </div>
+  </section>
+
+</main>
+
+<script>
+// ═══════════════════════════════════════════
+// DONNÉES
+// ═══════════════════════════════════════════
+// Le quiz lit le fichier publié dans le dépôt (exporté depuis l'éditeur).
+// Mêmes sujets par défaut que l'éditeur ; un fichier au format objet
+// { categories, questions } peut fournir les siens.
+const REF_URL = 'data/quiz.json';
+const SUJETS_DEFAUT = [
+  { id: 'sit',      label: 'SIT' },
+  { id: 'imf',      label: 'IMF' },
+  { id: 'istc',     label: 'ISTC' },
+  { id: 'nrbc',     label: 'NRBC' },
+  { id: 'armement', label: 'ARMEMENT' },
+  { id: 'rens',     label: 'RENS' },
+  { id: 'topo',     label: 'TOPO' },
+  { id: 'trans',    label: 'TRANS' },
+  { id: 'cyber',    label: 'CYBER SÉCU' },
+];
+const NOMBRES = [10, 20, 40, 0];   // 0 = toutes
+const LETTRES = ['A','B','C','D','E','F'];
+
+let banque = [];        // questions valides du fichier
+let sujets = [];        // [{id, label, n}] présents dans le fichier
+let choixSujets = new Set();
+let choixNombre = 10;
+
+let serie = [];         // questions de la partie en cours (réponses déjà ordonnées)
+let rang = 0;
+let resultats = [];     // [{q, choisies:Set, juste:bool}]
+let selection = new Set();
+let corrige = false;
+let derniereSerie = null;
+
+const $ = id => document.getElementById(id);
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c =>
+    ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[c]);
+}
+
+function melanger(t) {
+  const a = t.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function ecran(id) {
+  document.querySelectorAll('.ecran').forEach(e => e.classList.toggle('actif', e.id === id));
+  document.body.classList.toggle('en-jeu', id === 'e-question');
+  window.scrollTo({ top: 0 });
+}
+
+function libelleSujet(id) {
+  const s = sujets.find(x => x.id === id);
+  return s ? s.label : String(id || '—').toUpperCase();
+}
+
+function echec(titre, detail) {
+  const m = $('charge-msg');
+  m.classList.add('erreur');
+  m.innerHTML = '<strong>' + esc(titre) + '</strong>' + detail;
+}
+
+function charger() {
+  if (location.protocol === 'file:') {
+    echec('Disponible uniquement en ligne',
+      "La page est ouverte directement depuis un fichier : le navigateur interdit alors la lecture de <b>" +
+      REF_URL + "</b>. Ouvrez-la depuis son adresse web.");
+    return;
+  }
+  fetch(REF_URL + '?v=' + Date.now(), { cache: 'no-store' })
+    .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(preparer)
+    .catch(err => {
+      const m = String(err && err.message || err);
+      if (m.indexOf('HTTP 404') > -1) {
+        echec('Fichier introuvable', 'Aucun fichier <b>' + REF_URL + '</b> n\'est publié à côté de cette page.');
+      } else if (m.indexOf('HTTP') === 0) {
+        echec('Le serveur a refusé la demande', esc(m));
+      } else if (err instanceof SyntaxError) {
+        echec('Fichier illisible', "Le fichier de questions n'est pas un JSON valide.");
+      } else {
+        echec('Pas de connexion', 'Impossible de joindre le serveur. Réessayez dans un instant.');
+      }
+    });
+}
+
+function preparer(data) {
+  let qs = Array.isArray(data) ? data : (data && data.questions);
+  let cats = (!Array.isArray(data) && data && Array.isArray(data.categories)) ? data.categories : SUJETS_DEFAUT;
+  if (!Array.isArray(qs)) { echec('Fichier inexploitable', 'Le fichier ne contient pas de liste de questions.'); return; }
+
+  // On écarte les questions incomplètes plutôt que de bloquer tout le quiz.
+  banque = qs.filter(q => q && typeof q.question === 'string' && q.question.trim() &&
+    Array.isArray(q.answers) && q.answers.length >= 2 && q.answers.some(a => a && a.correct));
+  if (!banque.length) { echec('Aucune question jouable', 'Le fichier ne contient aucune question avec une bonne réponse.'); return; }
+
+  const compte = new Map();
+  banque.forEach(q => compte.set(q.category, (compte.get(q.category) || 0) + 1));
+  sujets = [];
+  cats.forEach(c => { if (compte.has(c.id)) sujets.push({ id: c.id, label: c.label || c.id, n: compte.get(c.id) }); });
+  compte.forEach((n, id) => { if (!sujets.some(s => s.id === id)) sujets.push({ id: id, label: String(id || 'Divers').toUpperCase(), n: n }); });
+
+  choixSujets = new Set(sujets.map(s => s.id));
+  dessinerReglages();
+  ecran('e-reglages');
+}
+
+// ═══════════════════════════════════════════
+// RÉGLAGES
+// ═══════════════════════════════════════════
+function disponibles() {
+  return banque.filter(q => choixSujets.has(q.category)).length;
+}
+
+function dessinerReglages() {
+  const tous = choixSujets.size === sujets.length;
+  $('sujets').innerHTML =
+    '<button type="button" class="puce" data-sujet="*" aria-pressed="' + tous + '">Tous<span class="nb">' + banque.length + '</span></button>' +
+    sujets.map(s => '<button type="button" class="puce" data-sujet="' + esc(s.id) + '" aria-pressed="' +
+      (!tous && choixSujets.has(s.id)) + '">' + esc(s.label) + '<span class="nb">' + s.n + '</span></button>').join('');
+
+  const dispo = disponibles();
+  $('nombres').innerHTML = NOMBRES.map(n => {
+    const lib = n === 0 ? 'Toutes · ' + dispo : String(n);
+    const off = n !== 0 && n > dispo;
+    return '<button type="button" class="puce" data-nombre="' + n + '" aria-pressed="' + (choixNombre === n) + '"' +
+      (off ? ' disabled' : '') + '>' + lib + '</button>';
+  }).join('');
+
+  const total = choixNombre === 0 ? dispo : Math.min(choixNombre, dispo);
+  $('resume').textContent = dispo ? total + ' question' + (total > 1 ? 's' : '') : 'Choisissez au moins un sujet';
+  $('go').disabled = dispo === 0;
+}
+
+$('sujets').addEventListener('click', e => {
+  const b = e.target.closest('[data-sujet]');
+  if (!b) return;
+  const id = b.dataset.sujet;
+  const tous = choixSujets.size === sujets.length;
+  if (id === '*') {
+    choixSujets = new Set(sujets.map(s => s.id));
+  } else if (tous) {
+    // Depuis « Tous », toucher un sujet revient à ne garder que lui.
+    choixSujets = new Set([id]);
+  } else if (choixSujets.has(id)) {
+    choixSujets.delete(id);
+    if (choixSujets.size === 0) choixSujets = new Set(sujets.map(s => s.id));
+  } else {
+    choixSujets.add(id);
+  }
+  ajusterNombre();
+  dessinerReglages();
+});
+
+$('nombres').addEventListener('click', e => {
+  const b = e.target.closest('[data-nombre]');
+  if (!b || b.disabled) return;
+  choixNombre = Number(b.dataset.nombre);
+  dessinerReglages();
+});
+
+// Si le nombre choisi dépasse ce que les sujets retenus permettent,
+// on passe au plus grand palier possible, sinon à « toutes ».
+function ajusterNombre() {
+  const dispo = disponibles();
+  if (choixNombre === 0 || choixNombre <= dispo) return;
+  const paliers = NOMBRES.filter(n => n !== 0 && n <= dispo);
+  choixNombre = paliers.length ? paliers[paliers.length - 1] : 0;
+}
+
+$('go').addEventListener('click', () => {
+  let liste = banque.filter(q => choixSujets.has(q.category));
+  const melange = $('melange').checked;
+  if (melange) liste = melanger(liste);
+  if (choixNombre > 0) liste = liste.slice(0, choixNombre);
+  lancer(liste, melange);
+});
+
+// ═══════════════════════════════════════════
+// PARTIE
+// ═══════════════════════════════════════════
+function lancer(liste, melangerReponses) {
+  serie = liste.map(q => ({
+    q: q,
+    reponses: melangerReponses ? melanger(q.answers) : q.answers.slice()
+  }));
+  derniereSerie = { liste: liste, melange: melangerReponses };
+  rang = 0;
+  resultats = [];
+  afficherQuestion();
+  ecran('e-question');
+}
+
+function estMulti(item) {
+  return !!item.q.multiCorrect || item.reponses.filter(a => a.correct).length > 1;
+}
+
+function afficherQuestion() {
+  const item = serie[rang];
+  const multi = estMulti(item);
+  selection = new Set();
+  corrige = false;
+
+  $('pos').textContent = 'Question ' + (rang + 1) + ' / ' + serie.length;
+  $('barre').style.width = (rang / serie.length * 100) + '%';
+  const bons = resultats.filter(r => r.juste).length;
+  $('live').textContent = resultats.length ? bons + ' juste' + (bons > 1 ? 's' : '') : '';
+
+  $('q-sujet').textContent = libelleSujet(item.q.category);
+  $('q-texte').textContent = item.q.question;
+  $('q-consigne').textContent = multi
+    ? 'Plusieurs réponses possibles : cochez-les toutes puis validez.'
+    : 'Une seule bonne réponse.';
+
+  const img = $('q-image');
+  if (item.q.image) {
+    img.hidden = false;
+    img.innerHTML = '<img alt="Illustration de la question" src="' + esc(item.q.image) + '">';
+  } else {
+    img.hidden = true;
+    img.innerHTML = '';
+  }
+
+  $('q-reponses').innerHTML = item.reponses.map((a, i) =>
+    '<li><button type="button" class="reponse" data-i="' + i + '" aria-pressed="false">' +
+    '<span class="lettre">' + LETTRES[i] + '</span>' +
+    '<span class="txt">' + esc(a.text) + '</span>' +
+    '<span class="etat"></span></button></li>').join('');
+
+  $('q-verdict').innerHTML = '';
+  $('valider').hidden = !multi;
+  $('valider').disabled = true;
+  $('suivante').hidden = true;
+  $('touches').textContent = 'Touches ' + LETTRES.slice(0, item.reponses.length).join(' ') + (multi ? ' · Entrée' : '');
+}
+
+$('q-reponses').addEventListener('click', e => {
+  const b = e.target.closest('.reponse');
+  if (b) choisir(Number(b.dataset.i));
+});
+
+function choisir(i) {
+  if (corrige) return;
+  const item = serie[rang];
+  if (i < 0 || i >= item.reponses.length) return;
+  if (!estMulti(item)) {
+    selection = new Set([i]);
+    corriger();
+    return;
+  }
+  if (selection.has(i)) selection.delete(i); else selection.add(i);
+  document.querySelectorAll('#q-reponses .reponse').forEach((b, k) =>
+    b.setAttribute('aria-pressed', selection.has(k)));
+  $('valider').disabled = selection.size === 0;
+}
+
+function corriger() {
+  if (corrige) return;
+  corrige = true;
+  const item = serie[rang];
+  let juste = true;
+  document.querySelectorAll('#q-reponses .reponse').forEach((b, k) => {
+    const bonne = !!item.reponses[k].correct;
+    const prise = selection.has(k);
+    b.disabled = true;
+    b.setAttribute('aria-pressed', 'false');
+    const etat = b.querySelector('.etat');
+    if (bonne && prise)      { b.classList.add('juste'); etat.textContent = '✓ Juste'; }
+    else if (!bonne && prise){ b.classList.add('faux');  etat.textContent = '✗ Faux'; juste = false; }
+    else if (bonne)          { b.classList.add('manque'); etat.textContent = 'Bonne réponse'; juste = false; }
+    else                     { b.classList.add('eteint'); }
+  });
+  resultats.push({ item: item, choisies: new Set(selection), juste: juste });
+
+  const bonnes = item.reponses.filter(a => a.correct).map(a => a.text);
+  $('q-verdict').innerHTML = juste
+    ? '<div class="verdict ok" role="status">Bonne réponse</div>'
+    : '<div class="verdict ko" role="status">Mauvaise réponse<small>' +
+      (bonnes.length > 1 ? 'Les bonnes réponses : ' : 'La bonne réponse : ') +
+      bonnes.map(esc).join(' · ') + '</small></div>';
+
+  const bons = resultats.filter(r => r.juste).length;
+  $('live').textContent = bons + ' juste' + (bons > 1 ? 's' : '');
+  $('barre').style.width = ((rang + 1) / serie.length * 100) + '%';
+  $('valider').hidden = true;
+  $('suivante').hidden = false;
+  $('suivante').innerHTML = (rang + 1 < serie.length ? 'Suivante' : 'Voir le score') + ' <span aria-hidden="true">→</span>';
+  $('suivante').focus({ preventScroll: true });
+  $('touches').textContent = 'Entrée pour continuer';
+}
+
+$('valider').addEventListener('click', () => { if (selection.size) corriger(); });
+$('suivante').addEventListener('click', suivante);
+$('abandon').addEventListener('click', () => {
+  if (resultats.length === 0) { ecran('e-reglages'); return; }
+  if (confirm('Arrêter le quiz ? Le score portera sur les ' + resultats.length + ' questions déjà répondues.')) {
+    afficherResultat();
+  }
+});
+
+function suivante() {
+  if (!corrige) return;
+  rang++;
+  if (rang >= serie.length) afficherResultat();
+  else afficherQuestion();
+}
+
+document.addEventListener('keydown', e => {
+  if (!$('e-question').classList.contains('actif') || e.metaKey || e.ctrlKey || e.altKey) return;
+  const k = e.key.toUpperCase();
+  if (k === 'ENTER') {
+    // Entrée sur un bouton d'action focalisé : laisser le clic natif agir.
+    // Sur une réponse, Entrée valide au lieu de recocher la case.
+    const f = document.activeElement;
+    if (f && f.tagName === 'BUTTON' && !f.classList.contains('reponse')) return;
+    e.preventDefault();
+    if (corrige) suivante();
+    else if (selection.size) corriger();
+    return;
+  }
+  let i = LETTRES.indexOf(k);
+  if (i < 0 && /^[1-6]$/.test(e.key)) i = Number(e.key) - 1;
+  if (i >= 0) { e.preventDefault(); choisir(i); }
+});
+
+// ═══════════════════════════════════════════
+// RÉSULTAT
+// ═══════════════════════════════════════════
+function afficherResultat() {
+  const total = resultats.length;
+  const bons = resultats.filter(r => r.juste).length;
+  const pct = total ? Math.round(bons / total * 100) : 0;
+
+  $('r-val').innerHTML = bons + '<span class="sur">/' + total + '</span>';
+  $('r-pct').textContent = pct + ' %';
+  $('r-mention').textContent =
+    pct === 100 ? 'Sans faute.' :
+    pct >= 80   ? 'Très bon résultat.' :
+    pct >= 60   ? 'Bon résultat, quelques points à revoir.' :
+    pct >= 40   ? 'Des bases, mais plusieurs sujets à retravailler.' :
+                  'À retravailler : reprenez les questions manquées ci-dessous.';
+
+  // Détail par sujet
+  const parSujet = new Map();
+  resultats.forEach(r => {
+    const id = r.item.q.category;
+    const s = parSujet.get(id) || { bons: 0, total: 0 };
+    s.total++; if (r.juste) s.bons++;
+    parSujet.set(id, s);
+  });
+  $('r-sujets-bloc').hidden = parSujet.size < 2;
+  $('r-sujets').innerHTML = Array.from(parSujet, ([id, s]) =>
+    '<li><span class="nom">' + esc(libelleSujet(id)) + '</span>' +
+    '<span class="barre"><i style="width:' + (s.bons / s.total * 100) + '%"></i></span>' +
+    '<span class="chiffre">' + s.bons + '/' + s.total + '</span></li>').join('');
+
+  // Questions manquées, avec la réponse donnée et la bonne
+  const ratees = resultats.filter(r => !r.juste);
+  $('r-erreurs-bloc').hidden = ratees.length === 0;
+  $('r-erreurs-btn').hidden = ratees.length === 0;
+  $('r-erreurs').innerHTML = ratees.map(r => {
+    const donnees = r.item.reponses.filter((a, k) => r.choisies.has(k) && !a.correct).map(a => a.text);
+    const bonnes = r.item.reponses.filter(a => a.correct).map(a => a.text);
+    return '<li><span class="code mono">' + esc(libelleSujet(r.item.q.category)) + '</span>' +
+      '<p class="q">' + esc(r.item.q.question) + '</p>' +
+      (donnees.length ? '<p class="l">Votre réponse : <s>' + donnees.map(esc).join(' · ') + '</s></p>' : '') +
+      '<p class="l">' + (bonnes.length > 1 ? 'Bonnes réponses' : 'Bonne réponse') + ' : <b>' + bonnes.map(esc).join(' · ') + '</b></p></li>';
+  }).join('');
+
+  ecran('e-resultat');
+}
+
+$('r-erreurs-btn').addEventListener('click', () => {
+  const liste = resultats.filter(r => !r.juste).map(r => r.item.q);
+  lancer($('melange').checked ? melanger(liste) : liste, $('melange').checked);
+});
+$('r-refaire').addEventListener('click', () => {
+  if (!derniereSerie) return;
+  const m = derniereSerie.melange;
+  lancer(m ? melanger(derniereSerie.liste) : derniereSerie.liste, m);
+});
+$('r-nouveau').addEventListener('click', () => { dessinerReglages(); ecran('e-reglages'); });
+
+charger();
+</script>
+<script src="../assets/retour.js" defer></script>
+</body>
+</html>

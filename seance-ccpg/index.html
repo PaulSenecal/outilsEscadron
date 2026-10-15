@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Séance CCPG — chronomètre de groupe</title>
+<meta name="description" content="Chronométrage d'une séance CCPG : tours de piste, pompes, notes calculées automatiquement et tableau récapitulatif.">
+<meta name="theme-color" content="#10233F">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Oswald:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Thème clair volontaire : en plein soleil, un fond blanc à luminosité
+   maximale reste bien plus lisible qu'un fond sombre. */
+:root{
+  --papier:#F4F6F9; --craie:#FFF; --encre:#10233F; --encre-2:#22406B;
+  --rouge:#C8102E; --vert:#0F7B52; --ambre:#B45309;
+  --acier:#5E6E85; --ligne:#CBD5E1; --ligne-2:#E3E9F0;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;background:var(--papier);color:var(--encre);
+  font-family:Barlow,"Segoe UI",system-ui,-apple-system,sans-serif;
+  font-size:16px;line-height:1.45;overscroll-behavior-y:contain;
+}
+.num{font-variant-numeric:tabular-nums}
+h1,h2,.disp{font-family:Oswald,"Arial Narrow",sans-serif;font-weight:500;text-transform:uppercase;letter-spacing:.02em;margin:0}
+.wrap{max-width:820px;margin:0 auto;padding:0 14px 96px}
+
+/* ── barre + étapes ───────────────────────────────── */
+header{position:sticky;top:0;z-index:30;background:var(--encre);color:#fff;border-bottom:3px solid var(--rouge)}
+.hbar{max-width:820px;margin:0 auto;padding:10px 14px;display:flex;align-items:center;gap:12px}
+.hbar h1{font-size:16px;letter-spacing:.14em}
+.hbar .droite{margin-left:auto;display:flex;gap:8px}
+.steps{display:flex;max-width:820px;margin:0 auto;overflow-x:auto;scrollbar-width:none}
+.steps::-webkit-scrollbar{display:none}
+.steps button{
+  flex:1 0 auto;min-width:88px;padding:9px 12px;border:0;background:transparent;color:#9FB2CC;
+  font:inherit;font-family:Oswald,sans-serif;font-size:12.5px;letter-spacing:.1em;text-transform:uppercase;
+  cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-3px}
+.steps button[aria-current=true]{color:#fff;border-bottom-color:var(--rouge)}
+.steps button:disabled{opacity:.4;cursor:not-allowed}
+
+/* ── blocs ────────────────────────────────────────── */
+.vue{display:none;padding-top:18px}
+.vue.on{display:block}
+.carte{background:var(--craie);border:1px solid var(--ligne);border-radius:12px;padding:16px;margin-bottom:14px}
+.titre{font-family:Oswald,sans-serif;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--acier);margin-bottom:10px}
+label{display:block;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--acier);font-weight:600;margin-bottom:5px}
+input,select{width:100%;padding:12px 12px;border:1px solid var(--ligne);border-radius:9px;background:#FBFCFE;
+  font:inherit;font-size:16px;color:var(--encre);font-variant-numeric:tabular-nums}
+input:focus-visible,select:focus-visible,button:focus-visible{outline:3px solid var(--rouge);outline-offset:2px}
+.rang{display:grid;gap:10px}
+@media(min-width:560px){.rang.c3{grid-template-columns:2fr 1fr 1fr}.rang.c2{grid-template-columns:1fr 1fr}}
+.btn{border:1px solid var(--ligne);background:var(--craie);color:var(--encre);border-radius:9px;
+  padding:12px 16px;font:inherit;font-weight:600;cursor:pointer;min-height:46px}
+.btn:active{transform:translateY(1px)}
+.btn-p{background:var(--encre);border-color:var(--encre);color:#fff}
+.btn-r{background:var(--rouge);border-color:var(--rouge);color:#fff}
+.btn-v{background:var(--vert);border-color:var(--vert);color:#fff}
+.btn-sm{padding:8px 12px;min-height:38px;font-size:14px}
+.btn-bloc{width:100%}
+.seg{display:flex;border:1px solid var(--ligne);border-radius:9px;overflow:hidden;background:#FBFCFE}
+.seg button{flex:1;padding:12px 6px;border:0;background:transparent;font:inherit;font-weight:600;color:var(--acier);cursor:pointer}
+.seg button[aria-pressed=true]{background:var(--encre);color:#fff}
+.aide{font-size:13px;color:var(--acier);margin:8px 0 0}
+.vide{text-align:center;color:var(--acier);padding:26px 10px;font-size:14px}
+
+/* ── carnet & participants ────────────────────────── */
+.puces{display:flex;flex-wrap:wrap;gap:8px}
+.puce{border:1px solid var(--ligne);background:#FBFCFE;border-radius:999px;padding:8px 14px;
+  font:inherit;font-size:14px;cursor:pointer;color:var(--encre)}
+.puce:hover{border-color:var(--encre)}
+.puce.dedans{background:var(--encre);border-color:var(--encre);color:#fff}
+.pers{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--ligne-2)}
+.pers:last-child{border-bottom:0}
+.pers .nom{font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pers .det{font-size:13px;color:var(--acier);white-space:nowrap}
+
+/* ── chrono ───────────────────────────────────────── */
+.chrono{background:var(--encre);color:#fff;border-radius:14px;padding:18px 16px;text-align:center;margin-bottom:14px}
+.chrono .t{font-family:Oswald,sans-serif;font-size:clamp(46px,15vw,76px);line-height:1;font-variant-numeric:tabular-nums;letter-spacing:.01em}
+.chrono .t small{font-size:.45em;color:#9FB2CC}
+.chrono .etat{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#9FB2CC;margin-bottom:6px}
+.chrono .cmd{display:flex;gap:10px;margin-top:14px}
+.chrono .cmd .btn{flex:1}
+
+/* ── lignes coureur (cibles tactiles) ─────────────── */
+.piste{display:flex;flex-direction:column;gap:10px}
+.tour{display:flex;align-items:center;gap:12px;width:100%;text-align:left;
+  background:var(--craie);border:2px solid var(--ligne);border-radius:12px;
+  padding:14px 14px;min-height:74px;font:inherit;color:var(--encre);cursor:pointer}
+.tour:active{background:#EEF2F7}
+.tour .nom{flex:1;min-width:0;font-size:18px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tour .nom small{display:block;font-size:12px;font-weight:400;color:var(--acier);letter-spacing:.04em}
+.tour .compte{font-family:Oswald,sans-serif;font-size:26px;font-variant-numeric:tabular-nums;color:var(--encre-2);white-space:nowrap}
+.tour .compte small{font-size:.55em;color:var(--acier)}
+.tour.fini{border-color:var(--vert);background:#F0F9F4}
+.tour.fini .chrono-fin{font-family:Oswald,sans-serif;font-size:26px;color:var(--vert);font-variant-numeric:tabular-nums}
+.annul{border:1px solid var(--ligne);background:#FBFCFE;border-radius:8px;width:42px;height:42px;
+  font-size:17px;cursor:pointer;color:var(--acier);flex:0 0 auto}
+.annul:disabled{opacity:.3;cursor:not-allowed}
+
+/* ── résultats ────────────────────────────────────── */
+.res{border:1px solid var(--ligne);border-radius:12px;background:var(--craie);padding:14px;margin-bottom:12px}
+.res .tete{display:flex;align-items:baseline;gap:10px;margin-bottom:12px}
+.res .tete .nom{font-size:18px;font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.res .tete .det{font-size:13px;color:var(--acier);white-space:nowrap}
+.notes{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--ligne-2);
+  border:1px solid var(--ligne-2);border-radius:9px;overflow:hidden;margin-top:12px}
+.notes div{background:var(--craie);padding:9px 6px;text-align:center}
+.notes .l{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--acier)}
+.notes .v{font-family:Oswald,sans-serif;font-size:22px;font-variant-numeric:tabular-nums}
+.notes .tot{background:#F3F6FA}
+.notes .tot .v{color:var(--encre)}
+.ok{color:var(--vert)}.ko{color:var(--rouge)}
+.etiq{font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;padding:3px 9px;border-radius:999px;border:2px solid currentColor}
+
+/* ── divers ───────────────────────────────────────── */
+.actions{display:grid;gap:10px}
+@media(min-width:560px){.actions{grid-template-columns:1fr 1fr}}
+.toast{position:fixed;left:50%;bottom:78px;transform:translate(-50%,20px);opacity:0;pointer-events:none;
+  background:var(--encre);color:#fff;padding:11px 18px;border-radius:999px;font-size:14px;
+  transition:.25s;z-index:60;max-width:90vw;text-align:center}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+footer{color:var(--acier);font-size:12.5px;padding:20px 0 0;border-top:1px solid var(--ligne);margin-top:8px}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hbar">
+    <h1>Séance CCPG</h1>
+    <div class="droite">
+      <button class="btn btn-sm" style="background:#22406B;border-color:#22406B;color:#fff" onclick="reinit()">Nouvelle séance</button>
+    </div>
+  </div>
+  <nav class="steps" id="steps">
+    <button data-v="1" aria-current="true">1 · Séance</button>
+    <button data-v="2">2 · Coureurs</button>
+    <button data-v="3">3 · Course</button>
+    <button data-v="4">4 · Résultats</button>
+  </nav>
+</header>
+
+<div class="wrap">
+
+  <!-- ÉTAPE 1 ───────────────────────────────────── -->
+  <section class="vue on" id="v1">
+    <div class="carte">
+      <div class="titre">Format de l'épreuve</div>
+      <div class="seg" id="fmt" role="group" aria-label="Format">
+        <button type="button" data-v="400" aria-pressed="true">6 × 400 m</button>
+        <button type="button" data-v="1200" aria-pressed="false">2 × 1200 m</button>
+        <button type="button" data-v="simple" aria-pressed="false">Arrivée seule</button>
+      </div>
+      <p class="aide" id="fmtAide"></p>
+    </div>
+
+    <div class="carte">
+      <div class="titre">Repères de séance</div>
+      <div class="rang c2">
+        <div><label for="date">Date</label><input type="date" id="date"></div>
+        <div><label for="lieu">Lieu</label><input type="text" id="lieu" placeholder="Stade, piste…" maxlength="40"></div>
+      </div>
+    </div>
+
+    <button class="btn btn-p btn-bloc" onclick="allerA(2)">Passer aux coureurs →</button>
+  </section>
+
+  <!-- ÉTAPE 2 ───────────────────────────────────── -->
+  <section class="vue" id="v2">
+    <div class="carte">
+      <div class="titre">Ajouter un coureur</div>
+      <div class="rang c3">
+        <div><label for="nNom">Nom</label><input type="text" id="nNom" placeholder="Nom, prénom" maxlength="40" autocomplete="off"></div>
+        <div><label>Sexe</label>
+          <div class="seg" id="nSexe" role="group" aria-label="Sexe">
+            <button type="button" data-v="H" aria-pressed="true">H</button>
+            <button type="button" data-v="F" aria-pressed="false">F</button>
+          </div>
+        </div>
+        <div><label for="nAnnee">Naissance</label><input type="number" id="nAnnee" inputmode="numeric" placeholder="1994" min="1940" max="2015"></div>
+      </div>
+      <p class="aide">L'année de naissance suffit : la tranche d'âge est celle atteinte au 31 décembre.</p>
+      <div style="margin-top:10px"><button class="btn btn-p btn-bloc" onclick="ajouterCoureur()">+ Ajouter à la séance</button></div>
+    </div>
+
+    <div class="carte" id="carnetCarte">
+      <div class="titre">Carnet — un appui pour ajouter</div>
+      <div class="puces" id="carnet"></div>
+    </div>
+
+    <div class="carte">
+      <div class="titre"><span id="nbCoureurs">0</span> coureur(s) au départ</div>
+      <div id="listeCoureurs"></div>
+    </div>
+
+    <button class="btn btn-p btn-bloc" onclick="allerA(3)">Aller à la course →</button>
+  </section>
+
+  <!-- ÉTAPE 3 ───────────────────────────────────── -->
+  <section class="vue" id="v3">
+    <div class="chrono">
+      <div class="etat" id="etat">Prêt</div>
+      <div class="t num" id="tChrono">0:00<small>.0</small></div>
+      <div class="cmd">
+        <button class="btn btn-v" id="btnGo" onclick="basculerChrono()">Départ</button>
+        <button class="btn" id="btnFin" onclick="terminerCourse()" style="flex:0 0 auto">Terminer</button>
+      </div>
+    </div>
+    <p class="aide" id="aideCourse" style="margin:0 0 12px"></p>
+    <div class="piste" id="piste"></div>
+  </section>
+
+  <!-- ÉTAPE 4 ───────────────────────────────────── -->
+  <section class="vue" id="v4">
+    <div id="resultats"></div>
+    <div class="carte">
+      <div class="titre">Récapitulatif</div>
+      <div class="actions">
+        <button class="btn btn-p" onclick="copierTableau()">Copier le tableau</button>
+        <button class="btn" onclick="envoyerMail()">Ouvrir dans un mail</button>
+        <button class="btn" onclick="telechargerCSV()">Télécharger en CSV</button>
+        <button class="btn" onclick="allerA(3)">← Retour à la course</button>
+      </div>
+      <p class="aide">« Copier le tableau » met le récapitulatif mis en forme dans le presse-papier :
+        ouvrez votre messagerie et collez-le dans le corps du message.</p>
+    </div>
+    <footer>
+      Notes calculées d'après l'instruction n° 130/ARM/SEO/DSEO/SDRH/BPM du 12 février 2025.
+      Un temps situé entre deux lignes du barème prend la ligne la plus lente.
+      Les données saisies restent sur cet appareil et ne sont envoyées nulle part.
+    </footer>
+  </section>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="../assets/bareme.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const CLE_SESSION = 'esc.seance.session';
+const CLE_CARNET  = 'esc.seance.carnet';
+const TOURS = { '400': 6, '1200': 2, 'simple': 1 };
+const LIB   = { '400': '2400 m — 6 tours de 400 m', '1200': '2400 m — 2 tours de 1200 m', 'simple': '2400 m — arrivée seule' };
+
+let S = {
+  format: '400', date: new Date().toISOString().slice(0, 10), lieu: '',
+  coureurs: [], startedAt: null, stoppedAt: null
+};
+let carnet = [];
+let sexeSaisie = 'H';
+let vue = 1;
+let raf = null, veille = null;
+
+/* ── stockage ─────────────────────────────────────── */
+function sauver() {
+  try { localStorage.setItem(CLE_SESSION, JSON.stringify(S)); } catch (e) {}
+}
+function sauverCarnet() {
+  try { localStorage.setItem(CLE_CARNET, JSON.stringify(carnet)); } catch (e) {}
+}
+function charger() {
+  try {
+    const s = JSON.parse(localStorage.getItem(CLE_SESSION) || 'null');
+    if (s && Array.isArray(s.coureurs)) S = Object.assign(S, s);
+  } catch (e) {}
+  try {
+    const c = JSON.parse(localStorage.getItem(CLE_CARNET) || '[]');
+    if (Array.isArray(c)) carnet = c;
+  } catch (e) {}
+}
+
+/* ── utilitaires ──────────────────────────────────── */
+const pad = n => String(n).padStart(2, '0');
+function chrono(ms, dixiemes) {
+  const t = Math.max(0, ms) / 1000;
+  const m = Math.floor(t / 60), s = Math.floor(t % 60);
+  return m + ':' + pad(s) + (dixiemes ? '<small>.' + Math.floor((t * 10) % 10) + '</small>' : '');
+}
+function mmss(sec) { return Math.floor(sec / 60) + ':' + pad(Math.round(sec % 60)); }
+function ageDe(c) { return new Date().getFullYear() - (+c.annee || 0); }
+function trancheDe(c) { return trancheFor(ageDe(c)); }
+function toast(m) {
+  const t = $('#toast'); t.textContent = m; t.classList.add('on');
+  clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove('on'), 2400);
+}
+function nouvelId() { return 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6); }
+
+/* ── notes ────────────────────────────────────────── */
+// Le barème avance par pas de 5 s : on arrondit le temps à la seconde
+// supérieure, sinon un 11:30,4 profiterait de la ligne 11:30.
+function noteECR(c) {
+  if (c.temps == null) return null;
+  return noteDe('2400', c.sexe, trancheDe(c), Math.ceil(c.temps));
+}
+function noteCMG(c) {
+  if (c.pompes == null || c.pompes === '') return null;
+  return noteDe('cmg', c.sexe, trancheDe(c), +c.pompes);
+}
+function noteAA(c) {
+  const v = c.aa;
+  return (v == null || v === '') ? null : Math.max(0, Math.min(20, +v));
+}
+function totalDe(c) {
+  const a = noteECR(c), b = noteCMG(c), d = noteAA(c);
+  return { ecr: a, cmg: b, aa: d, total: (a || 0) + (b || 0) + (d || 0), complet: a != null && b != null && d != null };
+}
+function classement(t) { return t >= 51 ? 5 : t >= 41 ? 4 : t >= 31 ? 3 : t >= 21 ? 2 : 1; }
+
+/* ── navigation ───────────────────────────────────── */
+function allerA(n) {
+  if (n >= 3 && S.coureurs.length === 0) { toast('Ajoutez au moins un coureur'); n = 2; }
+  vue = n;
+  $$('.vue').forEach(v => v.classList.remove('on'));
+  $('#v' + n).classList.add('on');
+  $$('#steps button').forEach(b => b.setAttribute('aria-current', b.dataset.v === String(n) ? 'true' : 'false'));
+  window.scrollTo(0, 0);
+  if (n === 2) { rendreCarnet(); rendreCoureurs(); }
+  if (n === 3) { rendrePiste(); rendreChrono(); }
+  if (n === 4) rendreResultats();
+}
+$$('#steps button').forEach(b => b.addEventListener('click', () => allerA(+b.dataset.v)));
+
+/* ── étape 1 ──────────────────────────────────────── */
+$$('#fmt button').forEach(b => b.addEventListener('click', () => {
+  if (S.startedAt) { toast('Course déjà lancée : format verrouillé'); return; }
+  $$('#fmt button').forEach(x => x.setAttribute('aria-pressed', 'false'));
+  b.setAttribute('aria-pressed', 'true');
+  S.format = b.dataset.v; majFormat(); sauver();
+}));
+function majFormat() {
+  const n = TOURS[S.format];
+  $('#fmtAide').textContent = S.format === 'simple'
+    ? "Un seul appui par coureur, au passage de la ligne d'arrivée."
+    : 'Un appui par tour : ' + n + ' appuis par coureur, le dernier fige le temps.';
+  $('#aideCourse').textContent = LIB[S.format] + ' — appuyez sur la ligne du coureur à chaque passage.';
+}
+$('#date').addEventListener('input', e => { S.date = e.target.value; sauver(); });
+$('#lieu').addEventListener('input', e => { S.lieu = e.target.value; sauver(); });
+
+/* ── étape 2 ──────────────────────────────────────── */
+$$('#nSexe button').forEach(b => b.addEventListener('click', () => {
+  $$('#nSexe button').forEach(x => x.setAttribute('aria-pressed', 'false'));
+  b.setAttribute('aria-pressed', 'true'); sexeSaisie = b.dataset.v;
+}));
+
+function ajouterCoureur() {
+  const nom = $('#nNom').value.trim();
+  const annee = +$('#nAnnee').value;
+  if (!nom) { toast('Renseignez un nom'); $('#nNom').focus(); return; }
+  if (!annee || annee < 1940 || annee > new Date().getFullYear() - 15) {
+    toast('Année de naissance invalide'); $('#nAnnee').focus(); return;
+  }
+  poser({ nom: nom, sexe: sexeSaisie, annee: annee });
+  // mémorisation dans le carnet, sans doublon
+  if (!carnet.some(c => c.nom.toLowerCase() === nom.toLowerCase() && c.annee === annee)) {
+    carnet.push({ nom: nom, sexe: sexeSaisie, annee: annee });
+    carnet.sort((a, b) => a.nom.localeCompare(b.nom, 'fr'));
+    sauverCarnet();
+  }
+  $('#nNom').value = ''; $('#nAnnee').value = '';
+  $('#nNom').focus();
+  rendreCarnet(); rendreCoureurs();
+}
+
+function poser(p) {
+  S.coureurs.push({
+    id: nouvelId(), nom: p.nom, sexe: p.sexe, annee: p.annee,
+    laps: [], temps: null, pompes: '', aa: ''
+  });
+  sauver();
+}
+
+function depuisCarnet(i) {
+  const p = carnet[i];
+  const dedans = S.coureurs.some(c => c.nom === p.nom && c.annee === p.annee);
+  if (dedans) { toast(p.nom + ' est déjà au départ'); return; }
+  poser(p); rendreCarnet(); rendreCoureurs();
+  toast(p.nom + ' ajouté');
+}
+
+function oublierCarnet(i, ev) {
+  ev.stopPropagation();
+  if (!confirm('Retirer ' + carnet[i].nom + ' du carnet ?')) return;
+  carnet.splice(i, 1); sauverCarnet(); rendreCarnet();
+}
+
+function retirer(id) {
+  const c = S.coureurs.find(x => x.id === id);
+  if (c && (c.laps.length || c.temps != null) && !confirm('Retirer ' + c.nom + ' ? Son temps sera perdu.')) return;
+  S.coureurs = S.coureurs.filter(x => x.id !== id);
+  sauver(); rendreCoureurs(); rendrePiste();
+}
+
+function rendreCarnet() {
+  const z = $('#carnet');
+  if (!carnet.length) {
+    $('#carnetCarte').style.display = 'none';
+    return;
+  }
+  $('#carnetCarte').style.display = '';
+  z.innerHTML = carnet.map(function (p, i) {
+    const dedans = S.coureurs.some(c => c.nom === p.nom && c.annee === p.annee);
+    return '<button class="puce' + (dedans ? ' dedans' : '') + '" onclick="depuisCarnet(' + i + ')" ' +
+      'oncontextmenu="oublierCarnet(' + i + ',event);return false">' +
+      p.nom + ' <span style="opacity:.6">· ' + p.sexe + ' ' + (new Date().getFullYear() - p.annee) + '</span></button>';
+  }).join('');
+}
+
+function rendreCoureurs() {
+  $('#nbCoureurs').textContent = S.coureurs.length;
+  const z = $('#listeCoureurs');
+  if (!S.coureurs.length) { z.innerHTML = '<div class="vide">Personne au départ pour le moment.</div>'; return; }
+  z.innerHTML = S.coureurs.map(c =>
+    '<div class="pers"><span class="nom">' + c.nom + '</span>' +
+    '<span class="det">' + c.sexe + ' · ' + ageDe(c) + ' ans · ' + trancheDe(c) + '</span>' +
+    '<button class="annul" onclick="retirer(\'' + c.id + '\')" title="Retirer">×</button></div>').join('');
+}
+
+/* ── étape 3 : chronomètre ────────────────────────── */
+function basculerChrono() {
+  if (!S.startedAt) {
+    S.startedAt = Date.now(); S.stoppedAt = null;
+    demanderVeille();
+  } else if (!S.stoppedAt) {
+    if (!confirm('Arrêter le chronomètre ?')) return;
+    S.stoppedAt = Date.now();
+    libererVeille();
+  } else {
+    return;
+  }
+  sauver(); rendreChrono(); rendrePiste(); boucle();
+}
+
+function terminerCourse() {
+  if (S.startedAt && !S.stoppedAt) S.stoppedAt = Date.now();
+  libererVeille(); sauver(); allerA(4);
+}
+
+function ecoule() {
+  if (!S.startedAt) return 0;
+  return (S.stoppedAt || Date.now()) - S.startedAt;
+}
+
+function boucle() {
+  cancelAnimationFrame(raf);
+  if (!S.startedAt || S.stoppedAt) { majAffichageChrono(); return; }
+  const pas = () => { majAffichageChrono(); raf = requestAnimationFrame(pas); };
+  raf = requestAnimationFrame(pas);
+}
+function majAffichageChrono() { $('#tChrono').innerHTML = chrono(ecoule(), true); }
+
+function rendreChrono() {
+  const enCours = S.startedAt && !S.stoppedAt;
+  $('#etat').textContent = !S.startedAt ? 'Prêt' : (enCours ? 'En cours' : 'Arrêté');
+  const go = $('#btnGo');
+  go.textContent = !S.startedAt ? 'Départ' : (enCours ? 'Arrêter' : 'Chronomètre arrêté');
+  go.className = 'btn ' + (!S.startedAt ? 'btn-v' : (enCours ? 'btn-r' : ''));
+  go.disabled = !!S.stoppedAt;
+  majAffichageChrono();
+}
+
+function tour(id) {
+  if (!S.startedAt) { toast('Lancez d\'abord le chronomètre'); return; }
+  if (S.stoppedAt) { toast('Chronomètre arrêté'); return; }
+  const c = S.coureurs.find(x => x.id === id);
+  if (!c || c.temps != null) return;
+  c.laps.push(ecoule() / 1000);
+  if (c.laps.length >= TOURS[S.format]) {
+    c.temps = c.laps[c.laps.length - 1];
+    if (navigator.vibrate) navigator.vibrate(60);
+    toast(c.nom + ' — ' + mmss(c.temps));
+  } else if (navigator.vibrate) {
+    navigator.vibrate(20);
+  }
+  sauver(); rendrePiste();
+}
+
+function annuler(id, ev) {
+  ev.stopPropagation();
+  const c = S.coureurs.find(x => x.id === id);
+  if (!c || !c.laps.length) return;
+  c.laps.pop(); c.temps = null;
+  sauver(); rendrePiste();
+}
+
+function rendrePiste() {
+  const n = TOURS[S.format];
+  $('#piste').innerHTML = S.coureurs.map(function (c) {
+    const fini = c.temps != null;
+    return '<button class="tour' + (fini ? ' fini' : '') + '" onclick="tour(\'' + c.id + '\')">' +
+      '<span class="nom">' + c.nom + '<small>' + c.sexe + ' · ' + ageDe(c) + ' ans</small></span>' +
+      (fini
+        ? '<span class="chrono-fin num">' + mmss(c.temps) + '</span>'
+        : '<span class="compte num">' + c.laps.length + '<small>/' + n + '</small></span>') +
+      '<span class="annul" role="button" tabindex="0" onclick="annuler(\'' + c.id + '\',event)" ' +
+      'title="Annuler le dernier appui"' + (c.laps.length ? '' : ' style="opacity:.3"') + '>↺</span>' +
+      '</button>';
+  }).join('') || '<div class="vide">Aucun coureur. Revenez à l\'étape 2.</div>';
+}
+
+/* Écran maintenu allumé pendant la course. */
+function demanderVeille() {
+  if (!('wakeLock' in navigator)) return;
+  navigator.wakeLock.request('screen').then(v => { veille = v; }).catch(() => {});
+}
+function libererVeille() { if (veille) { veille.release().catch(() => {}); veille = null; } }
+document.addEventListener('visibilitychange', function () {
+  if (document.visibilityState === 'visible' && S.startedAt && !S.stoppedAt) { demanderVeille(); boucle(); }
+});
+
+/* ── étape 4 : résultats ──────────────────────────── */
+function majChamp(id, champ, val) {
+  const c = S.coureurs.find(x => x.id === id);
+  if (!c) return;
+  c[champ] = val;
+  sauver(); rendreResultats();
+}
+function majTemps(id, txt) {
+  const m = String(txt).match(/^(\d{1,2})[:.'](\d{1,2})$/);
+  const c = S.coureurs.find(x => x.id === id);
+  if (!c) return;
+  if (!txt.trim()) { c.temps = null; }
+  else if (m) { c.temps = (+m[1]) * 60 + (+m[2]); }
+  else { toast('Format attendu : mm:ss'); return; }
+  sauver(); rendreResultats();
+}
+
+function rendreResultats() {
+  const z = $('#resultats');
+  if (!S.coureurs.length) { z.innerHTML = '<div class="carte"><div class="vide">Aucun coureur.</div></div>'; return; }
+  z.innerHTML = S.coureurs.map(function (c) {
+    const t = totalDe(c);
+    const cls = classement(t.total);
+    const bon = t.total >= 31;
+    return '<div class="res">' +
+      '<div class="tete"><span class="nom">' + c.nom + '</span>' +
+      '<span class="det">' + c.sexe + ' · ' + ageDe(c) + ' ans · ' + trancheDe(c) + '</span></div>' +
+      '<div class="rang c3">' +
+      '<div><label>Temps (mm:ss)</label><input type="text" inputmode="numeric" value="' +
+        (c.temps != null ? mmss(c.temps) : '') + '" placeholder="—" onchange="majTemps(\'' + c.id + '\',this.value)"></div>' +
+      '<div><label>Pompes</label><input type="number" inputmode="numeric" min="0" max="99" value="' +
+        (c.pompes === '' ? '' : c.pompes) + '" placeholder="—" onchange="majChamp(\'' + c.id + '\',\'pompes\',this.value)"></div>' +
+      '<div><label>Note AA</label><input type="number" inputmode="numeric" min="0" max="20" value="' +
+        (c.aa === '' ? '' : c.aa) + '" placeholder="—" onchange="majChamp(\'' + c.id + '\',\'aa\',this.value)"></div>' +
+      '</div>' +
+      '<div class="notes">' +
+      '<div><div class="l">ECR</div><div class="v">' + (t.ecr == null ? '—' : t.ecr) + '</div></div>' +
+      '<div><div class="l">CMG</div><div class="v">' + (t.cmg == null ? '—' : t.cmg) + '</div></div>' +
+      '<div><div class="l">AA</div><div class="v">' + (t.aa == null ? '—' : t.aa) + '</div></div>' +
+      '<div class="tot"><div class="l">Total</div><div class="v ' + (bon ? 'ok' : 'ko') + '">' + t.total + '</div></div>' +
+      '</div>' +
+      '<div style="margin-top:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
+      '<span class="etiq ' + (bon ? 'ok' : 'ko') + '">Niveau ' + cls + '</span>' +
+      '<span class="aide" style="margin:0">' +
+        (t.complet ? (bon ? 'Seuil des 31 points atteint.' : 'Sous le seuil des 31 points.')
+                   : 'Total partiel : toutes les épreuves ne sont pas renseignées.') +
+      '</span></div></div>';
+  }).join('');
+}
+
+/* ── export ───────────────────────────────────────── */
+function enTete() {
+  const d = S.date ? S.date.split('-').reverse().join('/') : '';
+  return 'Séance CCPG' + (d ? ' du ' + d : '') + (S.lieu ? ' — ' + S.lieu : '') + ' · ' + LIB[S.format];
+}
+function lignes() {
+  return S.coureurs.map(function (c) {
+    const t = totalDe(c);
+    return [c.nom, c.sexe, ageDe(c), trancheDe(c),
+      c.temps != null ? mmss(c.temps) : '',
+      t.ecr == null ? '' : t.ecr,
+      c.pompes === '' ? '' : c.pompes,
+      t.cmg == null ? '' : t.cmg,
+      t.aa == null ? '' : t.aa,
+      t.total, 'Niveau ' + classement(t.total)];
+  });
+}
+const COLS = ['Nom', 'Sexe', 'Âge', 'Tranche', 'Temps 2400 m', 'Note ECR', 'Pompes', 'Note CMG', 'Note AA', 'Total /60', 'Classement'];
+
+function tableauHTML() {
+  const th = COLS.map(c => '<th style="border:1px solid #999;padding:5px 8px;background:#10233F;color:#fff;font-size:12px">' + c + '</th>').join('');
+  const tr = lignes().map(function (l) {
+    return '<tr>' + l.map(function (v, i) {
+      return '<td style="border:1px solid #999;padding:5px 8px;font-size:13px;text-align:' + (i === 0 ? 'left' : 'center') + '">' + v + '</td>';
+    }).join('') + '</tr>';
+  }).join('');
+  return '<p style="font-family:sans-serif"><b>' + enTete() + '</b></p>' +
+    '<table style="border-collapse:collapse;font-family:sans-serif"><thead><tr>' + th + '</tr></thead><tbody>' + tr + '</tbody></table>';
+}
+function tableauTexte() {
+  const l = lignes().map(x => x.join(' | '));
+  return enTete() + '\n\n' + COLS.join(' | ') + '\n' + l.join('\n');
+}
+
+async function copierTableau() {
+  if (!S.coureurs.length) { toast('Rien à copier'); return; }
+  const html = tableauHTML(), txt = tableauTexte();
+  try {
+    await navigator.clipboard.write([new ClipboardItem({
+      'text/html': new Blob([html], { type: 'text/html' }),
+      'text/plain': new Blob([txt], { type: 'text/plain' })
+    })]);
+    toast('Tableau copié — collez-le dans votre mail');
+    return;
+  } catch (e) { /* repli ci-dessous */ }
+  const zone = document.createElement('div');
+  zone.innerHTML = html;
+  zone.style.cssText = 'position:fixed;left:-9999px;top:0';
+  document.body.appendChild(zone);
+  const r = document.createRange(); r.selectNode(zone);
+  const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
+  try { document.execCommand('copy'); toast('Tableau copié'); }
+  catch (e2) { toast('Copie impossible sur ce navigateur'); }
+  sel.removeAllRanges(); zone.remove();
+}
+
+function envoyerMail() {
+  if (!S.coureurs.length) { toast('Rien à envoyer'); return; }
+  const corps = tableauTexte();
+  const url = 'mailto:?subject=' + encodeURIComponent(enTete()) + '&body=' + encodeURIComponent(corps);
+  if (url.length > 1900) {
+    toast('Liste trop longue pour un mail : utilisez « Copier le tableau »');
+    return;
+  }
+  location.href = url;
+}
+
+function telechargerCSV() {
+  if (!S.coureurs.length) { toast('Rien à exporter'); return; }
+  const sep = ';';
+  const csv = [COLS.join(sep)].concat(lignes().map(l => l.join(sep))).join('\r\n');
+  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'seance_ccpg_' + (S.date || 'sans_date') + '.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+/* ── remise à zéro ────────────────────────────────── */
+function reinit() {
+  if (S.coureurs.length && !confirm('Effacer la séance en cours ? Le carnet est conservé.')) return;
+  libererVeille();
+  S = { format: S.format, date: new Date().toISOString().slice(0, 10), lieu: '', coureurs: [], startedAt: null, stoppedAt: null };
+  sauver(); demarrer(); allerA(1);
+  toast('Nouvelle séance');
+}
+
+/* ── démarrage ────────────────────────────────────── */
+function demarrer() {
+  $('#date').value = S.date || '';
+  $('#lieu').value = S.lieu || '';
+  $$('#fmt button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === S.format ? 'true' : 'false'));
+  majFormat();
+  rendreCarnet(); rendreCoureurs(); rendrePiste(); rendreChrono();
+  if (S.startedAt && !S.stoppedAt) { demanderVeille(); boucle(); }
+}
+
+charger();
+demarrer();
+allerA(S.startedAt ? 3 : 1);
+</script>
+<script src="../assets/retour.js" defer></script>
+</body>
+</html>

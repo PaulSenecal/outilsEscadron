@@ -1,0 +1,11 @@
+# Données réelles : ne JAMAIS les publier (dépôt public)
+nePasMettreSurLeRepo/
+*.xlsx
+*.xls
+*.csv
+# Fichiers chiffrés du suivi du personnel (nom par défaut : suivi-<unité>.json) et tout .json dans suivi/
+suivi-*.json
+suivi/**/*.json
+
+# Système
+.DS_Store

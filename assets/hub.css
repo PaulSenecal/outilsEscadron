@@ -1,0 +1,148 @@
+/* ─────────────────────────────────────────────────────────────
+   Outils escadron — accueil.
+   Marine de nuit, galon doré, typographie condensée.
+   Aucune dépendance hors polices Google (repli système prévu).
+   ───────────────────────────────────────────────────────────── */
+:root{
+  --nuit:#0B1B33;
+  --nuit-2:#12294A;
+  --nuit-3:#1B3A63;
+  --craie:#E8EDF4;
+  --acier:#8FA6C4;
+  --or:#C9A227;
+  --or-clair:#E3C158;
+  --rouge:#C8102E;
+  --disp:"Big Shoulders Display","Arial Narrow",Impact,sans-serif;
+  --texte:"Barlow","Segoe UI",system-ui,-apple-system,sans-serif;
+  --mono:"Spline Sans Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;min-height:100vh;background:var(--nuit);color:var(--craie);
+  font-family:var(--texte);font-size:16px;line-height:1.55;
+  overflow-x:hidden;
+}
+.mono{font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase}
+.wrap{position:relative;z-index:1;max-width:1020px;margin:0 auto;padding:0 24px}
+
+/* ── fond : quadrillage de carte + halo ───────────────────── */
+.champ{
+  position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;
+  background-image:
+    linear-gradient(rgba(143,166,196,.09) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(143,166,196,.09) 1px,transparent 1px);
+  background-size:34px 34px;
+  -webkit-mask-image:radial-gradient(115% 78% at 22% 0%,#000 8%,transparent 72%);
+          mask-image:radial-gradient(115% 78% at 22% 0%,#000 8%,transparent 72%);
+}
+.champ::after{
+  content:"";position:absolute;top:-30vh;right:-18vw;width:70vw;height:70vw;
+  border-radius:50%;background:radial-gradient(circle,rgba(201,162,39,.13),transparent 62%);
+}
+
+/* ── en-tête ──────────────────────────────────────────────── */
+.tete{padding:clamp(38px,7vh,74px) 0 6px}
+.fanion{display:flex;align-items:center;gap:11px;color:var(--acier)}
+.fanion .sep{color:var(--nuit-3)}
+.pastille{
+  width:7px;height:7px;border-radius:50%;background:var(--or);
+  box-shadow:0 0 0 0 rgba(201,162,39,.55);animation:pouls 2.6s ease-out infinite;
+}
+@keyframes pouls{
+  0%{box-shadow:0 0 0 0 rgba(201,162,39,.5)}
+  70%{box-shadow:0 0 0 9px rgba(201,162,39,0)}
+  100%{box-shadow:0 0 0 0 rgba(201,162,39,0)}
+}
+
+/* Le titre est ajusté en JS pour que les deux lignes remplissent exactement
+   la même largeur ; la valeur en clamp() sert de repli sans JS et reste
+   volontairement prudente pour ne jamais déborder avec une police de secours. */
+h1{
+  margin:18px 0 22px;font-family:var(--disp);font-weight:800;
+  font-size:clamp(50px,12.5vw,142px);line-height:.84;letter-spacing:.005em;
+  text-transform:uppercase;display:flex;flex-direction:column;align-items:flex-start;
+}
+h1 span{display:block;white-space:nowrap}
+h1 .l1{color:var(--craie)}
+h1 .l2{color:transparent;-webkit-text-stroke:2px var(--or)}
+@supports not ((-webkit-text-stroke:1px #000)){ h1 .l2{color:var(--or)} }
+
+.lede{margin:0;max-width:58ch;color:var(--acier);font-size:clamp(16px,1.7vw,18px)}
+
+/* ── rubrique ─────────────────────────────────────────────── */
+.rubrique{
+  margin:clamp(42px,7vh,72px) 0 20px;font-family:var(--mono);font-weight:600;
+  font-size:.72rem;letter-spacing:.24em;text-transform:uppercase;color:var(--acier);
+  display:flex;align-items:center;gap:16px;
+}
+.rubrique::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--nuit-3),transparent)}
+
+/* ── fiches ───────────────────────────────────────────────── */
+.fiches{list-style:none;margin:0;padding:0;display:grid;gap:14px}
+.fiche{opacity:0;transform:translateY(14px);animation:apparait .6s cubic-bezier(.2,.8,.3,1) forwards;animation-delay:var(--delai)}
+@keyframes apparait{to{opacity:1;transform:none}}
+
+.fiche a{
+  position:relative;overflow:hidden;isolation:isolate;
+  display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:20px;
+  padding:26px 24px;text-decoration:none;color:inherit;
+  background:linear-gradient(180deg,var(--nuit-2),#0F2340);
+  border:1px solid var(--nuit-3);border-radius:3px;
+  transition:border-color .22s,transform .22s,box-shadow .22s;
+}
+/* galon : bande dorée oblique qui traverse la fiche au survol */
+.fiche a::before{
+  content:"";position:absolute;z-index:-1;inset:-2px auto -2px -40%;
+  width:36%;transform:skewX(-18deg) translateX(-160%);
+  background:linear-gradient(90deg,transparent,rgba(201,162,39,.16),transparent);
+  transition:transform .55s cubic-bezier(.25,.9,.3,1);
+}
+.fiche a:hover::before,.fiche a:focus-visible::before{transform:skewX(-18deg) translateX(430%)}
+.fiche a:hover,.fiche a:focus-visible{
+  border-color:var(--or);transform:translateY(-3px);
+  box-shadow:0 16px 34px -22px rgba(0,0,0,.9);
+}
+.fiche a:focus-visible{outline:2px solid var(--or-clair);outline-offset:3px}
+
+.code{
+  align-self:start;color:var(--or);border:1px solid rgba(201,162,39,.42);
+  border-radius:2px;padding:5px 9px;font-size:.7rem;letter-spacing:.14em;
+  white-space:nowrap;
+}
+.corps{display:flex;flex-direction:column;gap:7px;min-width:0}
+.titre{
+  font-family:var(--disp);font-weight:600;font-size:clamp(30px,4.4vw,42px);
+  line-height:.94;text-transform:uppercase;letter-spacing:.01em;
+}
+.desc{color:var(--acier);max-width:60ch}
+.meta{color:#93A9C7}
+.fleche{
+  font-family:var(--disp);font-size:30px;color:var(--or);
+  transition:transform .22s;align-self:center;
+}
+.fiche a:hover .fleche,.fiche a:focus-visible .fleche{transform:translateX(6px)}
+
+/* ── pied ─────────────────────────────────────────────────── */
+footer{padding:clamp(48px,9vh,88px) 0 56px}
+footer p{
+  margin:0;padding-top:16px;border-top:1px solid var(--nuit-3);
+  color:#93A9C7;font-size:14px;max-width:70ch;
+}
+
+/* ── écrans étroits ───────────────────────────────────────── */
+@media(max-width:560px){
+  .fiche a{grid-template-columns:auto 1fr;gap:14px 16px;padding:22px 20px}
+  .fleche{grid-column:2;justify-self:end;margin-top:-4px}
+  .lede{font-size:16px}
+}
+@media(min-width:820px){
+  .fiches{grid-template-columns:1fr 1fr}
+  .fiche a{grid-template-columns:auto 1fr;align-content:start;height:100%;padding:28px 26px}
+  .fleche{grid-column:2;justify-self:start;align-self:end;margin-top:10px}
+}
+
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+  .fiche{opacity:1;transform:none}
+}

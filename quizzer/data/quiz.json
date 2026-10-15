@@ -1,0 +1,1922 @@
+[
+  {
+    "id": "q_1779017839081_vdhs",
+    "category": "sit",
+    "question": "Quelles sont les 5 fonctions de la défense ?",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "Anticiper, prévenir, dicter, progresser, informer",
+        "correct": false
+      },
+      {
+        "text": "Connaître/anticiper, prévenir, dissuader, protéger, intervenir",
+        "correct": true
+      },
+      {
+        "text": "Connaître, progresser, dissuader, protéger, informer",
+        "correct": false
+      },
+      {
+        "text": "Prévenir, défendre, dissuader, protéger, attaquer",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779017903505_outd",
+    "category": "sit",
+    "question": "Que veut dire CEMAT ?",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "Chef état du ministère de l'armée  de terre",
+        "correct": false
+      },
+      {
+        "text": "Chef major de l'armée de terre",
+        "correct": false
+      },
+      {
+        "text": "Chef-état major de l'armée de terre",
+        "correct": true
+      },
+      {
+        "text": "Commandant en matière de l'armée de terre",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779017905103_1z5n",
+    "category": "sit",
+    "question": "Comment s'appelle une unité élémentaire au 1er RCh ?",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "Compagnie",
+        "correct": false
+      },
+      {
+        "text": "Section",
+        "correct": false
+      },
+      {
+        "text": "Escadrille",
+        "correct": false
+      },
+      {
+        "text": "Escadron",
+        "correct": true
+      }
+    ]
+  },
+  {
+    "id": "q_1779017932900_7dgo",
+    "category": "sit",
+    "question": "Quel ouvrage régit les missions et priorités de la défense ?",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "Le TTA 150",
+        "correct": false
+      },
+      {
+        "text": "Le livre blanc",
+        "correct": true
+      },
+      {
+        "text": "Le code du soldat",
+        "correct": false
+      },
+      {
+        "text": "Le memento",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779018055936_084t",
+    "category": "sit",
+    "question": "Que veut dire PAF ?",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "Police aux frontières ",
+        "correct": false
+      },
+      {
+        "text": "Poste d'arrivée des fantassins",
+        "correct": false
+      },
+      {
+        "text": "Poste accueil et de filtration",
+        "correct": true
+      },
+      {
+        "text": "Point d'arrêt frontière",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779018060981_q6jo",
+    "category": "sit",
+    "question": "Que veut dire EIG ?",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "Équipe d'intervention et de garde",
+        "correct": false
+      },
+      {
+        "text": "Équipe d'incendie et de génie",
+        "correct": false
+      },
+      {
+        "text": "Élément d'intervention de garnison",
+        "correct": true
+      },
+      {
+        "text": "Escadron d'intervention générale",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779018116458_3gxs",
+    "category": "sit",
+    "question": "L'ordre hiérarchique correct du\npeloton est :",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "CDG > CDP > SOA > CE > GV",
+        "correct": false
+      },
+      {
+        "text": "CDP > SOA > CE > CDG > GV",
+        "correct": false
+      },
+      {
+        "text": "CDP > SOA > CDG > CE > GV",
+        "correct": true
+      },
+      {
+        "text": "SOA > CDP > CDG > CE > GV",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779018176611_o5ie",
+    "category": "sit",
+    "question": "Dans quels domaines intervient le\nservice général ?",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "Combat, soutien, logistique",
+        "correct": false
+      },
+      {
+        "text": "Ordinaire, surveillance, permanence du commandement",
+        "correct": true
+      },
+      {
+        "text": "Formation, entraînement, Discipline",
+        "correct": false
+      },
+      {
+        "text": "Tir, sport, instruction",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779018209751_iaqq",
+    "category": "trans",
+    "question": "Que veut dire PR4G ?",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "Programme radio 4e génération",
+        "correct": false
+      },
+      {
+        "text": "Protection respiratoire à 4 grammes",
+        "correct": false
+      },
+      {
+        "text": "Poste radiophonique 4e génération",
+        "correct": true
+      },
+      {
+        "text": "Poste radio 4e génération",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779018236945_vivg",
+    "category": "trans",
+    "question": "Quel est l'ordre de la règle des 4A ?",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "Accessoire Arrêt Antenne Alimentation",
+        "correct": false
+      },
+      {
+        "text": "Arrêt Antenne Accessoire Alimentation",
+        "correct": false
+      },
+      {
+        "text": "Alimentation Arrêt Antenne Accessoire",
+        "correct": false
+      },
+      {
+        "text": "Arrêt Alimentation Antenne Accessoire",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779018265840_pv4r",
+    "category": "trans",
+    "question": "Comment épelle-t-on DOMINOS en alphabet OTAN ?",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "Delta Charlie Delta au quartier latin",
+        "correct": false
+      },
+      {
+        "text": "Delta Oscar Mike India November Oscar Sierra",
+        "correct": true
+      },
+      {
+        "text": "Delta Oscar Mike inde Novembre Oscar Sierra",
+        "correct": false
+      },
+      {
+        "text": "Delta Grotto Mike India November Oscar Sierra",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779018313331_5umc",
+    "category": "trans",
+    "question": "G1 s'adresse au chef de peloton à la radio :\t",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "Golf 1 à Charlie Papa",
+        "correct": false
+      },
+      {
+        "text": "Golf1 ici Charlie Papa",
+        "correct": false
+      },
+      {
+        "text": "Charlie Papa ici Golf 1",
+        "correct": true
+      },
+      {
+        "text": "Chef de peloton ici Golf 1",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779018377303_znpn",
+    "category": "trans",
+    "question": "Que veut dire DDI ?",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "Distributeur de données initiales",
+        "correct": true
+      },
+      {
+        "text": "Détective de la défense intérieure",
+        "correct": false
+      },
+      {
+        "text": "Distributeur de données intégrales",
+        "correct": false
+      },
+      {
+        "text": "Distribution de données intégrales",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779018391174_sbr6",
+    "category": "trans",
+    "question": "L'alerte 4 correspond à :",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "Silence radio",
+        "correct": false
+      },
+      {
+        "text": "Fin de silence radio",
+        "correct": false
+      },
+      {
+        "text": "Chimique",
+        "correct": false
+      },
+      {
+        "text": "Chimique",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779018609492_im5y",
+    "category": "trans",
+    "question": "L'alerte 7 correspond à :",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "Hélicoptère",
+        "correct": false
+      },
+      {
+        "text": "Chimique",
+        "correct": false
+      },
+      {
+        "text": "À disposition du commandement",
+        "correct": false
+      },
+      {
+        "text": "Nucléaire",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779018622989_hpd1",
+    "category": "trans",
+    "question": "Comment peut-on transporter le poste\nradio en marche ?\n",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "À la main ou sur la clé de portage",
+        "correct": true
+      },
+      {
+        "text": "Dans la musette ou à dos de cheval",
+        "correct": false
+      },
+      {
+        "text": "À la main ou dans la musette",
+        "correct": false
+      },
+      {
+        "text": "En véhicule uniquement",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779018647898_p274",
+    "category": "topo",
+    "question": "Quels sont les 3 Nords ?",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "Géométrique, de fond de cadran, de l'échelle",
+        "correct": false
+      },
+      {
+        "text": "Géomagnétique, de fond de cadran,  de la boussole",
+        "correct": false
+      },
+      {
+        "text": "Géographique, magnétique, de la carte",
+        "correct": true
+      },
+      {
+        "text": "Nord vrai, Nord grille, Nord boussole",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779018922556_ujlb",
+    "category": "topo",
+    "question": "Pour une échelle 1/75 000, 1 cm = ?",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "7,5 m",
+        "correct": false
+      },
+      {
+        "text": "75 m",
+        "correct": false
+      },
+      {
+        "text": "750 m",
+        "correct": true
+      },
+      {
+        "text": "7 500 m",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779018951092_bp63",
+    "category": "topo",
+    "question": "Pour une échelle 1/1 000 000, 1 cm = ?",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "100 m",
+        "correct": false
+      },
+      {
+        "text": "1 000 m",
+        "correct": false
+      },
+      {
+        "text": "10 000 m",
+        "correct": true
+      },
+      {
+        "text": "100 000 m",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779018970171_ln3f",
+    "category": "topo",
+    "question": "Quelle précaution avec la boussole ?",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "Éviter les ondes mécaniques",
+        "correct": false
+      },
+      {
+        "text": "Tenir la boussole verticalement",
+        "correct": false
+      },
+      {
+        "text": "Éviter les masses métalliques",
+        "correct": true
+      },
+      {
+        "text": "Ne pas l'exposer au soleil",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779019017108_y2ok",
+    "category": "topo",
+    "question": "Quelle famille représente des éléments précis sur la carte ?",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "Toponymie",
+        "correct": false
+      },
+      {
+        "text": "Agraphie",
+        "correct": false
+      },
+      {
+        "text": "Orographie",
+        "correct": true
+      },
+      {
+        "text": "Planimétrie",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779019044642_yy6f",
+    "category": "topo",
+    "question": "À l'échelle 1/50 000, l'équidistance 10m correspond à :",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "Zone de faible relief",
+        "correct": false
+      },
+      {
+        "text": "Zone montagneuse",
+        "correct": false
+      },
+      {
+        "text": "Zone très montagneuse",
+        "correct": false
+      },
+      {
+        "text": "Zone peu montagneuse",
+        "correct": true
+      }
+    ]
+  },
+  {
+    "id": "q_1779019072691_42n9",
+    "category": "topo",
+    "question": "À l'échelle 1/50 000, l'équidistance\n50m correspond à :\n",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "Zone de faible relief",
+        "correct": false
+      },
+      {
+        "text": "Zone peu montagneuse",
+        "correct": false
+      },
+      {
+        "text": "Zone montagneuse",
+        "correct": false
+      },
+      {
+        "text": "Zone très montagneuse",
+        "correct": true
+      }
+    ]
+  },
+  {
+    "id": "q_1779019091653_avw9",
+    "category": "topo",
+    "question": "Définition juste d'une carte :",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "Représentation des roches  consolidées à la surface",
+        "correct": false
+      },
+      {
+        "text": "Représentation plane de phénomènes localisables dans l'espace",
+        "correct": true
+      },
+      {
+        "text": "Représentation des mouvements du  sol",
+        "correct": false
+      },
+      {
+        "text": "Globe terrestre aplati",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779019135610_b5zz",
+    "category": "nrbc",
+    "question": "Que signifie NRBC ?",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "Nucléaire Radial Biologique Chimique",
+        "correct": false
+      },
+      {
+        "text": "B\tNucléaire Radiologique Bactériologique Chimique",
+        "correct": false
+      },
+      {
+        "text": "Nucléaire Radiologique Biologique Chimique",
+        "correct": true
+      },
+      {
+        "text": "Nucléaire Réel Biologique Chimique",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779019167008_dzhr",
+    "category": "nrbc",
+    "question": "Sur quels pays ont eu lieu les\npremières bombes atomiques ?",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "URSS et Chine",
+        "correct": false
+      },
+      {
+        "text": "Allemagne et Japon",
+        "correct": false
+      },
+      {
+        "text": "Japon uniquement",
+        "correct": true
+      },
+      {
+        "text": "Japon et Corée ",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779019190295_60bw",
+    "category": "nrbc",
+    "question": "Quels sont les 3 types de menaces NRBC\n?",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "Classique, Industriel, Militaire",
+        "correct": false
+      },
+      {
+        "text": "Conventionnel, Industriel,Terroriste",
+        "correct": false
+      },
+      {
+        "text": "Classique, Industriel, Terroriste",
+        "correct": true
+      },
+      {
+        "text": "Nucléaire, Chimique, Biologique",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779019215933_x5ov",
+    "category": "nrbc",
+    "question": "Quels sont les deux types d'agents\nbiologiques ?\n",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "Bénin / Malin",
+        "correct": false
+      },
+      {
+        "text": "Doux / Agressif",
+        "correct": false
+      },
+      {
+        "text": "Contagieux / Non contagieux",
+        "correct": true
+      },
+      {
+        "text": "Actif / Inactif",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779019247664_xc9y",
+    "category": "nrbc",
+    "question": "Combien de moyens pour donner l'alerte\nNRBC ?\n",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "Bénin / Malin",
+        "correct": false
+      },
+      {
+        "text": "Doux / Agressif",
+        "correct": false
+      },
+      {
+        "text": "Contagieux / Non contagieux",
+        "correct": false
+      },
+      {
+        "text": "Actif / Inactif",
+        "correct": true
+      }
+    ]
+  },
+  {
+    "id": "q_1779019278126_acn4",
+    "category": "nrbc",
+    "question": "Que signifie ANPVP ?",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "Appareil Nominal de Protection à Visière Panoramique",
+        "correct": false
+      },
+      {
+        "text": "Appareil Normal de Protection à Visière Panoramique",
+        "correct": true
+      },
+      {
+        "text": "Applique Normal de Performance Ventilatoire",
+        "correct": false
+      },
+      {
+        "text": "Armure Norme Protection Visière ",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779019317630_3oem",
+    "category": "nrbc",
+    "question": "Que signifie T3P ?",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "Tenue de Terrain Toute Performance",
+        "correct": false
+      },
+      {
+        "text": "Tenue de Protection Personnel Performante",
+        "correct": false
+      },
+      {
+        "text": "Tenue de Protection à Port Permanent",
+        "correct": true
+      },
+      {
+        "text": "Tenue 3e Protection Permanente",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779019663891_9eez",
+    "category": "nrbc",
+    "question": "Quel est le but d'une explosion\natomique ?",
+    "multiCorrect": true,
+    "answers": [
+      {
+        "text": "Une destruction totale uniquement",
+        "correct": false
+      },
+      {
+        "text": "Une contamination des hommes et B\tanimaux",
+        "correct": false
+      },
+      {
+        "text": "Une destruction instantanée et  contamination sur vaste zone",
+        "correct": true
+      },
+      {
+        "text": "Un effet psychologique uniquement",
+        "correct": true
+      }
+    ]
+  },
+  {
+    "id": "q_1779019840350_f6sw",
+    "category": "imf",
+    "question": "Combien y a-t-il d'actes réflexes ?",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "9",
+        "correct": false
+      },
+      {
+        "text": "12",
+        "correct": true
+      },
+      {
+        "text": "8",
+        "correct": false
+      },
+      {
+        "text": "13",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779019855883_0l4l",
+    "category": "imf",
+    "question": "Que signifie VITALR ?",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "Visible, individu, tirer, liaison, lisible, rendre compte",
+        "correct": false
+      },
+      {
+        "text": "Voir, invisible, tirer, abri, liaison, repli",
+        "correct": true
+      },
+      {
+        "text": "Vecteur, indice, trace, alléluiah, liaison, réplique",
+        "correct": false
+      },
+      {
+        "text": "Voir, impossible, tirer, abri, liaison, repli",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779019885206_a75g",
+    "category": "imf",
+    "question": "Que veut dire PIF ?",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "Progresser, itinéraire, formation",
+        "correct": false
+      },
+      {
+        "text": "Place, invisible, forme",
+        "correct": false
+      },
+      {
+        "text": "Point à atteindre, itinéraire, formation",
+        "correct": true
+      },
+      {
+        "text": "Position, itinéraire, feu",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779019905492_tijh",
+    "category": "imf",
+    "question": "Que veut dire FFOMECBLOT ?",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "Fond, forme, ombre, mouvement, éclat, couleurs, bruit, lumière",
+        "correct": true
+      },
+      {
+        "text": "Fond, forme, ombrage, mouvement, éclat, couleurs, bruit, lueur",
+        "correct": false
+      },
+      {
+        "text": "Formation, factice, ombrage, mouvement, éclairer, chaleur,",
+        "correct": false
+      },
+      {
+        "text": "Fond, force, ombre, manœuvre, éclat, couleurs, bruit, lueur,",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779019937891_96u4",
+    "category": "imf",
+    "question": "Quel est l'effectif d'un groupe de\ncombat C3T débarqué ?\n",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "0/1/6",
+        "correct": true
+      },
+      {
+        "text": "0/2/5",
+        "correct": false
+      },
+      {
+        "text": "0/1/7",
+        "correct": false
+      },
+      {
+        "text": "1/1/6",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779019966619_zkf4",
+    "category": "imf",
+    "question": "Quel sigle utilise-t-on pour rendre\ncompte ?\n",
+    "multiCorrect": true,
+    "answers": [
+      {
+        "text": "DDRO",
+        "correct": true
+      },
+      {
+        "text": "NVAD",
+        "correct": true
+      },
+      {
+        "text": "NADV",
+        "correct": false
+      },
+      {
+        "text": "DDOR",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779020082245_zzpv",
+    "category": "imf",
+    "question": "Quelles sont les missions du trinôme ? ",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "Surveiller, protéger, appuyer, rendre compte",
+        "correct": false
+      },
+      {
+        "text": "Surveiller, Appuyer, Fouiller, Reconnaître, Assurer la liaison, Neutraliser, Éclairer",
+        "correct": true
+      },
+      {
+        "text": "Protéger/appuyer/Neutraliser-déteuir/Assurer la liaison/Surveiller/Éclairer/Fouiller/Reconaitre un point-s'empâter de",
+        "correct": false
+      },
+      {
+        "text": "Observer, tirer, se déplacer, se poster",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779020248083_s4fm",
+    "category": "rens",
+    "question": "Comment définit-on le terme renseignement ?",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "Les capteurs et vecteurs A\tuniquement",
+        "correct": false
+      },
+      {
+        "text": "Une organisation ET le résultat de ses activités",
+        "correct": true
+      },
+      {
+        "text": "La fonction de surveillance",
+        "correct": false
+      },
+      {
+        "text": "Les moyens optiques et techniques",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779020316406_0at8",
+    "category": "rens",
+    "question": "Le renseignement doit être :",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "Long, passable, global",
+        "correct": false
+      },
+      {
+        "text": "Indispensable, permanent, global",
+        "correct": true
+      },
+      {
+        "text": "Rapide, précis, confidentiel",
+        "correct": false
+      },
+      {
+        "text": "Continu, exhaustif, partagé",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779020341139_dezk",
+    "category": "rens",
+    "question": "Qu'est-ce qu'un capteur ?",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "Un équipement uniquement",
+        "correct": false
+      },
+      {
+        "text": "Un militaire uniquement",
+        "correct": false
+      },
+      {
+        "text": "Un équipement, un militaire, un  véhicule ou un aéronef",
+        "correct": true
+      },
+      {
+        "text": "Un satellite uniquement",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779020358594_ychh",
+    "category": "rens",
+    "question": "Que veut dire NVAD ?",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "Nature Vision Altitude Directions",
+        "correct": false
+      },
+      {
+        "text": "Nation Volume Ampleur Distance",
+        "correct": false
+      },
+      {
+        "text": "Nature Volume Attitude Distance",
+        "correct": true
+      },
+      {
+        "text": "Non Violent À la Direction",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779020396903_je27",
+    "category": "rens",
+    "question": "Parmi ceux-ci, lesquels sont des capteurs optiques ?",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "Sismique, acoustique, radar",
+        "correct": false
+      },
+      {
+        "text": "Optique, satellitaire, aérien",
+        "correct": false
+      },
+      {
+        "text": "Terrestre, maritime, souterrain",
+        "correct": false
+      },
+      {
+        "text": "Thermique, acoustique, optique",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779020423182_u7eg",
+    "category": "rens",
+    "question": "Par qui le renseignement est-il fait ?",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "Par le Lieutenant uniquement",
+        "correct": false
+      },
+      {
+        "text": "Par le Capitaine",
+        "correct": false
+      },
+      {
+        "text": "Par VOUS (chaque combattant)",
+        "correct": true
+      },
+      {
+        "text": "Par les Maréchaux des Logis",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779020439874_l3po",
+    "category": "armement",
+    "question": "Que signifie M2HB notabene M2 = deuxième modèle de la série M (Machine gun)",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "Mitraillette calibre 12,7 mm",
+        "correct": false
+      },
+      {
+        "text": "Mitrailleuse Browning M2 Heavy Barrel ",
+        "correct": true
+      },
+      {
+        "text": "Missile interarmées type 12,7",
+        "correct": false
+      },
+      {
+        "text": "Mitrailleuse Browning Heavy Barrel ",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779020643107_l1j1",
+    "category": "armement",
+    "question": "Quel est le poids de la MIT 12.7 nue ?",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "20",
+        "correct": true
+      },
+      {
+        "text": "28",
+        "correct": false
+      },
+      {
+        "text": "38",
+        "correct": false
+      },
+      {
+        "text": "45",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779020675410_agni",
+    "category": "armement",
+    "question": "Poid de assuf",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "20",
+        "correct": true
+      },
+      {
+        "text": "30",
+        "correct": false
+      },
+      {
+        "text": "15",
+        "correct": false
+      },
+      {
+        "text": "25",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779020680151_y70e",
+    "category": "armement",
+    "question": "poid du Canon",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "12.7",
+        "correct": true
+      },
+      {
+        "text": "20",
+        "correct": false
+      },
+      {
+        "text": "18",
+        "correct": false
+      },
+      {
+        "text": "10",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779020709328_ttux",
+    "category": "armement",
+    "question": "Quelle est la cadence de tir théorique?",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "250 coups/mn",
+        "correct": false
+      },
+      {
+        "text": "350 coups/mn",
+        "correct": false
+      },
+      {
+        "text": "500 coups/mn",
+        "correct": true
+      },
+      {
+        "text": "750 coups/mn",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779020733702_h8ng",
+    "category": "armement",
+    "question": "Quelle est la hausse de combat de la MIT 12.7 ?",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "500 m (550 yards)",
+        "correct": false
+      },
+      {
+        "text": "685 m (750 yards)",
+        "correct": false
+      },
+      {
+        "text": "800 m (875 yards)",
+        "correct": false
+      },
+      {
+        "text": "1000 m (1100 yards)",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779020770243_cw11",
+    "category": "armement",
+    "question": "La feuillure doit être réglée :",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "Une fois par an",
+        "correct": false
+      },
+      {
+        "text": "Uniquement au premier tir",
+        "correct": false
+      },
+      {
+        "text": "Après chaque remontage et avant chaque tir",
+        "correct": true
+      },
+      {
+        "text": "Après chaque changement de percuteur",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779020796102_22vp",
+    "category": "armement",
+    "question": "Quelles pièces constituent la neutralisation de la MIT 12.7 ?",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "La culasse et le ressort récupérateur",
+        "correct": false
+      },
+      {
+        "text": "Le percuteur et sa rallonge",
+        "correct": true
+      },
+      {
+        "text": "Le canon et la glissière",
+        "correct": false
+      },
+      {
+        "text": "Le couvercle et le bloc arrière",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779020873899_9lv2",
+    "category": "armement",
+    "question": "Pour déplacer le tir à DROITE, on doit :\n",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "Dévisser l'œilleton",
+        "correct": false
+      },
+      {
+        "text": "Visser l'œilleton",
+        "correct": true
+      },
+      {
+        "text": "Abaisser la hausse",
+        "correct": false
+      },
+      {
+        "text": "Relever la hausse",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779020889204_1myo",
+    "category": "armement",
+    "question": "Que faire en cas d'incident de tir ?",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "Désarmer immédiatement",
+        "correct": false
+      },
+      {
+        "text": "Ouvrir le couvercle immédiatement",
+        "correct": false
+      },
+      {
+        "text": "Attendre 3 min arme en direction des cibles, puis désapprovisionner",
+        "correct": false
+      },
+      {
+        "text": "Changer le canon",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779133245569_iziy",
+    "category": "armement",
+    "question": "Calibre de la 12.7 ?",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "12.7*99",
+        "correct": true
+      },
+      {
+        "text": "12.7*107",
+        "correct": false
+      },
+      {
+        "text": "12.7*45",
+        "correct": false
+      },
+      {
+        "text": "12.7*78",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779133291578_lwtw",
+    "category": "armement",
+    "question": "Capacité de chargeur Famas F1",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "20",
+        "correct": false
+      },
+      {
+        "text": "25",
+        "correct": true
+      },
+      {
+        "text": "bah 30 comme le HK ",
+        "correct": false
+      },
+      {
+        "text": "31",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779133304137_o5oo",
+    "category": "armement",
+    "question": "Capacité de chargeur Famas G2",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "20",
+        "correct": false
+      },
+      {
+        "text": "25",
+        "correct": false
+      },
+      {
+        "text": "Bah 30 comme le HK",
+        "correct": true
+      },
+      {
+        "text": "31",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779133369663_ysxm",
+    "category": "armement",
+    "question": "Capacité de chargeur Glock 17",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "15",
+        "correct": false
+      },
+      {
+        "text": "16",
+        "correct": false
+      },
+      {
+        "text": "17",
+        "correct": true
+      },
+      {
+        "text": "18",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779133433604_spiu",
+    "category": "istc",
+    "question": "Citez la 1er regle ISTC",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "Une arme doit toujours être considérée comme chargée",
+        "correct": true
+      },
+      {
+        "text": "Une arme doit toujours être considérée comme pleinne",
+        "correct": false
+      },
+      {
+        "text": "Une arme doit toujours être considérée comme dangereuse",
+        "correct": false
+      },
+      {
+        "text": "Une arme doit toujours être considérée comme létale",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779133464257_wqqr",
+    "category": "istc",
+    "question": "Citez la 2eme regle ISTC",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "Ne jamais pointer ni laisser pointer le canon d'une arme sur quelque chose que l'on ne veut pas neutraliser",
+        "correct": false
+      },
+      {
+        "text": "Ne jamais pointer ni laisser pointer le canon d'une arme sur quelque chose que l'on ne veut pas détruire",
+        "correct": true
+      },
+      {
+        "text": "Ne jamais pointer ni laisser pointer le canon d'une arme sur quelque chose que l'on ne veut pas achter",
+        "correct": false
+      },
+      {
+        "text": "Ne jamais pointer ni laisser pointer le canon d'une arme sur quelque chose que l'on ne veut pas surprendre",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779133480991_596b",
+    "category": "istc",
+    "question": "Citez la 3eme regle ISTC",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "Garder l'index hors de la détente tant que les organes de visée ne sont pas sur l'objectif.",
+        "correct": true
+      },
+      {
+        "text": "Garder l'index hors de la détente tant que les organes de visée ne sont pas sur l'ennemi.",
+        "correct": false
+      },
+      {
+        "text": "Garder l'index hors de la détente tant que les organes de visée ne sont pas sur la cible.",
+        "correct": false
+      },
+      {
+        "text": "Garder l'index hors de la détente tant que les organes de visée ne sont pas sur le mechant.",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779133486270_74vf",
+    "category": "istc",
+    "question": "Citez la 4eme regle ISTC",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "Etre sur de son environnement et de son objectif",
+        "correct": true
+      },
+      {
+        "text": "Etre sur de son objectifet de son objectif",
+        "correct": false
+      },
+      {
+        "text": "Etre sur de son cocon familiale et de son objectif",
+        "correct": false
+      },
+      {
+        "text": "Etre sur de sa formation et de son objectif",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779133550406_bmrf",
+    "category": "istc",
+    "question": "Que signifie ISTC",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "Instruction Sur les Techniques de Combat",
+        "correct": false
+      },
+      {
+        "text": "Instruction Sur la Tactique de Combat",
+        "correct": false
+      },
+      {
+        "text": "Instruction sur les Systèmes et Techniques de Combat",
+        "correct": false
+      },
+      {
+        "text": "Instruction Sur le Tir de Combat",
+        "correct": true
+      }
+    ]
+  },
+  {
+    "id": "q_1779133916176_hqbx",
+    "category": "istc",
+    "question": "MOAL (Maîtrise Opérationnelle de l'Armement Léger",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "Module Opérationnel sur les Armes Légères",
+        "correct": false
+      },
+      {
+        "text": "Méthodologie Opérationnelle de l'Armement Léger",
+        "correct": false
+      },
+      {
+        "text": "Maîtrise Opérationnelle de l'Armement Léger",
+        "correct": true
+      },
+      {
+        "text": "Maniement et Opération des Armes Légères",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779134021083_ghh8",
+    "category": "sit",
+    "question": "Qui Commande le 5ESc",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "CDU Grotto",
+        "correct": false
+      },
+      {
+        "text": "CDU Senecal",
+        "correct": false
+      },
+      {
+        "text": "CDU Godet",
+        "correct": true
+      },
+      {
+        "text": "CDU Condé",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779134029020_v2da",
+    "category": "sit",
+    "question": "Qui est ADU du 5ESC",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "MJR  Grotto",
+        "correct": false
+      },
+      {
+        "text": "ADJ  Senecal",
+        "correct": false
+      },
+      {
+        "text": "ADC Reghouia",
+        "correct": false
+      },
+      {
+        "text": "MJR  Paffoni",
+        "correct": true
+      }
+    ]
+  },
+  {
+    "id": "q_1779134142278_ad94",
+    "category": "imf",
+    "question": "Que veux dire C3T ?\n\n",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "Concept Commun Terrestre",
+        "correct": true
+      },
+      {
+        "text": "Cadre Commun de Tactique Terrestre",
+        "correct": false
+      },
+      {
+        "text": "Concept de Combat et Tactique Terrestre",
+        "correct": false
+      },
+      {
+        "text": "Commandement Coordonné des Troupes Terrestres",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779134476538_ksfx",
+    "category": "imf",
+    "question": "Que veux dire ENCASTRE ?",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "Engager Neutraliser Couvrir Appuyer Sécuriser Tenir Renseigner Exploiter",
+        "correct": false
+      },
+      {
+        "text": "Éclairer Neutraliser Détruire Contenir Appuyer Sécuriser Tenir Reco Exploiter",
+        "correct": false
+      },
+      {
+        "text": "Éclairer Neutraliser Détruire Couvrir Appuyer Surveiller Tenir Reco S'emparer",
+        "correct": true
+      },
+      {
+        "text": "Éclairer Nuire Détruire Couvrir Appuyer Sécuriser Tenir Reco S'emparer",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779134500076_phz8",
+    "category": "imf",
+    "question": "Que veux dire GAI en légitime defense ?",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "Gravité Actuelle et Imminente",
+        "correct": false
+      },
+      {
+        "text": "Grave Actuelle Impossible à contenir",
+        "correct": true
+      },
+      {
+        "text": "Grave Avérée et Impossible à contourner",
+        "correct": false
+      },
+      {
+        "text": "Grave Actuelle et Incontrôlable",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779134554074_5qgi",
+    "category": "imf",
+    "question": "Que veux dire PIN ? (legitime défense )",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "Précise Immédiate et Nécessaire",
+        "correct": false
+      },
+      {
+        "text": "Planifiée Immédiate et Nécessaire",
+        "correct": false
+      },
+      {
+        "text": "Proportionnelle Instantanée et Normale",
+        "correct": false
+      },
+      {
+        "text": "Proportionner Immédiate et Nécessaire",
+        "correct": true
+      }
+    ]
+  },
+  {
+    "id": "q_1779134609879_3e96",
+    "category": "imf",
+    "question": "⚠️Que veux dire PRIDAC ?",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "Préparation Rappel Instruction Démonstration Application Contrôle",
+        "correct": false
+      },
+      {
+        "text": "Prise en main Rappel Instruction Démonstration Analyse Contrôle",
+        "correct": false
+      },
+      {
+        "text": "Prise en main Rappel Intérêt Démonstration Application Contrôle",
+        "correct": true
+      },
+      {
+        "text": "Prise en main Révision Intérêt Démonstration Application Contrôle",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779134669618_3psr",
+    "category": "imf",
+    "question": "Que veux dire FSI ?",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": " Force de Sécurité Intérieure",
+        "correct": true
+      },
+      {
+        "text": "Force Spéciale d'Intervention",
+        "correct": false
+      },
+      {
+        "text": "Formation de Sécurité Intérieure",
+        "correct": false
+      },
+      {
+        "text": "Fonction de Sécurité Intérieure",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779134697778_r9cn",
+    "category": "imf",
+    "question": "Que veux dire OPJ  ?",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "Officier de Police Judiciaire",
+        "correct": true
+      },
+      {
+        "text": "Opérateur de Police Judiciaire",
+        "correct": false
+      },
+      {
+        "text": "Officier de Procédure Juridique",
+        "correct": false
+      },
+      {
+        "text": "Officier de Patrouille Judiciaire",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779134746121_rzjq",
+    "category": "imf",
+    "question": "Que veux dire ZMS ?",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "Zone Mission Secteur",
+        "correct": true
+      },
+      {
+        "text": "Zone de Manœuvre et de Sécurité",
+        "correct": false
+      },
+      {
+        "text": "Zone Militaire Sécurisée",
+        "correct": false
+      },
+      {
+        "text": "Zone de Manœuvre Stratégique",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779134769035_7tzk",
+    "category": "imf",
+    "question": "Que veux dire DPIF .",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "Destination Itinéraire Formation Halte",
+        "correct": true
+      },
+      {
+        "text": "Direction Point Itinéraire Formation ",
+        "correct": false
+      },
+      {
+        "text": "Destination  Parcours Itinéraire Formation Halte",
+        "correct": false
+      },
+      {
+        "text": "Destination Itinéraire Fonction et Halte",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779134803292_9vat",
+    "category": "imf",
+    "question": "Que veux dire LOF ?",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "Ligne d'Ouverture de Feu",
+        "correct": false
+      },
+      {
+        "text": "Limite d'Ordre de Feu",
+        "correct": false
+      },
+      {
+        "text": "Limite d'Ouverture de Feu",
+        "correct": true
+      },
+      {
+        "text": "Limite d'Offensive de Feu",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779134831731_s2gz",
+    "category": "imf",
+    "question": "Que veux dire COF ?",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "Cadence d'Ouverture de Feu",
+        "correct": false
+      },
+      {
+        "text": "Contrôle d'Ouverture de Feu",
+        "correct": false
+      },
+      {
+        "text": "Consommation d'Ordre de Feu",
+        "correct": false
+      },
+      {
+        "text": "Consommation d'Ouverture de Feu",
+        "correct": true
+      }
+    ]
+  },
+  {
+    "id": "q_1779134869163_3m6k",
+    "category": "imf",
+    "question": "Que veux dire HCOF ?",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "Hausse de Cadence d'Ouverture de Feu",
+        "correct": false
+      },
+      {
+        "text": "Hausse Contrôle Ouverture de Feu",
+        "correct": false
+      },
+      {
+        "text": "Hausse Consommation Ouverture de Feu",
+        "correct": true
+      },
+      {
+        "text": "Hausse Consommation Ordre de Feu",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "id": "q_1779134891156_9oxk",
+    "category": "imf",
+    "question": "Que veux dire DNOF ?",
+    "multiCorrect": false,
+    "answers": [
+      {
+        "text": "Distance Neutralisation Objectif Feu",
+        "correct": false
+      },
+      {
+        "text": "Distance Nombre Objectif Feu",
+        "correct": true
+      },
+      {
+        "text": "Distance Nombre d'Ordre de Feu",
+        "correct": false
+      },
+      {
+        "text": "Dispositif Nombre Objectif Feu",
+        "correct": false
+      }
+    ]
+  }
+]
