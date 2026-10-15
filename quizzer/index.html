@@ -11,7 +11,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@400;600;800&family=Barlow:wght@400;500;600&family=Spline+Sans+Mono:wght@400;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../assets/hub.css">
 <style>
-/* Écran partagé : quiz à gauche, éditeur à droite.
+/* Écran partagé : quiz, partie en direct et éditeur.
    Reprend les couleurs et polices du hub (assets/hub.css). */
 html,body{height:100%}
 body{overflow:hidden}
@@ -35,6 +35,7 @@ body{overflow:hidden}
 }
 .volet.quiz{--halo:rgba(201,162,39,.16)}
 .volet.edit{--halo:rgba(143,166,196,.14)}
+.volet.direct{--halo:rgba(200,16,46,.16)}
 
 /* galon doré oblique, comme sur les fiches du hub */
 .volet::after{
@@ -52,11 +53,11 @@ body{overflow:hidden}
 }
 .titre-volet{
   margin:6px 0 2px;font-family:var(--disp);font-weight:800;text-transform:uppercase;
-  font-size:clamp(54px,7.4vw,112px);line-height:.84;letter-spacing:.005em;
+  font-size:clamp(48px,6vw,104px);line-height:.84;letter-spacing:.005em;
 }
 .titre-volet span{display:block}
-.volet.quiz .titre-volet .creux{color:transparent;-webkit-text-stroke:2px var(--or)}
-@supports not ((-webkit-text-stroke:1px #000)){ .volet.quiz .titre-volet .creux{color:var(--or)} }
+.volet .titre-volet .creux{color:transparent;-webkit-text-stroke:2px var(--or)}
+@supports not ((-webkit-text-stroke:1px #000)){ .volet .titre-volet .creux{color:var(--or)} }
 .volet .desc{margin:0;transition:color .3s}
 .volet .meta{margin-top:4px}
 .entrer{
@@ -116,6 +117,16 @@ body{overflow:hidden}
       <p class="desc">Choisissez vos sujets et le nombre de questions. Correction après chaque réponse, score détaillé à la fin.</p>
       <span class="meta mono">Jeu de questions publié sur le dépôt</span>
       <span class="entrer">Commencer <span class="fleche" aria-hidden="true">→</span></span>
+    </div>
+  </a>
+
+  <a class="volet direct" href="animateur.html">
+    <div class="contenu" style="--delai:45ms">
+      <span class="code mono">QZR · En salle</span>
+      <h2 class="titre-volet"><span>Partie</span><span class="creux">en direct</span></h2>
+      <p class="desc">Les participants rejoignent avec un QR code sur leur téléphone. Questions au grand écran, chrono et classement en direct.</p>
+      <span class="meta mono">Écran de l'animateur</span>
+      <span class="entrer">Ouvrir une salle <span class="fleche" aria-hidden="true">→</span></span>
     </div>
   </a>
 

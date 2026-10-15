@@ -1,0 +1,25 @@
+{
+  "rules": {
+    "salles": {
+      "$code": {
+        ".read": "auth != null",
+        ".write": "auth != null && ((!data.exists() && newData.child('hote').val() === auth.uid) || data.child('hote').val() === auth.uid || (!newData.exists() && data.child('cree').val() < now - 21600000))",
+        ".validate": "$code.matches(/^[0-9]{4}$/) && newData.hasChildren(['hote', 'cree', 'etat'])",
+        "joueurs": {
+          "$uid": {
+            ".write": "auth != null && $uid === auth.uid && root.child('salles/' + $code + '/hote').exists()",
+            ".validate": "newData.hasChildren(['nom'])",
+            "nom": { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 20" },
+            "$autre": { ".validate": false }
+          }
+        },
+        "reponses": {
+          "$uid": {
+            ".write": "auth != null && $uid === auth.uid && root.child('salles/' + $code + '/etat').val() === 'question' && root.child('salles/' + $code + '/joueurs/' + $uid).exists() && (!data.exists() || data.child('rang').val() !== root.child('salles/' + $code + '/rang').val())",
+            ".validate": "newData.hasChildren(['rang', 'choix', 't']) && newData.child('rang').val() === root.child('salles/' + $code + '/rang').val() && newData.child('t').val() === now"
+          }
+        }
+      }
+    }
+  }
+}

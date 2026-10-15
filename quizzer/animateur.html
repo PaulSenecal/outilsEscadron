@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Partie en direct</title>
+<meta name="description" content="Écran de l'animateur : créer une salle, afficher le QR code, faire défiler les questions et le classement.">
+<meta name="theme-color" content="#0B1B33">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@400;600;800&family=Barlow:wght@400;500;600&family=Spline+Sans+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/hub.css">
+<link rel="stylesheet" href="direct.css">
+<style>
+/* Écran de l'animateur, pensé pour un vidéoprojecteur. */
+.wrap{max-width:1180px}
+body.en-jeu .tete{display:none}
+
+/* ── salon ─────────────────────────────────────────────── */
+.salon{display:grid;grid-template-columns:minmax(280px,380px) 1fr;gap:28px;align-items:start}
+.qr{background:#fff;padding:18px;border-radius:4px;display:grid;place-items:center}
+.qr img,.qr canvas{width:100%!important;height:auto!important;max-width:340px;display:block}
+.code-salle{margin-top:18px;text-align:center}
+.code-salle .lib{color:var(--acier)}
+.code-salle .val{display:block;font-family:var(--disp);font-weight:800;font-size:clamp(64px,8vw,104px);line-height:.9;letter-spacing:.08em;color:var(--or-clair)}
+.code-salle .url{display:block;margin-top:8px;color:var(--acier);word-break:break-all}
+.alerte{margin-top:14px;padding:10px 12px;border-left:3px solid var(--faux);background:var(--faux-fond);font-size:14px}
+.compte{font-family:var(--disp);font-weight:800;font-size:56px;line-height:1;color:var(--craie)}
+.compte small{font-family:var(--texte);font-weight:400;font-size:18px;color:var(--acier);margin-left:8px}
+.inscrits{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px;min-height:40px}
+.inscrits span{
+  padding:8px 14px;border-radius:2px;border:1px solid var(--nuit-3);background:rgba(11,27,51,.55);
+  font-weight:600;animation:apparait-ecran .35s ease-out;
+}
+.inscrits .vide{border-style:dashed;color:var(--acier);font-weight:400}
+
+/* ── jeu ───────────────────────────────────────────────── */
+.barre-jeu{display:flex;align-items:center;gap:20px;padding:22px 0 14px;color:var(--acier)}
+.barre-jeu .chrono{flex:1}
+.barre-jeu .salle b{color:var(--or-clair)}
+.enonce{
+  margin:12px 0 18px;font-family:var(--disp);font-weight:600;text-transform:none;
+  font-size:clamp(32px,4.2vw,56px);line-height:1.04;
+}
+.illus{margin:0 0 18px}
+.illus img{max-width:100%;max-height:300px;border-radius:3px;border:1px solid var(--nuit-3);display:block}
+.jeu .reponses{grid-template-columns:1fr 1fr}
+.jeu .reponse{font-size:clamp(18px,1.7vw,24px);padding:18px 18px;cursor:default;position:relative;overflow:hidden}
+.jeu .reponse .lettre{width:40px;height:40px;font-size:.9rem}
+.jeu .reponse .txt{position:relative}
+.jeu .reponse .jauge{position:absolute;inset:0 auto 0 0;background:color-mix(in srgb,var(--c) 18%,transparent);width:0;transition:width .6s cubic-bezier(.2,.8,.3,1)}
+.jeu .reponse .lettre,.jeu .reponse .etat{position:relative}
+.pied-jeu{display:flex;flex-wrap:wrap;align-items:center;gap:16px;margin-top:22px}
+.pied-jeu .repondu{font-family:var(--disp);font-weight:600;font-size:28px;margin-right:auto}
+.pied-jeu .repondu small{font-family:var(--texte);font-weight:400;font-size:16px;color:var(--acier)}
+.correction-bloc{display:grid;grid-template-columns:1fr 360px;gap:24px;align-items:start}
+
+/* ── fin ───────────────────────────────────────────────── */
+.podium{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;align-items:end;margin:10px 0 30px}
+.podium .marche{text-align:center;padding:18px 12px;border:1px solid var(--nuit-3);border-radius:3px;background:linear-gradient(180deg,var(--nuit-2),#0F2340)}
+.podium .marche .place{font-family:var(--disp);font-weight:800;font-size:56px;line-height:1;color:var(--acier)}
+.podium .marche .nom{display:block;font-weight:600;font-size:22px;margin:8px 0 4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.podium .marche .pts{font-family:var(--disp);font-weight:600;font-size:28px;color:var(--or-clair)}
+.podium .p1{order:2;padding-top:44px;border-color:var(--or)}
+.podium .p1 .place{color:var(--or-clair);font-size:80px}
+.podium .p2{order:1;padding-top:28px}
+.podium .p3{order:3}
+
+@media(max-width:820px){
+  .salon,.correction-bloc{grid-template-columns:1fr}
+  .jeu .reponses{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<div class="champ" aria-hidden="true"></div>
+
+<header class="tete">
+  <div class="wrap">
+    <div class="fanion">
+      <span class="pastille"></span>
+      <a class="mono" href="./">← Quizzer</a>
+      <span class="sep">/</span>
+      <span class="mono">Partie en direct</span>
+    </div>
+    <h1><span class="l1">Partie</span><span class="l2">en direct</span></h1>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section class="ecran actif" id="e-charge">
+    <div class="panneau message" id="charge-msg">Chargement du jeu de questions et connexion…</div>
+  </section>
+
+  <!-- Réglages -->
+  <section class="ecran" id="e-reglages">
+    <h2 class="rubrique"><span>Sujets</span></h2>
+    <div class="choix" id="sujets"></div>
+    <p class="aide">Touchez un sujet pour l'ajouter ou le retirer.</p>
+
+    <h2 class="rubrique"><span>Nombre de questions</span></h2>
+    <div class="choix" id="nombres"></div>
+
+    <h2 class="rubrique"><span>Temps par question</span></h2>
+    <div class="choix" id="durees"></div>
+
+    <h2 class="rubrique"><span>Ordre</span></h2>
+    <label class="bascule">
+      <input type="checkbox" id="melange" checked>
+      <span class="piste" aria-hidden="true"></span>
+      <span class="lib">Ordre aléatoire<small>Mélange les questions et l'ordre des réponses.</small></span>
+    </label>
+
+    <div class="actions">
+      <button class="bouton" id="creer" type="button">Ouvrir la salle <span aria-hidden="true">→</span></button>
+      <span class="resume mono" id="resume"></span>
+    </div>
+  </section>
+
+  <!-- Salon : QR code et joueurs inscrits -->
+  <section class="ecran" id="e-salon">
+    <div class="salon">
+      <div class="panneau">
+        <div class="qr" id="qr" role="img" aria-label="QR code pour rejoindre la partie"></div>
+        <div class="code-salle">
+          <span class="lib mono">Code de la salle</span>
+          <span class="val" id="s-code"></span>
+          <span class="url mono" id="s-url"></span>
+        </div>
+        <div class="alerte" id="s-local" hidden>
+          Page ouverte en local : les téléphones ne pourront pas joindre cette adresse.
+          Utilisez la version en ligne du site.
+        </div>
+      </div>
+      <div>
+        <h2 class="rubrique"><span>Joueurs</span></h2>
+        <div class="compte" id="s-compte">0<small>inscrit</small></div>
+        <div class="inscrits" id="s-inscrits"></div>
+        <div class="actions">
+          <button class="bouton" id="lancer" type="button" disabled>Lancer la partie <span aria-hidden="true">→</span></button>
+          <button class="bouton second" id="annuler" type="button">Fermer la salle</button>
+          <span class="resume mono" id="s-resume"></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Question puis correction -->
+  <section class="ecran jeu" id="e-jeu">
+    <div class="barre-jeu mono">
+      <span id="j-pos"></span>
+      <div class="chrono" id="j-chrono">
+        <div class="barre"><i id="j-barre"></i></div>
+        <span class="sec" id="j-sec"></span>
+      </div>
+      <span class="salle">Salle <b id="j-code"></b></span>
+    </div>
+    <div class="correction-bloc" id="j-bloc">
+      <div class="panneau">
+        <span class="code mono" id="j-sujet"></span>
+        <h2 class="enonce" id="j-texte"></h2>
+        <div class="illus" id="j-image" hidden></div>
+        <ul class="reponses" id="j-reponses"></ul>
+      </div>
+      <div id="j-classement-bloc" hidden>
+        <h2 class="rubrique" style="margin-top:0"><span>Classement</span></h2>
+        <ol class="classement" id="j-classement"></ol>
+      </div>
+    </div>
+    <div class="pied-jeu">
+      <span class="repondu" id="j-repondu"></span>
+      <button class="bouton" id="j-action" type="button"></button>
+      <button class="bouton second" id="j-stop" type="button">Terminer</button>
+    </div>
+  </section>
+
+  <!-- Résultats finaux -->
+  <section class="ecran" id="e-fin">
+    <h2 class="rubrique"><span>Résultats</span></h2>
+    <div class="podium" id="f-podium"></div>
+    <ol class="classement" id="f-classement"></ol>
+    <div class="actions">
+      <button class="bouton" id="f-nouveau" type="button">Nouvelle partie</button>
+    </div>
+  </section>
+
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script type="module">
+import {
+  db, connexion, messageErreurFirebase, maintenant, ref, get, set, update, remove, onValue, serverTimestamp,
+  LETTRES, $, esc, melanger, ecran, echec, liste, classement
+} from './direct.js';
+
+// ═══════════════════════════════════════════
+// DONNÉES (même fichier et mêmes règles que quiz.html)
+// ═══════════════════════════════════════════
+const REF_URL = 'data/quiz.json';
+const SUJETS_DEFAUT = [
+  { id: 'sit', label: 'SIT' }, { id: 'imf', label: 'IMF' }, { id: 'istc', label: 'ISTC' },
+  { id: 'nrbc', label: 'NRBC' }, { id: 'armement', label: 'ARMEMENT' }, { id: 'rens', label: 'RENS' },
+  { id: 'topo', label: 'TOPO' }, { id: 'trans', label: 'TRANS' }, { id: 'cyber', label: 'CYBER SÉCU' },
+];
+const NOMBRES = [10, 20, 40, 0];   // 0 = toutes
+const DUREES = [10, 20, 30, 60];   // secondes
+const SALLE_ABANDONNEE = 6 * 3600e3;
+
+let banque = [], sujets = [];
+let choixSujets = new Set(), choixNombre = 10, choixDuree = 20;
+
+let uid = null;
+let code = null;          // salle ouverte
+let serie = [];           // [{q, reponses}] : les bonnes réponses ne quittent pas cet écran
+let salle = null;         // dernier état reçu de la base
+let arreterEcoute = null;
+let vue = '';             // étape affichée, pour ne redessiner qu'au changement
+let minuteur = null;
+let enCorrection = false;
+
+function libelleSujet(id) {
+  const s = sujets.find(x => x.id === id);
+  return s ? s.label : String(id || '—').toUpperCase();
+}
+const estMulti = item => !!item.q.multiCorrect || item.reponses.filter(a => a.correct).length > 1;
+const nbJoueurs = () => Object.keys((salle && salle.joueurs) || {}).length;
+const salleRef = (chemin) => ref(db, 'salles/' + code + (chemin ? '/' + chemin : ''));
+
+async function demarrer() {
+  if (location.protocol === 'file:') {
+    echec('Disponible uniquement en ligne', 'Ouvrez cette page depuis son adresse web.');
+    return;
+  }
+  let data;
+  try {
+    const r = await fetch(REF_URL + '?v=' + Date.now(), { cache: 'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    data = await r.json();
+  } catch (err) {
+    echec('Jeu de questions indisponible', 'Impossible de lire <b>' + REF_URL + '</b> (' + esc(err.message) + ').');
+    return;
+  }
+  try {
+    uid = (await connexion()).uid;
+  } catch (err) {
+    echec('Connexion à Firebase impossible', messageErreurFirebase(err));
+    return;
+  }
+  preparer(data);
+}
+
+function preparer(data) {
+  const qs = Array.isArray(data) ? data : (data && data.questions);
+  const cats = (!Array.isArray(data) && data && Array.isArray(data.categories)) ? data.categories : SUJETS_DEFAUT;
+  if (!Array.isArray(qs)) { echec('Fichier inexploitable', 'Le fichier ne contient pas de liste de questions.'); return; }
+  banque = qs.filter(q => q && typeof q.question === 'string' && q.question.trim() &&
+    Array.isArray(q.answers) && q.answers.length >= 2 && q.answers.length <= LETTRES.length &&
+    q.answers.some(a => a && a.correct));
+  if (!banque.length) { echec('Aucune question jouable', 'Le fichier ne contient aucune question avec une bonne réponse.'); return; }
+
+  const compte = new Map();
+  banque.forEach(q => compte.set(q.category, (compte.get(q.category) || 0) + 1));
+  sujets = [];
+  cats.forEach(c => { if (compte.has(c.id)) sujets.push({ id: c.id, label: c.label || c.id, n: compte.get(c.id) }); });
+  compte.forEach((n, id) => { if (!sujets.some(s => s.id === id)) sujets.push({ id: id, label: String(id || 'Divers').toUpperCase(), n: n }); });
+  choixSujets = new Set(sujets.map(s => s.id));
+  dessinerReglages();
+  ecran('e-reglages');
+}
+
+// ═══════════════════════════════════════════
+// RÉGLAGES
+// ═══════════════════════════════════════════
+const disponibles = () => banque.filter(q => choixSujets.has(q.category)).length;
+
+function dessinerReglages() {
+  const tous = choixSujets.size === sujets.length;
+  $('sujets').innerHTML =
+    '<button type="button" class="puce" data-sujet="*" aria-pressed="' + tous + '">Tous<span class="nb">' + banque.length + '</span></button>' +
+    sujets.map(s => '<button type="button" class="puce" data-sujet="' + esc(s.id) + '" aria-pressed="' +
+      (!tous && choixSujets.has(s.id)) + '">' + esc(s.label) + '<span class="nb">' + s.n + '</span></button>').join('');
+
+  const dispo = disponibles();
+  $('nombres').innerHTML = NOMBRES.map(n => {
+    const lib = n === 0 ? 'Toutes · ' + dispo : String(n);
+    return '<button type="button" class="puce" data-nombre="' + n + '" aria-pressed="' + (choixNombre === n) + '"' +
+      (n !== 0 && n > dispo ? ' disabled' : '') + '>' + lib + '</button>';
+  }).join('');
+  $('durees').innerHTML = DUREES.map(d =>
+    '<button type="button" class="puce" data-duree="' + d + '" aria-pressed="' + (choixDuree === d) + '">' + d + ' s</button>').join('');
+
+  const total = choixNombre === 0 ? dispo : Math.min(choixNombre, dispo);
+  $('resume').textContent = dispo ? total + ' question' + (total > 1 ? 's' : '') : 'Choisissez au moins un sujet';
+  $('creer').disabled = dispo === 0;
+}
+
+$('sujets').addEventListener('click', e => {
+  const b = e.target.closest('[data-sujet]');
+  if (!b) return;
+  const id = b.dataset.sujet;
+  const tous = choixSujets.size === sujets.length;
+  if (id === '*') choixSujets = new Set(sujets.map(s => s.id));
+  else if (tous) choixSujets = new Set([id]);
+  else if (choixSujets.has(id)) {
+    choixSujets.delete(id);
+    if (choixSujets.size === 0) choixSujets = new Set(sujets.map(s => s.id));
+  } else choixSujets.add(id);
+  const dispo = disponibles();
+  if (choixNombre !== 0 && choixNombre > dispo) {
+    const paliers = NOMBRES.filter(n => n !== 0 && n <= dispo);
+    choixNombre = paliers.length ? paliers[paliers.length - 1] : 0;
+  }
+  dessinerReglages();
+});
+$('nombres').addEventListener('click', e => {
+  const b = e.target.closest('[data-nombre]');
+  if (b && !b.disabled) { choixNombre = Number(b.dataset.nombre); dessinerReglages(); }
+});
+$('durees').addEventListener('click', e => {
+  const b = e.target.closest('[data-duree]');
+  if (b) { choixDuree = Number(b.dataset.duree); dessinerReglages(); }
+});
+
+// ═══════════════════════════════════════════
+// SALLE
+// ═══════════════════════════════════════════
+$('creer').addEventListener('click', async () => {
+  let qs = banque.filter(q => choixSujets.has(q.category));
+  const m = $('melange').checked;
+  if (m) qs = melanger(qs);
+  if (choixNombre > 0) qs = qs.slice(0, choixNombre);
+  serie = qs.map(q => ({ q: q, reponses: m ? melanger(q.answers) : q.answers.slice() }));
+
+  $('creer').disabled = true;
+  try {
+    code = await reserverCode();
+  } catch (err) {
+    $('creer').disabled = false;
+    alert("Impossible d'ouvrir une salle : " + (err.message || err));
+    return;
+  }
+  ouvrirSalon();
+});
+
+// Tire un code à 4 chiffres libre. Une salle restée ouverte depuis
+// longtemps (onglet fermé sans terminer) peut être récupérée.
+async function reserverCode() {
+  const contenu = () => ({ hote: uid, cree: serverTimestamp(), etat: 'attente', rang: -1, total: serie.length, duree: choixDuree });
+  let derniere = null;
+  for (let essai = 0; essai < 25; essai++) {
+    const c = String(1000 + Math.floor(Math.random() * 9000));
+    const r = ref(db, 'salles/' + c);
+    try { await set(r, contenu()); return c; } catch (err) { derniere = err; }
+    try {
+      const s = await get(r);
+      if (s.exists() && !(s.val().cree > maintenant() - SALLE_ABANDONNEE)) {
+        await remove(r);
+        await set(r, contenu());
+        return c;
+      }
+    } catch (err) { derniere = err; }
+  }
+  throw new Error(messageErreurFirebase(derniere));
+}
+
+function ouvrirSalon() {
+  const url = new URL('joueur.html?salle=' + code, location.href).href;
+  $('s-code').textContent = code;
+  $('s-url').textContent = url.replace(/^https?:\/\//, '');
+  $('s-local').hidden = !/^(localhost|127\.|\[::1\])/.test(location.hostname);
+  $('qr').innerHTML = '';
+  new QRCode($('qr'), { text: url, width: 512, height: 512, colorDark: '#0B1B33', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
+  $('s-resume').textContent = serie.length + ' questions · ' + choixDuree + ' s';
+  vue = '';
+  salle = null;
+  majSalon();
+  ecran('e-salon');
+
+  if (arreterEcoute) arreterEcoute();
+  arreterEcoute = onValue(salleRef(), snap => {
+    salle = snap.val();
+    if (!salle) return;
+    majVue();
+  }, err => alert('Connexion à la salle perdue : ' + messageErreurFirebase(err)));
+}
+
+function majSalon() {
+  const joueurs = Object.values((salle && salle.joueurs) || {});
+  const n = joueurs.length;
+  $('s-compte').innerHTML = n + '<small>inscrit' + (n > 1 ? 's' : '') + '</small>';
+  $('s-inscrits').innerHTML = n
+    ? joueurs.map(j => '<span>' + esc(j.nom) + '</span>').join('')
+    : '<span class="vide">En attente des premiers joueurs…</span>';
+  $('lancer').disabled = n === 0;
+}
+
+async function fermerSalle() {
+  if (arreterEcoute) { arreterEcoute(); arreterEcoute = null; }
+  clearInterval(minuteur);
+  document.body.classList.remove('en-jeu');
+  const c = code;
+  code = null; salle = null; vue = '';
+  if (c) { try { await remove(ref(db, 'salles/' + c)); } catch (_) {} }
+}
+
+$('annuler').addEventListener('click', async () => {
+  await fermerSalle();
+  dessinerReglages();
+  ecran('e-reglages');
+});
+$('lancer').addEventListener('click', () => poserQuestion(0));
+
+// ═══════════════════════════════════════════
+// DÉROULÉ
+// ═══════════════════════════════════════════
+function majVue() {
+  if (salle.etat === 'attente') { majSalon(); return; }
+  const etape = salle.etat + ':' + salle.rang;
+  if (etape !== vue) {
+    vue = etape;
+    if (salle.etat === 'question') vueQuestion();
+    else if (salle.etat === 'correction') vueCorrection();
+    else if (salle.etat === 'fin') vueFin();
+  }
+  if (salle.etat === 'question') majRepondu();
+}
+
+async function poserQuestion(i) {
+  const item = serie[i];
+  try {
+    await update(salleRef(), {
+      etat: 'question', rang: i, debut: serverTimestamp(), correction: null,
+      question: {
+        texte: item.q.question,
+        sujet: libelleSujet(item.q.category),
+        reponses: item.reponses.map(a => a.text),
+        multi: estMulti(item),
+        image: item.q.image || null
+      }
+    });
+  } catch (err) {
+    alert("La question n'a pas pu être envoyée : " + messageErreurFirebase(err));
+  }
+}
+
+function dessinerQuestion(item) {
+  $('j-pos').textContent = 'Question ' + (salle.rang + 1) + ' / ' + serie.length;
+  $('j-code').textContent = code;
+  $('j-sujet').textContent = libelleSujet(item.q.category);
+  $('j-texte').textContent = item.q.question;
+  const img = $('j-image');
+  img.hidden = !item.q.image;
+  img.innerHTML = item.q.image ? '<img alt="Illustration de la question" src="' + esc(item.q.image) + '">' : '';
+  $('j-reponses').innerHTML = item.reponses.map((a, i) =>
+    '<li><div class="reponse" data-i="' + i + '"><span class="jauge"></span>' +
+    '<span class="lettre">' + LETTRES[i] + '</span><span class="txt">' + esc(a.text) + '</span>' +
+    '<span class="etat"></span></div></li>').join('');
+}
+
+function vueQuestion() {
+  const item = serie[salle.rang];
+  document.body.classList.add('en-jeu');
+  dessinerQuestion(item);
+  $('j-bloc').style.gridTemplateColumns = '1fr';
+  $('j-classement-bloc').hidden = true;
+  $('j-chrono').style.visibility = 'visible';
+  $('j-action').textContent = 'Corriger maintenant';
+  ecran('e-jeu');
+
+  const duree = salle.duree * 1000;
+  const fin = salle.debut + duree;
+  clearInterval(minuteur);
+  const tic = () => {
+    const reste = Math.max(0, fin - maintenant());
+    $('j-sec').textContent = Math.ceil(reste / 1000);
+    $('j-barre').style.transform = 'scaleX(' + (reste / duree) + ')';
+    $('j-chrono').classList.toggle('urgent', reste < 5000);
+    if (reste <= 0) corriger();
+  };
+  tic();
+  minuteur = setInterval(tic, 200);
+}
+
+// Réponses reçues pour la question en cours
+function reponsesCourantes() {
+  const joueurs = (salle && salle.joueurs) || {};
+  return Object.entries(salle.reponses || {})
+    .filter(([id, r]) => joueurs[id] && r && r.rang === salle.rang);
+}
+
+function majRepondu() {
+  const n = nbJoueurs(), r = reponsesCourantes().length;
+  $('j-repondu').innerHTML = r + ' / ' + n + ' <small>ont répondu</small>';
+  if (n > 0 && r >= n) corriger();
+}
+
+const memeEnsemble = (a, b) => a.length === b.length && a.every(x => b.includes(x));
+
+async function corriger() {
+  if (enCorrection || !salle || salle.etat !== 'question') return;
+  enCorrection = true;
+  clearInterval(minuteur);
+  const item = serie[salle.rang];
+  const bonnes = item.reponses.map((a, i) => a.correct ? i : -1).filter(i => i >= 0);
+  const duree = salle.duree * 1000;
+  const scores = salle.scores || {};
+  const recues = Object.fromEntries(reponsesCourantes());
+  const maj = { etat: 'correction', correction: bonnes, joues: salle.rang + 1 };
+
+  // 500 points pour une bonne réponse, jusqu'à 500 de plus selon la rapidité.
+  Object.keys(salle.joueurs || {}).forEach(id => {
+    const prec = scores[id] || { total: 0, bons: 0 };
+    const rep = recues[id];
+    const ecoule = rep ? rep.t - salle.debut : Infinity;
+    const repondu = ecoule <= duree + 1500;   // petite marge pour le réseau
+    const juste = repondu && memeEnsemble(liste(rep.choix).map(Number), bonnes);
+    const gain = juste ? Math.round(500 + 500 * Math.max(0, 1 - ecoule / duree)) : 0;
+    maj['scores/' + id] = { total: prec.total + gain, bons: prec.bons + (juste ? 1 : 0), gain: gain, juste: juste, repondu: repondu };
+  });
+
+  try { await update(salleRef(), maj); }
+  catch (err) { alert("La correction n'a pas pu être envoyée : " + messageErreurFirebase(err)); }
+  enCorrection = false;
+}
+
+function vueCorrection() {
+  const item = serie[salle.rang];
+  clearInterval(minuteur);
+  dessinerQuestion(item);
+  document.body.classList.add('en-jeu');
+
+  const parReponse = item.reponses.map(() => 0);
+  reponsesCourantes().forEach(([, r]) => liste(r.choix).forEach(i => { if (parReponse[i] != null) parReponse[i]++; }));
+  const total = Math.max(1, reponsesCourantes().length);
+  document.querySelectorAll('#j-reponses .reponse').forEach((b, i) => {
+    const bonne = !!item.reponses[i].correct;
+    b.classList.add(bonne ? 'juste' : 'eteint');
+    b.querySelector('.etat').textContent = (bonne ? '✓ ' : '') + parReponse[i];
+    requestAnimationFrame(() => { b.querySelector('.jauge').style.width = (parReponse[i] / total * 100) + '%'; });
+  });
+
+  $('j-chrono').style.visibility = 'hidden';
+  $('j-bloc').style.gridTemplateColumns = '';
+  $('j-classement-bloc').hidden = false;
+  $('j-classement').innerHTML = classement(salle).slice(0, 8).map(j =>
+    '<li><span class="nom">' + esc(j.nom) + '</span><span class="gain">' + (j.gain ? '+' + j.gain : '') +
+    '</span><span class="pts">' + j.total + '</span></li>').join('');
+  const bons = classement(salle).filter(j => j.juste).length;
+  $('j-repondu').innerHTML = bons + ' / ' + nbJoueurs() + ' <small>bonne' + (bons > 1 ? 's' : '') + ' réponse' + (bons > 1 ? 's' : '') + '</small>';
+  $('j-action').innerHTML = (salle.rang + 1 < serie.length ? 'Question suivante' : 'Voir les résultats') + ' <span aria-hidden="true">→</span>';
+  ecran('e-jeu');
+  $('j-action').focus({ preventScroll: true });
+}
+
+async function terminer() {
+  clearInterval(minuteur);
+  try { await update(salleRef(), { etat: 'fin', question: null, correction: null }); }
+  catch (err) { alert('Impossible de terminer : ' + messageErreurFirebase(err)); }
+}
+
+$('j-action').addEventListener('click', () => {
+  if (!salle) return;
+  if (salle.etat === 'question') corriger();
+  else if (salle.etat === 'correction') {
+    if (salle.rang + 1 < serie.length) poserQuestion(salle.rang + 1);
+    else terminer();
+  }
+});
+$('j-stop').addEventListener('click', () => {
+  if (confirm('Terminer la partie maintenant et afficher le classement ?')) terminer();
+});
+
+function vueFin() {
+  document.body.classList.remove('en-jeu');
+  const c = classement(salle);
+  $('f-podium').style.gridTemplateColumns = 'repeat(' + Math.min(3, Math.max(1, c.length)) + ',minmax(0,260px))';
+  $('f-podium').innerHTML = c.slice(0, 3).map((j, i) =>
+    '<div class="marche p' + (i + 1) + '"><div class="place">' + (i + 1) + '</div>' +
+    '<span class="nom">' + esc(j.nom) + '</span><span class="pts">' + j.total + '</span></div>').join('');
+  $('f-classement').innerHTML = c.map(j =>
+    '<li><span class="nom">' + esc(j.nom) + '</span><span class="gain">' + j.bons + ' / ' + (salle.joues || 0) +
+    '</span><span class="pts">' + j.total + '</span></li>').join('');
+  ecran('e-fin');
+}
+
+$('f-nouveau').addEventListener('click', async () => {
+  await fermerSalle();
+  dessinerReglages();
+  ecran('e-reglages');
+});
+
+// Entrée ou flèche droite : action principale (pratique avec une télécommande de présentation)
+document.addEventListener('keydown', e => {
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  if (e.key !== 'Enter' && e.key !== 'ArrowRight' && e.key !== 'PageDown') return;
+  const f = document.activeElement;
+  if (f && f.tagName === 'BUTTON' && e.key === 'Enter') return;
+  if ($('e-salon').classList.contains('actif') && !$('lancer').disabled) { e.preventDefault(); $('lancer').click(); }
+  else if ($('e-jeu').classList.contains('actif')) { e.preventDefault(); $('j-action').click(); }
+});
+
+window.addEventListener('beforeunload', e => {
+  if (code && salle && salle.etat !== 'fin') { e.preventDefault(); e.returnValue = ''; }
+});
+
+demarrer();
+</script>
+<script src="../assets/retour.js" defer></script>
+</body>
+</html>

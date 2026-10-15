@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Rejoindre la partie</title>
+<meta name="description" content="Rejoindre une partie de quiz en direct avec le code affiché par l'animateur.">
+<meta name="theme-color" content="#0B1B33">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@400;600;800&family=Barlow:wght@400;500;600&family=Spline+Sans+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/hub.css">
+<link rel="stylesheet" href="direct.css">
+<style>
+/* Écran du joueur, pensé pour un téléphone. */
+.wrap{max-width:620px}
+body.en-jeu h1{display:none}
+.fanion .salle{margin-left:auto;color:var(--acier)}
+.fanion .salle b{color:var(--or-clair)}
+
+.formulaire{display:grid;gap:14px}
+.formulaire .bouton{width:100%}
+.code-saisie{font-family:var(--disp);font-weight:800;font-size:56px;letter-spacing:.3em;text-align:center;padding:10px}
+
+.enonce{
+  margin:10px 0 6px;font-family:var(--disp);font-weight:600;text-transform:none;
+  font-size:clamp(26px,7vw,36px);line-height:1.05;
+}
+.consigne{color:var(--acier);margin:0 0 16px}
+.illus img{max-width:100%;max-height:240px;border-radius:3px;border:1px solid var(--nuit-3);display:block;margin-bottom:14px}
+.reponse{min-height:62px;font-size:18px}
+.chrono{margin:18px 0 14px}
+.valider{width:100%;margin-top:16px}
+
+.grand-etat{text-align:center;padding:36px 20px}
+.grand-etat .titre{font-family:var(--disp);font-weight:800;text-transform:uppercase;font-size:clamp(40px,12vw,64px);line-height:.95;margin:0 0 10px}
+.grand-etat p{color:var(--acier);margin:6px 0}
+.grand-etat .gros{font-family:var(--disp);font-weight:800;font-size:clamp(72px,24vw,120px);line-height:.9;color:var(--or-clair)}
+.grand-etat.ok{border-color:var(--juste)} .grand-etat.ok .titre{color:var(--juste)}
+.grand-etat.ko{border-color:var(--faux)} .grand-etat.ko .titre{color:var(--faux)}
+.grand-etat .bonne{color:var(--craie);margin-top:14px}
+.grand-etat .bonne b{color:var(--juste);font-weight:600}
+.attente-point{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--or);margin:18px 4px 0;animation:pulse 1.2s ease-in-out infinite}
+.attente-point:nth-child(2){animation-delay:.2s}.attente-point:nth-child(3){animation-delay:.4s}
+@keyframes pulse{0%,100%{opacity:.25;transform:scale(.8)}50%{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.attente-point{animation:none;opacity:.7}}
+.chiffres{display:flex;justify-content:center;gap:28px;margin-top:18px}
+.chiffres div{display:flex;flex-direction:column}
+.chiffres b{font-family:var(--disp);font-weight:800;font-size:40px;color:var(--craie);line-height:1}
+.chiffres span{font-family:var(--mono);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--acier)}
+</style>
+</head>
+<body>
+
+<div class="champ" aria-hidden="true"></div>
+
+<header class="tete">
+  <div class="wrap">
+    <div class="fanion">
+      <span class="pastille"></span>
+      <span class="mono">Partie en direct</span>
+      <span class="salle mono" id="entete-salle" hidden>Salle <b id="entete-code"></b></span>
+    </div>
+    <h1><span class="l1">Rejoindre</span><span class="l2">la partie</span></h1>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section class="ecran actif" id="e-charge">
+    <div class="panneau message" id="charge-msg">Connexion…</div>
+  </section>
+
+  <section class="ecran" id="e-code">
+    <form class="panneau formulaire" id="f-code" autocomplete="off">
+      <label class="mono" for="code">Code affiché sur l'écran</label>
+      <input class="champ-texte code-saisie" id="code" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" placeholder="0000" required>
+      <p class="aide" id="code-msg" hidden></p>
+      <button class="bouton" type="submit">Entrer <span aria-hidden="true">→</span></button>
+    </form>
+  </section>
+
+  <section class="ecran" id="e-nom">
+    <form class="panneau formulaire" id="f-nom" autocomplete="off">
+      <label class="mono" for="nom">Votre nom</label>
+      <input class="champ-texte" id="nom" maxlength="20" placeholder="Nom ou pseudo" required>
+      <p class="aide">Il apparaîtra dans le classement sur le grand écran.</p>
+      <button class="bouton" type="submit">Rejoindre <span aria-hidden="true">→</span></button>
+    </form>
+  </section>
+
+  <section class="ecran" id="e-jeu">
+    <div id="p"></div>
+  </section>
+
+</main>
+
+<script type="module">
+import {
+  db, connexion, messageErreurFirebase, maintenant, ref, get, set, onValue, serverTimestamp,
+  LETTRES, $, esc, ecran, echec, liste, classement
+} from './direct.js';
+
+let uid = null;
+let code = (new URLSearchParams(location.search).get('salle') || '').replace(/\D/g, '').slice(0, 4);
+let salle = null;
+let vue = '';
+let selection = new Set();
+let minuteur = null;
+let arreterEcoute = null;
+
+function lireNom() { try { return localStorage.getItem('quizzer.nom') || ''; } catch (_) { return ''; } }
+function retenirNom(n) { try { localStorage.setItem('quizzer.nom', n); } catch (_) {} }
+
+async function demarrer() {
+  if (location.protocol === 'file:') {
+    echec('Disponible uniquement en ligne', 'Ouvrez cette page depuis son adresse web.');
+    return;
+  }
+  try {
+    uid = (await connexion()).uid;
+  } catch (err) {
+    echec('Connexion impossible', messageErreurFirebase(err));
+    return;
+  }
+  if (/^\d{4}$/.test(code)) entrerSalle();
+  else demanderCode();
+}
+
+function demanderCode(msg) {
+  document.body.classList.remove('en-jeu');
+  $('entete-salle').hidden = true;
+  $('code-msg').hidden = !msg;
+  $('code-msg').textContent = msg || '';
+  $('code').value = '';
+  ecran('e-code');
+  $('code').focus();
+}
+
+$('f-code').addEventListener('submit', e => {
+  e.preventDefault();
+  code = $('code').value.replace(/\D/g, '');
+  if (code.length === 4) entrerSalle();
+});
+
+async function entrerSalle() {
+  let s;
+  try { s = await get(ref(db, 'salles/' + code)); }
+  catch (err) { echec('Connexion impossible', messageErreurFirebase(err)); return; }
+  if (!s.exists()) { demanderCode('Aucune partie ouverte avec le code ' + code + '.'); return; }
+
+  history.replaceState(null, '', '?salle=' + code);
+  $('entete-code').textContent = code;
+  $('entete-salle').hidden = false;
+  const v = s.val();
+  if (v.joueurs && v.joueurs[uid]) { ecouter(); return; }   // déjà inscrit (page rechargée)
+  $('nom').value = lireNom();
+  ecran('e-nom');
+  $('nom').focus();
+}
+
+$('f-nom').addEventListener('submit', async e => {
+  e.preventDefault();
+  const nom = $('nom').value.trim().replace(/\s+/g, ' ').slice(0, 20);
+  if (!nom) return;
+  try { await set(ref(db, 'salles/' + code + '/joueurs/' + uid), { nom: nom }); }
+  catch (err) { alert('Inscription impossible : ' + messageErreurFirebase(err)); return; }
+  retenirNom(nom);
+  ecouter();
+});
+
+function ecouter() {
+  vue = '';
+  document.body.classList.add('en-jeu');
+  ecran('e-jeu');
+  garderEcranAllume();
+  if (arreterEcoute) arreterEcoute();
+  arreterEcoute = onValue(ref(db, 'salles/' + code), snap => {
+    salle = snap.val();
+    if (!salle) { fermee(); return; }
+    majVue();
+  }, err => panneau('<div class="panneau grand-etat ko"><p class="titre">Connexion perdue</p><p>' + messageErreurFirebase(err) + '</p></div>'));
+}
+
+function panneau(html) {
+  clearInterval(minuteur);
+  $('p').innerHTML = html;
+}
+
+function fermee() {
+  if (arreterEcoute) { arreterEcoute(); arreterEcoute = null; }
+  panneau('<div class="panneau grand-etat"><p class="titre">Salle fermée</p><p>L\'animateur a fermé la partie.</p>' +
+    '<div class="actions" style="justify-content:center"><button class="bouton second" type="button" id="autre">Autre code</button></div></div>');
+  $('autre').addEventListener('click', () => demanderCode());
+}
+
+function majVue() {
+  if (!salle.joueurs || !salle.joueurs[uid]) {
+    // Salle réinitialisée par l'animateur : il faut se réinscrire.
+    if (arreterEcoute) { arreterEcoute(); arreterEcoute = null; }
+    document.body.classList.remove('en-jeu');
+    entrerSalle();
+    return;
+  }
+  const rep = salle.reponses && salle.reponses[uid];
+  const repondu = !!rep && rep.rang === salle.rang;
+  const etape = salle.etat + ':' + salle.rang + ':' + repondu;
+  if (etape === vue) return;
+  vue = etape;
+  if (salle.etat === 'attente') vueAttente();
+  else if (salle.etat === 'question') repondu ? vueEnvoye() : vueQuestion();
+  else if (salle.etat === 'correction') vueCorrection();
+  else if (salle.etat === 'fin') vueFin();
+}
+
+const points = '<div><span class="attente-point"></span><span class="attente-point"></span><span class="attente-point"></span></div>';
+
+function vueAttente() {
+  panneau('<div class="panneau grand-etat"><p class="titre">C\'est noté</p>' +
+    '<p>Bienvenue <b>' + esc(salle.joueurs[uid].nom) + '</b>.</p>' +
+    '<p>La partie va commencer : gardez cette page ouverte.</p>' + points + '</div>');
+}
+
+function vueEnvoye() {
+  panneau('<div class="panneau grand-etat"><p class="titre">Réponse envoyée</p>' +
+    '<p>En attente de la correction…</p>' + points + '</div>');
+}
+
+function vueQuestion() {
+  const q = salle.question || {};
+  const reps = liste(q.reponses);
+  selection = new Set();
+  panneau(
+    '<div class="chrono"><div class="barre"><i id="barre"></i></div><span class="sec" id="sec"></span></div>' +
+    '<div class="panneau">' +
+      '<span class="code mono">Question ' + (salle.rang + 1) + ' / ' + salle.total + ' · ' + esc(q.sujet) + '</span>' +
+      '<h2 class="enonce">' + esc(q.texte) + '</h2>' +
+      '<p class="consigne">' + (q.multi ? 'Plusieurs réponses possibles : cochez-les puis validez.' : 'Une seule bonne réponse.') + '</p>' +
+      (q.image ? '<div class="illus"><img alt="Illustration de la question" src="' + esc(q.image) + '"></div>' : '') +
+      '<ul class="reponses" id="reps">' + reps.map((t, i) =>
+        '<li><button type="button" class="reponse" data-i="' + i + '" aria-pressed="false">' +
+        '<span class="lettre">' + LETTRES[i] + '</span><span class="txt">' + esc(t) + '</span><span class="etat"></span></button></li>').join('') +
+      '</ul>' +
+      (q.multi ? '<button class="bouton valider" id="valider" type="button" disabled>Valider</button>' : '') +
+      '<p class="aide" id="q-msg" hidden></p>' +
+    '</div>');
+
+  $('reps').addEventListener('click', e => {
+    const b = e.target.closest('.reponse');
+    if (!b || b.disabled) return;
+    const i = Number(b.dataset.i);
+    if (!q.multi) { b.setAttribute('aria-pressed', 'true'); envoyer([i]); return; }
+    if (selection.has(i)) selection.delete(i); else selection.add(i);
+    b.setAttribute('aria-pressed', selection.has(i));
+    $('valider').disabled = selection.size === 0;
+  });
+  if (q.multi) $('valider').addEventListener('click', () => envoyer([...selection].sort()));
+
+  const duree = salle.duree * 1000;
+  const fin = salle.debut + duree;
+  const tic = () => {
+    const reste = Math.max(0, fin - maintenant());
+    $('sec').textContent = Math.ceil(reste / 1000);
+    $('barre').style.transform = 'scaleX(' + (reste / duree) + ')';
+    $('sec').parentNode.classList.toggle('urgent', reste < 5000);
+    if (reste <= 0) {
+      clearInterval(minuteur);
+      bloquer('Temps écoulé.');
+    }
+  };
+  tic();
+  minuteur = setInterval(tic, 200);
+}
+
+function bloquer(msg) {
+  document.querySelectorAll('#reps .reponse, #valider').forEach(b => { b.disabled = true; });
+  if (msg && $('q-msg')) { $('q-msg').hidden = false; $('q-msg').textContent = msg; }
+}
+
+async function envoyer(choix) {
+  bloquer();
+  try {
+    await set(ref(db, 'salles/' + code + '/reponses/' + uid), { rang: salle.rang, choix: choix, t: serverTimestamp() });
+  } catch (err) {
+    bloquer('Trop tard : la réponse n\'a pas été prise en compte.');
+  }
+}
+
+function maPlace() {
+  const c = classement(salle);
+  const i = c.findIndex(j => j.id === uid);
+  return { moi: c[i] || { total: 0, gain: 0, bons: 0 }, place: i + 1, n: c.length };
+}
+
+function vueCorrection() {
+  const { moi, place, n } = maPlace();
+  const reps = liste(salle.question && salle.question.reponses);
+  const bonnes = liste(salle.correction).map(i => reps[i]).filter(Boolean);
+  const etat = moi.juste ? 'ok' : 'ko';
+  const titre = moi.juste ? 'Bonne réponse' : (moi.repondu ? 'Mauvaise réponse' : 'Pas de réponse');
+  panneau('<div class="panneau grand-etat ' + etat + '"><p class="titre">' + titre + '</p>' +
+    (moi.juste ? '<div class="gros">+' + moi.gain + '</div>' :
+      '<p class="bonne">' + (bonnes.length > 1 ? 'Les bonnes réponses : ' : 'La bonne réponse : ') +
+      '<b>' + bonnes.map(esc).join(' · ') + '</b></p>') +
+    '<div class="chiffres"><div><b>' + moi.total + '</b><span>points</span></div>' +
+    '<div><b>' + place + '<small style="font-size:20px">/' + n + '</small></b><span>place</span></div></div></div>');
+}
+
+function vueFin() {
+  const { moi, place, n } = maPlace();
+  const podium = classement(salle).slice(0, 3);
+  panneau('<div class="panneau grand-etat"><p class="titre">Partie terminée</p>' +
+    '<div class="gros">' + place + '<small style="font-size:.35em">' + (place === 1 ? 'er' : 'e') + '</small></div>' +
+    '<p>sur ' + n + ' joueur' + (n > 1 ? 's' : '') + '</p>' +
+    '<div class="chiffres"><div><b>' + moi.total + '</b><span>points</span></div>' +
+    '<div><b>' + moi.bons + '<small style="font-size:20px">/' + (salle.joues || 0) + '</small></b><span>justes</span></div></div></div>' +
+    '<h2 class="rubrique"><span>Podium</span></h2><ol class="classement">' + podium.map(j =>
+      '<li' + (j.id === uid ? ' class="moi"' : '') + '><span class="nom">' + esc(j.nom) + '</span><span></span><span class="pts">' + j.total + '</span></li>').join('') +
+    '</ol>');
+}
+
+// Évite que le téléphone se mette en veille entre deux questions.
+let verrou = null;
+async function garderEcranAllume() {
+  try { if ('wakeLock' in navigator && !verrou) { verrou = await navigator.wakeLock.request('screen'); verrou.addEventListener('release', () => { verrou = null; }); } }
+  catch (_) {}
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && arreterEcoute) garderEcranAllume(); });
+
+demarrer();
+</script>
+</body>
+</html>
