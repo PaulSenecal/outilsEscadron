@@ -94,7 +94,7 @@ export const EPREUVE = Object.fromEntries(EPREUVES.map(e => [e.id, e]));
 export const ORDRE = ['c400', 'vortex', 'poi', 'poc', 'relais'];
 
 export const DEROULE = [
-  { debut: '08:00', fin: '08:45', titre: 'Rassemblement, tirage au sort, mercato PCL, briefing sécurité' },
+  { debut: '08:00', fin: '08:45', titre: 'Rassemblement, tirage au sort, briefing sécurité' },
   { debut: '08:45', fin: '09:15', titre: 'Échauffement collectif' },
   { debut: '09:15', fin: '09:45', titre: '400 m', ep: 'c400', note: 'Début de la CO en continu' },
   { debut: '10:00', fin: '10:45', titre: 'Lancer de vortex', ep: 'vortex' },
@@ -122,7 +122,6 @@ export function etatVide() {
     personnes: [],
     compo: {},
     jokers: {},
-    mercato: null,
     resultats: {},
     bonus: {},
     reglages: structuredClone(REGLAGES_DEFAUT),
@@ -478,39 +477,6 @@ export function jouerJoker(etat, epId, eqId, index, { prioriteSansEpreuve = true
   fixerPlaces(etat, epId, eqId, pl);
   etat.jokers[eqId] = { ep: epId, retire: ancien.p, remplace: nouveau };
   return { retire: ancien.p, remplace: nouveau };
-}
-
-// Mercato PCL : n renforts tirés au sort dans les pelotons, à parts aussi égales que possible
-// (si n n'est pas un multiple du nombre de pelotons, les pelotons qui cèdent une personne de plus sont tirés au sort).
-export function mercato(etat, n, hasard = alea) {
-  if (etat.mercato) throw new Error('Le mercato a déjà eu lieu. L\'annuler avant de le relancer.');
-  const pelotons = etat.equipes.filter(e => e.id !== PCL);
-  const parts = Object.fromEntries(pelotons.map(e => [e.id, Math.floor(n / pelotons.length)]));
-  melanger(pelotons.map(e => e.id), hasard).slice(0, n % pelotons.length).forEach(id => parts[id]++);
-  const liste_ = [];
-  for (const eq of pelotons) {
-    const pool = melanger(membres(etat, eq.id).map(p => p.id), hasard);
-    if (pool.length < parts[eq.id]) throw new Error(eq.nom + ' n\'a que ' + pool.length + ' personne(s).');
-    for (const pid of pool.slice(0, parts[eq.id])) {
-      const p = etat.personnes.find(x => x.id === pid);
-      p.equipe = PCL;
-      liste_.push({ id: pid, de: eq.id });
-      retirerDesPlaces(etat, pid, eq.id);
-    }
-  }
-  etat.mercato = { liste: liste_ };
-  return liste_;
-}
-
-export function annulerMercato(etat) {
-  if (!etat.mercato) return;
-  for (const m of liste(etat.mercato.liste)) {
-    const p = etat.personnes.find(x => x.id === m.id);
-    if (!p) continue;
-    retirerDesPlaces(etat, p.id, PCL);
-    p.equipe = m.de;
-  }
-  etat.mercato = null;
 }
 
 export function retirerDesPlaces(etat, pid, eqId) {

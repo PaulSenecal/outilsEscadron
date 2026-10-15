@@ -149,7 +149,7 @@ td.prov{color:var(--acier);font-style:italic}
 /* ── personnes ── */
 .equipe-card h3{font-size:17px;text-transform:uppercase;display:flex;gap:8px;align-items:center;margin-bottom:8px}
 .equipe-card h3 input{font-family:Oswald,sans-serif;font-size:17px;text-transform:uppercase;padding:4px 7px}
-.equipe-card .renforts{font-size:13px;color:var(--acier);margin-top:6px}
+.equipe-card .effectif{font-size:13px;color:var(--acier);margin-top:6px}
 
 /* ── tirage public (plein écran) ── */
 .tirage-public{position:fixed;inset:0;z-index:100;background:radial-gradient(circle at 50% 30%,#1B3A63,#0B1B33 70%);color:#fff;

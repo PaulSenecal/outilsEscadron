@@ -11,7 +11,7 @@ aucune donnée transmise : tout s'exécute dans le navigateur.
 | `suivi/` | Suivi du personnel | Dates (tirs, secourisme, NRBC, permis), échéances, REO — données dans un fichier chiffré, jamais dans le dépôt |
 | `quizzer/` | Quizzer | Quiz en ligne (correction, score) et éditeur des questionnaires de formation |
 | `ccpg/` | Console de piste | Notes CCPG, VMA, VO₂ max, allures d'entraînement |
-| `jo/` | JO du 5ESC | Équipes, mercato PCL, tirages au sort, résultats par épreuve, classement, écran d'affichage ; saisie à plusieurs (Firebase) |
+| `jo/` | JO du 5ESC | Exemple : équipes, tirages au sort, résultats par épreuve, classement, écran d'affichage ; saisie à plusieurs (Firebase) |
 
 > Ce dépôt est public : tout ce qui y est poussé est lisible par n'importe qui, et le reste
 > dans l'historique Git même après suppression du fichier. N'y déposer que du contenu

@@ -120,17 +120,6 @@ function equipeFictive(n = 20) {
   return e;
 }
 
-test('mercato PCL : 5 renforts à parts égales', () => {
-  const e = equipeFictive();
-  const l = J.mercato(e, 5, suite(3));
-  egal(l.length, 5);
-  egal(J.membres(e, 'pcl').length, 11);
-  const parPeloton = ['p1', 'p2', 'p3', 'p4'].map(id => l.filter(x => x.de === id).length).sort();
-  egal(parPeloton, [1, 1, 1, 2]);
-  J.annulerMercato(e);
-  egal(J.membres(e, 'pcl').length, 6);
-});
-
 test('tirage : places désignées gardées, priorité aux sans-épreuve, joker', () => {
   const e = equipeFictive();
   J.fixerPlaces(e, 'c400', 'p1', [{ p: 'p1-1', o: 'd' }, { p: null }, { p: null }]);

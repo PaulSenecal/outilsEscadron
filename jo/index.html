@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>JO du 5ESC — table centrale</title>
-<meta name="description" content="JO du 5e escadron : équipes, mercato PCL, tirage au sort, saisie des résultats par épreuve, classement général et écran d'affichage.">
+<meta name="description" content="JO du 5e escadron : équipes, tirage au sort, saisie des résultats par épreuve, classement général et écran d'affichage.">
 <meta name="theme-color" content="#10233F">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -37,18 +37,6 @@
       <div class="actions"><button class="btn sec" id="demo">Données de démonstration</button></div></div>
     <div class="grid g-5" id="equipes"></div>
 
-    <h3 class="sous">Mercato PCL</h3>
-    <div class="card">
-      <p class="hint" style="margin-top:0">Le PCL doit arriver à environ 11 personnes. Les renforts sont tirés au sort
-        à parts égales dans les pelotons ; si le nombre ne tombe pas juste, les pelotons qui cèdent une personne de plus sont eux aussi tirés au sort.
-        Faire le mercato <b>avant</b> les tirages des épreuves.</p>
-      <div class="ligne-ctl" style="margin-top:12px">
-        <div><label class="l" for="nb-renforts">Renforts</label><input type="number" id="nb-renforts" min="0" max="20" style="width:90px"></div>
-        <button class="btn" id="lancer-mercato">Lancer le mercato</button>
-        <button class="btn sec" id="annuler-mercato">Annuler le mercato</button>
-      </div>
-      <div id="mercato-res" class="hint"></div>
-    </div>
   </section>
 
   <!-- ═════════ COMPOSITION ═════════ -->
@@ -240,23 +228,12 @@ function rendre() {
 function rendreEquipes() {
   $('equipes').innerHTML = etat.equipes.map(eq => {
     const natifs = etat.personnes.filter(p => p.origine === eq.id && p.equipe === eq.id);
-    const cedes = etat.personnes.filter(p => p.origine === eq.id && p.equipe !== eq.id);
-    const recus = etat.personnes.filter(p => p.origine !== eq.id && p.equipe === eq.id);
     return `<div class="card equipe-card" data-eq="${esc(eq.id)}">
       <h3><input type="text" value="${esc(eq.nom)}" data-nom-eq aria-label="Nom de l'équipe"></h3>
       <textarea data-noms aria-label="Personnes de ${esc(eq.nom)}">${esc(natifs.map(p => p.nom).join('\n'))}</textarea>
-      <div class="renforts"><b>${J.membres(etat, eq.id).length}</b> personne(s) dans l'équipe
-        ${cedes.length ? '<br>Cédé(s) au PCL : ' + esc(cedes.map(p => p.nom).join(', ')) : ''}
-        ${recus.length ? '<br>Renforts : ' + esc(recus.map(p => p.nom + ' (' + nomEq(p.origine) + ')').join(', ')) : ''}</div>
+      <div class="effectif"><b>${J.membres(etat, eq.id).length}</b> personne(s) dans l'équipe</div>
     </div>`;
   }).join('');
-  const pcl = J.membres(etat, J.PCL).length;
-  if (!$('nb-renforts').value || etat.mercato) $('nb-renforts').value = etat.mercato ? J.liste(etat.mercato.liste).length : Math.max(0, 11 - pcl);
-  $('lancer-mercato').disabled = !!etat.mercato;
-  $('annuler-mercato').disabled = !etat.mercato;
-  $('mercato-res').innerHTML = etat.mercato
-    ? 'Mercato fait : ' + J.liste(etat.mercato.liste).map(m => esc(nomP(m.id)) + ' <small>(' + esc(nomEq(m.de)) + ')</small>').join(', ')
-    : '';
 }
 $('equipes').addEventListener('change', e => {
   const carte = e.target.closest('[data-eq]');
@@ -282,30 +259,12 @@ $('equipes').addEventListener('change', e => {
   sauver(); rendreEquipes();
 });
 
-$('lancer-mercato').addEventListener('click', () => {
-  const n = Number($('nb-renforts').value);
-  if (!(n > 0)) return toast('Indiquer le nombre de renforts.', true);
-  let liste;
-  try { liste = J.mercato(etat, n); } catch (e) { return toast(e.message, true); }
-  journal('Mercato PCL : ' + liste.map(m => nomP(m.id) + ' (' + nomEq(m.de) + ')').join(', '));
-  sauver(); rendreEquipes();
-  montrerTirage({
-    t1: 'Mercato PCL', t2: n + ' renfort' + (n > 1 ? 's' : ''),
-    noms: liste.map(m => ({ nom: nomP(m.id), sous: nomEq(m.de) })),
-    pool: etat.personnes.filter(p => p.equipe !== J.PCL).map(p => p.nom)
-  });
-});
-$('annuler-mercato').addEventListener('click', () => {
-  if (!confirm('Annuler le mercato ? Les renforts retournent dans leur peloton et perdent leurs places au PCL.')) return;
-  J.annulerMercato(etat); journal('Mercato annulé'); sauver(); rendreEquipes();
-});
-
 $('demo').addEventListener('click', () => {
   if (etat.personnes.length && !confirm('Remplacer les personnes actuelles par des noms fictifs ?')) return;
   const prenoms = ['Alex', 'Camille', 'Sacha', 'Noa', 'Charlie', 'Eden', 'Lou', 'Maël', 'Robin', 'Sam', 'Jade', 'Hugo', 'Inès', 'Léo', 'Lina', 'Tom', 'Zoé', 'Yanis', 'Rose', 'Nils'];
-  etat.personnes = []; etat.compo = {}; etat.jokers = {}; etat.mercato = null;
+  etat.personnes = []; etat.compo = {}; etat.jokers = {};
   for (const eq of etat.equipes) {
-    const n = eq.id === J.PCL ? 6 : 20;
+    const n = eq.id === J.PCL ? 11 : 20;
     for (let i = 0; i < n; i++) etat.personnes.push({ id: nouvelId() + i, nom: prenoms[i] + ' ' + eq.nom.replace(/\s/g, ''), origine: eq.id, equipe: eq.id });
   }
   journal('Données de démonstration chargées'); sauver(); rendreEquipes();
