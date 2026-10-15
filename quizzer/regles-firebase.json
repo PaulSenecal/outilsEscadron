@@ -9,14 +9,68 @@
           "$uid": {
             ".write": "auth != null && $uid === auth.uid && root.child('salles/' + $code + '/hote').exists()",
             ".validate": "newData.hasChildren(['nom'])",
-            "nom": { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 20" },
-            "$autre": { ".validate": false }
+            "nom": {
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 20"
+            },
+            "$autre": {
+              ".validate": false
+            }
           }
         },
         "reponses": {
           "$uid": {
             ".write": "auth != null && $uid === auth.uid && root.child('salles/' + $code + '/etat').val() === 'question' && root.child('salles/' + $code + '/joueurs/' + $uid).exists() && (!data.exists() || data.child('rang').val() !== root.child('salles/' + $code + '/rang').val())",
             ".validate": "newData.hasChildren(['rang', 'choix', 't']) && newData.child('rang').val() === root.child('salles/' + $code + '/rang').val() && newData.child('t').val() === now"
+          }
+        }
+      }
+    },
+    "jo": {
+      "$code": {
+        ".read": "auth != null && data.child('proprio').val() === auth.uid",
+        ".write": "auth != null && ((!data.exists() && newData.child('proprio').val() === auth.uid) || (data.child('proprio').val() === auth.uid && (!newData.exists() || newData.child('proprio').val() === auth.uid)))",
+        ".validate": "$code.matches(/^[A-Z0-9]{8}$/) && newData.hasChildren(['proprio', 'cree'])",
+        "infos": {
+          ".read": "auth != null && root.child('jo/' + $code + '/juges/' + auth.uid).exists()"
+        },
+        "demandes": {
+          "$uid": {
+            ".read": "auth != null && $uid === auth.uid",
+            ".write": "auth != null && $uid === auth.uid && root.child('jo/' + $code + '/proprio').exists() && !root.child('jo/' + $code + '/juges/' + auth.uid).exists()",
+            ".validate": "newData.hasChildren(['nom', 't']) && newData.child('t').val() === now",
+            "nom": {
+              ".validate": "newData.isString() && newData.val().length >= 2 && newData.val().length <= 40"
+            },
+            "souhait": {
+              ".validate": "newData.isString() && newData.val().length <= 20"
+            },
+            "t": {
+              ".validate": true
+            },
+            "$autre": {
+              ".validate": false
+            }
+          }
+        },
+        "juges": {
+          "$uid": {
+            ".read": "auth != null && $uid === auth.uid"
+          }
+        },
+        "resultats": {
+          ".read": "auth != null && root.child('jo/' + $code + '/juges/' + auth.uid).exists()",
+          "$ep": {
+            "$eq": {
+              ".write": "auth != null && (root.child('jo/' + $code + '/juges/' + auth.uid).child('tout').val() === true || root.child('jo/' + $code + '/juges/' + auth.uid).child('epreuves/' + $ep).val() === true)",
+              ".validate": "$ep.matches(/^(c400|vortex|poi|poc|co|relais)$/) && $eq.matches(/^[a-z0-9]{1,8}$/)"
+            }
+          }
+        },
+        "bonus": {
+          ".read": "auth != null && root.child('jo/' + $code + '/juges/' + auth.uid).exists()",
+          "$eq": {
+            ".write": "auth != null && (root.child('jo/' + $code + '/juges/' + auth.uid).child('tout').val() === true || root.child('jo/' + $code + '/juges/' + auth.uid).child('epreuves/bonus').val() === true)",
+            ".validate": "$eq.matches(/^[a-z0-9]{1,8}$/)"
           }
         }
       }

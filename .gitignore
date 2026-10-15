@@ -6,6 +6,8 @@ nePasMettreSurLeRepo/
 # Fichiers chiffrés du suivi du personnel (nom par défaut : suivi-<unité>.json) et tout .json dans suivi/
 suivi-*.json
 suivi/**/*.json
+# Sauvegardes des JO (contiennent les noms)
+jo-5esc-*.json
 
 # Système
 .DS_Store

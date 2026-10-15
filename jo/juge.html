@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JO du 5ESC — juge</title>
+<meta name="description" content="Saisie des résultats des JO du 5e escadron depuis un téléphone, après validation par la table centrale.">
+<meta name="theme-color" content="#10233F">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="jo.css">
+<style>
+  .boite{max-width:460px;margin:8vh auto 0;display:flex;flex-direction:column;gap:12px}
+  .boite h1{font-size:28px;text-transform:uppercase}
+  .boite .btn{justify-content:center;padding:12px;font-size:16px}
+  .attente{display:flex;gap:12px;align-items:center}
+  .roue{width:22px;height:22px;border-radius:50%;border:3px solid var(--ligne);border-top-color:var(--rouge);animation:roue 1s linear infinite;flex:none}
+  @keyframes roue{to{transform:rotate(360deg)}}
+  @media(prefers-reduced-motion:reduce){.roue{animation:none}}
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <div class="wrap">
+    <div class="brand">JO <b>5ESC</b> · juge</div>
+    <div class="etat-ligne" id="etat-ligne"><i></i><span>Connexion…</span></div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <div class="boite card" id="e-code" hidden>
+    <h1>Saisie juge</h1>
+    <p class="hint" style="margin:0">Scanner le QR code de la table centrale, ou saisir son code.</p>
+    <input type="text" id="code" autocomplete="off" autocapitalize="characters" maxlength="8" placeholder="CODE" style="font-size:22px;letter-spacing:.2em;text-align:center">
+    <button class="btn" id="ok-code">Continuer</button>
+  </div>
+
+  <div class="boite card" id="e-demande" hidden>
+    <h1>Demander l'accès</h1>
+    <p class="hint" style="margin:0">La table centrale doit valider votre demande avant que vous puissiez saisir.</p>
+    <div><label class="l" for="nom">Grade et nom</label><input type="text" id="nom" maxlength="40" autocomplete="name"></div>
+    <div><label class="l" for="souhait">Épreuve</label><select id="souhait"></select></div>
+    <button class="btn" id="demander">Envoyer la demande</button>
+    <p class="hint" id="msg-demande" style="margin:0"></p>
+  </div>
+
+  <div class="boite card" id="e-attente" hidden>
+    <h1>En attente</h1>
+    <div class="attente"><span class="roue" aria-hidden="true"></span><span>Demande envoyée au nom de <b id="nom-attente"></b>.
+      Faites-la valider par la table centrale ; cette page s'ouvrira toute seule.</span></div>
+    <button class="btn sec" id="annuler">Annuler la demande</button>
+  </div>
+
+  <div class="boite card" id="e-erreur" hidden>
+    <h1>Problème</h1>
+    <p id="msg-erreur" style="margin:0"></p>
+    <button class="btn sec" onclick="location.reload()">Réessayer</button>
+  </div>
+
+  <section id="e-saisie" hidden>
+    <div class="sec-head"><h2 id="titre"></h2><span id="regle"></span></div>
+    <div class="seg" id="choix" style="margin-bottom:14px"></div>
+    <div id="saisie"></div>
+    <p class="hint" style="margin-top:14px">Chaque saisie part immédiatement à la table centrale. Juge : <b id="qui"></b>.
+      Temps : <b>1:05.3</b> ou <b>1,05,3</b> (min, s, dixièmes) ou <b>65,3</b> (secondes).</p>
+  </section>
+
+</main>
+
+<script type="module">
+import * as J from './calcul.js';
+import { formulaireEpreuve, esc } from './saisie.js';
+
+const $ = id => document.getElementById(id);
+const ecrans = ['e-code', 'e-demande', 'e-attente', 'e-erreur', 'e-saisie'];
+const ecran = id => ecrans.forEach(e => { $(e).hidden = e !== id; });
+const etatLigne = (on, t) => { $('etat-ligne').classList.toggle('on', on); $('etat-ligne').querySelector('span').textContent = t; };
+const CLE_NOM = 'esc.jo.juge.nom';
+
+let code = (new URLSearchParams(location.search).get('c') || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+let L, juge = null, avant = null, stopDonnees = null;
+const donnees = { infos: {}, resultats: {}, bonus: {} };
+let choix = null, formulaire = null, formulaireDe = null;
+
+function echec(e) {
+  ecran('e-erreur');
+  $('msg-erreur').innerHTML = L ? L.messageErreurFirebase(e) : esc(e && e.message || e);
+  etatLigne(false, 'Hors ligne');
+}
+
+$('souhait').innerHTML = [...J.EPREUVES.map(e => [e.id, e.nom]), ['bonus', 'Bonus (jury)'], ['tout', 'Toutes (co-organisateur)']]
+  .map(([v, n]) => `<option value="${v}">${esc(n)}</option>`).join('');
+try { $('nom').value = localStorage.getItem(CLE_NOM) || ''; } catch {}
+
+$('ok-code').addEventListener('click', () => {
+  const c = $('code').value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (c.length !== 8) return;
+  history.replaceState(null, '', '?c=' + c);
+  code = c; demarrer();
+});
+
+$('demander').addEventListener('click', async () => {
+  const nom = $('nom').value.replace(/\s+/g, ' ').trim();
+  if (nom.length < 2) { $('msg-demande').textContent = 'Indiquer votre grade et votre nom.'; return; }
+  try { localStorage.setItem(CLE_NOM, nom); } catch {}
+  $('demander').disabled = true;
+  try { await L.demander(code, nom, $('souhait').value); }
+  catch (e) { $('msg-demande').innerHTML = /permission/i.test(e.code || e.message) ? 'Code inconnu ou saisie à plusieurs fermée.' : L.messageErreurFirebase(e); }
+  $('demander').disabled = false;
+});
+$('annuler').addEventListener('click', () => L.annulerDemande(code).catch(echec));
+
+async function demarrer() {
+  if (!/^[A-Z0-9]{8}$/.test(code)) { ecran('e-code'); etatLigne(false, 'Hors ligne'); return; }
+  try {
+    L = await import('./en-ligne.js');
+    await L.suivreJuge(code, Object.assign(statut, { erreur: echec }));
+  } catch (e) { echec(e); }
+}
+
+function statut(s) {
+  const precedent = avant; avant = s.statut;
+  etatLigne(true, 'Code ' + code);
+  if (s.statut === 'valide') {
+    juge = s;
+    $('qui').textContent = s.nom;
+    if (!stopDonnees) stopDonnees = L.suivreDonnees(code, (p, v) => { donnees[p] = v; rendre(p); }, echec);
+    ecran('e-saisie');
+    rendre();
+    return;
+  }
+  if (stopDonnees) { stopDonnees(); stopDonnees = null; formulaire = null; }
+  if (s.statut === 'attente') { $('nom-attente').textContent = s.nom; ecran('e-attente'); return; }
+  ecran('e-demande');
+  $('msg-demande').textContent = precedent === 'valide' ? 'Votre accès a été retiré par la table centrale.'
+    : precedent === 'attente' ? 'Demande refusée ou annulée.' : '';
+}
+
+// Épreuves accessibles à ce juge
+function droits() {
+  const tous = [...J.EPREUVES.map(e => e.id), 'bonus'];
+  return juge.tout ? tous : tous.filter(k => juge.epreuves && juge.epreuves[k]);
+}
+
+function rendre(quoi) {
+  if (!juge) return;
+  const equipes = J.liste(donnees.infos.equipes);
+  const reglages = J.normaliser({ reglages: donnees.infos.reglages }).reglages;
+  if (!equipes.length) { $('saisie').innerHTML = '<p class="hint">Chargement…</p>'; return; }
+  const ds = droits();
+  if (!ds.includes(choix)) { choix = ds[0]; formulaire = null; }
+  $('choix').hidden = ds.length < 2;
+  $('choix').innerHTML = ds.map(k => `<button data-k="${k}" aria-pressed="${k === choix}">${esc(k === 'bonus' ? 'Bonus' : J.EPREUVE[k].court)}</button>`).join('');
+
+  if (choix === 'bonus') {
+    $('titre').textContent = 'Bonus du jury'; $('regle').textContent = '0 à 10 points chacun';
+    if (formulaireDe !== 'bonus' || quoi === 'infos') {
+      formulaireDe = 'bonus'; formulaire = null; $('saisie').oninput = null;
+      $('saisie').innerHTML = `<div class="tbl-wrap"><table><thead><tr><th class="g">Équipe</th>${J.BONUS.map(b => `<th>${esc(b.nom)}</th>`).join('')}</tr></thead><tbody>
+        ${equipes.map(eq => `<tr data-eq="${esc(eq.id)}"><td class="g"><b>${esc(eq.nom)}</b></td>${J.BONUS.map(b => `<td><input type="text" inputmode="numeric" data-k="${b.k}" style="width:64px;text-align:center" placeholder="0"></td>`).join('')}</tr>`).join('')}
+      </tbody></table></div>`;
+    }
+    $('saisie').querySelectorAll('tr[data-eq]').forEach(tr => {
+      const b = donnees.bonus[tr.dataset.eq] || {};
+      tr.querySelectorAll('input').forEach(i => { if (i !== document.activeElement) i.value = b[i.dataset.k] || ''; });
+    });
+    return;
+  }
+
+  const ep = J.EPREUVE[choix];
+  $('titre').textContent = ep.nom; $('regle').textContent = ep.regle;
+  const res = () => donnees.resultats[ep.id] || {};
+  if (!formulaire || formulaireDe !== choix || quoi === 'infos') {
+    formulaireDe = choix;
+    formulaire = formulaireEpreuve($('saisie'), {
+      ep, equipes, reglages,
+      lire: eqId => res()[eqId],
+      ecrire: (eqId, r) => {
+        donnees.resultats[ep.id] = { ...res(), [eqId]: r };
+        L.ecrireResultat(code, ep.id, eqId, r, juge.nom).catch(echec);
+      },
+      majInfo: eqId => { const r = res()[eqId]; return r && r.par && r.t ? 'Saisi par ' + r.par + ' à ' + new Date(r.t).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : ''; }
+    });
+  } else formulaire.maj(reglages);
+}
+
+$('choix').addEventListener('click', e => { const b = e.target.closest('[data-k]'); if (b) { choix = b.dataset.k; formulaire = null; formulaireDe = null; rendre(); } });
+$('saisie').addEventListener('input', e => {
+  const tr = e.target.closest('tr[data-eq]');
+  if (!tr || choix !== 'bonus') return;
+  const b = {};
+  tr.querySelectorAll('input').forEach(i => { b[i.dataset.k] = i.value.trim(); });
+  donnees.bonus[tr.dataset.eq] = b;
+  L.ecrireBonus(code, tr.dataset.eq, b).catch(echec);
+});
+
+demarrer();
+</script>
+<script src="../assets/retour.js" defer></script>
+</body>
+</html>

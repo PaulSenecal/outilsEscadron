@@ -11,6 +11,7 @@ aucune donnée transmise : tout s'exécute dans le navigateur.
 | `suivi/` | Suivi du personnel | Dates (tirs, secourisme, NRBC, permis), échéances, REO — données dans un fichier chiffré, jamais dans le dépôt |
 | `quizzer/` | Quizzer | Quiz en ligne (correction, score) et éditeur des questionnaires de formation |
 | `ccpg/` | Console de piste | Notes CCPG, VMA, VO₂ max, allures d'entraînement |
+| `jo/` | JO du 5ESC | Équipes, mercato PCL, tirages au sort, résultats par épreuve, classement, écran d'affichage ; saisie à plusieurs (Firebase) |
 
 > Ce dépôt est public : tout ce qui y est poussé est lisible par n'importe qui, et le reste
 > dans l'historique Git même après suppression du fichier. N'y déposer que du contenu
@@ -36,8 +37,23 @@ aucune donnée transmise : tout s'exécute dans le navigateur.
 │   ├── quiz.html       Quiz en ligne, lit data/quiz.json
 │   ├── editeur.html    Éditeur de questions (sauvegarde locale)
 │   └── data/quiz.json  Jeu de questions publié, exporté depuis l'éditeur
-└── ccpg/index.html
+├── ccpg/index.html
+└── jo/
+    ├── index.html      Table centrale : équipes, composition, résultats, bonus, classement, réglages
+    ├── juge.html       Saisie depuis un téléphone, après validation par la table centrale
+    ├── affichage.html  Écran pour le vidéoprojecteur (suit la table centrale du même ordinateur)
+    ├── calcul.js       Règlement : barème, pénalités, classements, tirages (sans DOM)
+    ├── saisie.js       Formulaire de saisie d'une épreuve, commun à index.html et juge.html
+    ├── en-ligne.js     Saisie à plusieurs (même base Firebase que le Quizzer)
+    └── tests/calcul.mjs  node jo/tests/calcul.mjs
 ```
+
+### JO : saisie à plusieurs
+
+Les règles de la base Firebase sont dans `quizzer/regles-firebase.json` (nœuds `salles` et `jo`).
+Après toute modification, les recopier dans la console Firebase → Realtime Database → Règles → Publier.
+Seuls les noms des équipes, les résultats et le nom des juges passent par Firebase ; les noms
+des cadets restent dans le navigateur de la table centrale.
 
 Une application = un dossier contenant `index.html`. L'URL est alors `.../quizzer/`,
 sans extension. Pour en ajouter une : créer le dossier, y déposer le fichier, ajouter une

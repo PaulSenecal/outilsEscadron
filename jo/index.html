@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JO du 5ESC — table centrale</title>
+<meta name="description" content="JO du 5e escadron : équipes, mercato PCL, tirage au sort, saisie des résultats par épreuve, classement général et écran d'affichage.">
+<meta name="theme-color" content="#10233F">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="jo.css">
+</head>
+<body>
+
+<header class="bar">
+  <div class="wrap">
+    <div class="brand">JO <b>5ESC</b> · table centrale</div>
+    <div class="etat-ligne" id="etat-ligne" title="Saisie à plusieurs"><i></i><span>Hors ligne</span></div>
+    <nav class="onglets" role="tablist">
+      <button data-vue="equipes">Équipes</button>
+      <button data-vue="compo">Composition</button>
+      <button data-vue="resultats">Résultats</button>
+      <button data-vue="bonus">Bonus</button>
+      <button data-vue="classement">Classement</button>
+      <button data-vue="enligne">À plusieurs<span class="pastille" id="nb-demandes" hidden></span></button>
+      <button data-vue="reglages">Réglages</button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ═════════ ÉQUIPES ═════════ -->
+  <section class="vue" id="v-equipes">
+    <div class="sec-head"><h2>Équipes</h2><span>Un nom par ligne. Les noms restent sur cet appareil.</span>
+      <div class="actions"><button class="btn sec" id="demo">Données de démonstration</button></div></div>
+    <div class="grid g-5" id="equipes"></div>
+
+    <h3 class="sous">Mercato PCL</h3>
+    <div class="card">
+      <p class="hint" style="margin-top:0">Le PCL doit arriver à environ 11 personnes. Les renforts sont tirés au sort
+        à parts égales dans les pelotons ; si le nombre ne tombe pas juste, les pelotons qui cèdent une personne de plus sont eux aussi tirés au sort.
+        Faire le mercato <b>avant</b> les tirages des épreuves.</p>
+      <div class="ligne-ctl" style="margin-top:12px">
+        <div><label class="l" for="nb-renforts">Renforts</label><input type="number" id="nb-renforts" min="0" max="20" style="width:90px"></div>
+        <button class="btn" id="lancer-mercato">Lancer le mercato</button>
+        <button class="btn sec" id="annuler-mercato">Annuler le mercato</button>
+      </div>
+      <div id="mercato-res" class="hint"></div>
+    </div>
+  </section>
+
+  <!-- ═════════ COMPOSITION ═════════ -->
+  <section class="vue" id="v-compo">
+    <div class="sec-head"><h2>Composition</h2><span>21 places par équipe · 1 à 2 épreuves par personne</span>
+      <div class="actions"><button class="btn sec" id="imprimer-compo">Imprimer</button></div></div>
+    <div class="seg" id="compo-ep" style="margin-bottom:12px"></div>
+    <div class="card" style="margin-bottom:12px">
+      <div class="ligne-ctl">
+        <button class="btn rouge" id="tirer-tout">Tirage public : places vides de toutes les équipes</button>
+        <label style="display:flex;gap:6px;align-items:center;font-size:14px"><input type="checkbox" id="priorite" checked>
+          Priorité à ceux qui n'ont encore aucune épreuve</label>
+      </div>
+      <p class="hint">Le chef peut désigner certaines places (D) et laisser le reste au tirage (T). Le tirage ne prend que des personnes
+        à moins de 2 épreuves et qui n'enchaînent pas deux épreuves consécutives. <b>Joker</b> : une fois dans la journée par chef, sur un nom tiré au sort.</p>
+    </div>
+    <div class="compo" id="compo"></div>
+    <h3 class="sous">Vérifications</h3>
+    <ul class="pbs" id="verifs"></ul>
+    <h3 class="sous">Qui fait quoi</h3>
+    <div class="grid g-5" id="recap"></div>
+  </section>
+
+  <!-- ═════════ RÉSULTATS ═════════ -->
+  <section class="vue" id="v-resultats">
+    <div class="sec-head"><h2 id="res-titre">Résultats</h2><span id="res-regle"></span></div>
+    <div class="seg" id="res-ep" style="margin-bottom:14px"></div>
+    <div id="saisie"></div>
+    <h3 class="sous">Classement de l'épreuve</h3>
+    <div class="tbl-wrap" id="res-classement"></div>
+  </section>
+
+  <!-- ═════════ BONUS ═════════ -->
+  <section class="vue" id="v-bonus">
+    <div class="sec-head"><h2>Bonus du jury</h2><span>0 à 10 points chacun</span></div>
+    <div class="tbl-wrap"><table id="bonus"></table></div>
+  </section>
+
+  <!-- ═════════ CLASSEMENT ═════════ -->
+  <section class="vue" id="v-classement">
+    <div class="sec-head"><h2>Feuille de score</h2><span id="cl-etat"></span>
+      <div class="actions"><button class="btn sec" id="imprimer-cl">Imprimer</button></div></div>
+    <div class="tbl-wrap"><table id="general"></table></div>
+    <p class="hint">Seules les épreuves terminées comptent ; les points en italique sont provisoires. Égalité au total : nombre d'or, puis d'argent, puis de bronze.</p>
+
+    <h3 class="sous">Écran d'affichage</h3>
+    <div class="card">
+      <div class="ligne-ctl">
+        <a class="btn" href="affichage.html" target="jo-ecran" id="ouvrir-ecran">Ouvrir l'écran ↗</a>
+        <div class="seg" id="ecran-mode">
+          <button data-mode="classement">Classement</button>
+          <button data-mode="tirage">Dernier tirage</button>
+          <button data-mode="podium">Podium</button>
+        </div>
+        <button class="btn sec" id="podium-suivant">Podium : révéler la suite</button>
+        <button class="btn sec" id="podium-zero">Podium : recommencer</button>
+      </div>
+      <p class="hint">Ouvrir l'écran sur cet ordinateur et le glisser sur le vidéoprojecteur : il suit la table centrale en direct (touche F pour le plein écran).</p>
+    </div>
+  </section>
+
+  <!-- ═════════ EN LIGNE ═════════ -->
+  <section class="vue" id="v-enligne">
+    <div class="sec-head"><h2>Saisie à plusieurs</h2><span>Les juges saisissent depuis leur téléphone</span></div>
+    <div id="el-off" class="card">
+      <p style="margin-top:0">Chaque juge scanne un QR code, donne son nom et choisit son épreuve. <b>Il ne peut rien voir ni saisir tant que vous
+        ne l'avez pas validé ici</b>, puis seulement les épreuves que vous lui attribuez. Vous pouvez lui retirer l'accès à tout moment.</p>
+      <p class="hint">Seuls les noms des équipes, les résultats et le nom des juges passent par internet. Les noms des cadets restent sur cet appareil.
+        Ce navigateur devient l'organisateur : ne pas effacer ses données de navigation avant la fin des JO.</p>
+      <button class="btn" id="el-creer" style="margin-top:10px">Ouvrir la saisie à plusieurs</button>
+    </div>
+    <div id="el-on" hidden>
+      <div class="grid g-2">
+        <div class="card" style="display:flex;gap:16px;flex-wrap:wrap;align-items:center">
+          <div class="qr" id="el-qr"></div>
+          <div>
+            <div class="hint" style="margin:0">Code</div>
+            <div class="code-jo" id="el-code"></div>
+            <p class="hint">Lien juge : <a id="el-lien" target="_blank" rel="noopener"></a></p>
+            <button class="btn sec petit" id="el-copier">Copier le lien</button>
+          </div>
+        </div>
+        <div class="card">
+          <h3 class="sous" style="margin-top:0">Demandes d'accès</h3>
+          <div id="el-demandes"></div>
+        </div>
+      </div>
+      <h3 class="sous">Juges validés</h3>
+      <div class="tbl-wrap"><table id="el-juges"></table></div>
+      <p style="margin-top:20px" class="no-print">
+        <button class="btn sec" id="el-quitter">Arrêter la saisie à plusieurs</button>
+      </p>
+    </div>
+  </section>
+
+  <!-- ═════════ RÉGLAGES ═════════ -->
+  <section class="vue" id="v-reglages">
+    <div class="sec-head"><h2>Réglages</h2></div>
+    <div class="grid g-2">
+      <div class="card">
+        <h3 class="sous" style="margin-top:0">Barème par épreuve</h3>
+        <div class="ligne-ctl" id="bareme"></div>
+        <h3 class="sous">Pénalités</h3>
+        <div class="grid g-2" id="penalites"></div>
+      </div>
+      <div class="card">
+        <h3 class="sous" style="margin-top:0">Balises de la CO</h3>
+        <textarea id="balises" placeholder="31 10&#10;32 10&#10;45 20&#10;…" style="min-height:140px"></textarea>
+        <p class="hint" id="balises-info">Une balise par ligne : numéro puis points. Laisser vide pour saisir directement les points de chaque binôme.</p>
+        <h3 class="sous">Sauvegarde</h3>
+        <p class="hint" style="margin-top:0">Tout est enregistré dans ce navigateur. Exporter de temps en temps : le fichier contient les noms,
+          ne pas le déposer sur le dépôt public.</p>
+        <div class="ligne-ctl" style="margin-top:8px">
+          <button class="btn sec" id="exporter">Exporter</button>
+          <label class="btn sec" style="cursor:pointer">Importer<input type="file" id="importer" accept=".json,application/json" hidden></label>
+          <button class="btn sec" id="raz-resultats">Effacer les résultats</button>
+          <button class="btn rouge" id="raz-tout">Tout effacer</button>
+        </div>
+      </div>
+    </div>
+    <h3 class="sous">Journal</h3>
+    <div class="card" id="journal" style="max-height:320px;overflow:auto;font-size:14px"></div>
+  </section>
+
+</main>
+
+<div class="tirage-public" id="tp" hidden>
+  <div class="t1" id="tp-t1"></div>
+  <div class="t2" id="tp-t2"></div>
+  <div class="noms" id="tp-noms"></div>
+  <div class="t1" id="tp-msg" style="color:#fff;letter-spacing:.05em;text-transform:none"></div>
+  <div class="actions" id="tp-actions"></div>
+</div>
+
+<script type="module">
+import * as J from './calcul.js';
+import { formulaireEpreuve, esc } from './saisie.js';
+
+const CLE = 'esc.jo.etat';
+const $ = id => document.getElementById(id);
+const EQ = id => J.EPREUVE[id];
+
+let etat = charger();
+let vue = 'equipes', epCompo = 'c400', epRes = 'c400';
+let ligne = null;          // module en-ligne.js une fois chargé
+let enLigneStop = null;
+let demandes = {}, juges = {};
+
+function charger() {
+  try { return J.normaliser(JSON.parse(localStorage.getItem(CLE))); } catch { return J.etatVide(); }
+}
+function sauver() {
+  try { localStorage.setItem(CLE, JSON.stringify(etat)); }
+  catch { toast('Enregistrement impossible dans ce navigateur.', true); }
+}
+function journal(msg) {
+  etat.journal.unshift({ t: Date.now(), msg });
+  etat.journal = etat.journal.slice(0, 300);
+}
+let toastT;
+function toast(msg, err) {
+  let t = document.querySelector('.toast');
+  if (!t) { t = document.createElement('div'); document.body.appendChild(t); }
+  t.className = 'toast' + (err ? ' err' : '');
+  t.textContent = msg;
+  clearTimeout(toastT);
+  toastT = setTimeout(() => t.remove(), 4200);
+}
+const nomP = id => (etat.personnes.find(p => p.id === id) || {}).nom || '?';
+const nomEq = id => (etat.equipes.find(e => e.id === id) || {}).nom || id;
+const nouvelId = () => 'x' + Date.now().toString(36) + J.alea(1e6).toString(36);
+const heure = t => new Date(t).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
+// ═════════ navigation ═════════
+document.querySelectorAll('nav.onglets button').forEach(b => b.addEventListener('click', () => montrer(b.dataset.vue)));
+function montrer(v) {
+  vue = v;
+  document.querySelectorAll('nav.onglets button').forEach(b => b.setAttribute('aria-selected', b.dataset.vue === v));
+  document.querySelectorAll('section.vue').forEach(s => s.classList.toggle('actif', s.id === 'v-' + v));
+  try { sessionStorage.setItem('esc.jo.vue', v); } catch {}
+  rendre();
+}
+function rendre() {
+  ({ equipes: rendreEquipes, compo: rendreCompo, resultats: rendreResultats, bonus: rendreBonus,
+     classement: rendreClassement, enligne: rendreEnLigne, reglages: rendreReglages })[vue]();
+}
+
+// ═════════ ÉQUIPES ═════════
+function rendreEquipes() {
+  $('equipes').innerHTML = etat.equipes.map(eq => {
+    const natifs = etat.personnes.filter(p => p.origine === eq.id && p.equipe === eq.id);
+    const cedes = etat.personnes.filter(p => p.origine === eq.id && p.equipe !== eq.id);
+    const recus = etat.personnes.filter(p => p.origine !== eq.id && p.equipe === eq.id);
+    return `<div class="card equipe-card" data-eq="${esc(eq.id)}">
+      <h3><input type="text" value="${esc(eq.nom)}" data-nom-eq aria-label="Nom de l'équipe"></h3>
+      <textarea data-noms aria-label="Personnes de ${esc(eq.nom)}">${esc(natifs.map(p => p.nom).join('\n'))}</textarea>
+      <div class="renforts"><b>${J.membres(etat, eq.id).length}</b> personne(s) dans l'équipe
+        ${cedes.length ? '<br>Cédé(s) au PCL : ' + esc(cedes.map(p => p.nom).join(', ')) : ''}
+        ${recus.length ? '<br>Renforts : ' + esc(recus.map(p => p.nom + ' (' + nomEq(p.origine) + ')').join(', ')) : ''}</div>
+    </div>`;
+  }).join('');
+  const pcl = J.membres(etat, J.PCL).length;
+  if (!$('nb-renforts').value || etat.mercato) $('nb-renforts').value = etat.mercato ? J.liste(etat.mercato.liste).length : Math.max(0, 11 - pcl);
+  $('lancer-mercato').disabled = !!etat.mercato;
+  $('annuler-mercato').disabled = !etat.mercato;
+  $('mercato-res').innerHTML = etat.mercato
+    ? 'Mercato fait : ' + J.liste(etat.mercato.liste).map(m => esc(nomP(m.id)) + ' <small>(' + esc(nomEq(m.de)) + ')</small>').join(', ')
+    : '';
+}
+$('equipes').addEventListener('change', e => {
+  const carte = e.target.closest('[data-eq]');
+  const eqId = carte.dataset.eq;
+  if (e.target.matches('[data-nom-eq]')) {
+    etat.equipes.find(x => x.id === eqId).nom = e.target.value.trim() || eqId;
+    sauver(); pousserInfos(); rendreEquipes();
+    return;
+  }
+  if (!e.target.matches('[data-noms]')) return;
+  const noms = e.target.value.split('\n').map(s => s.replace(/\s+/g, ' ').trim()).filter(Boolean);
+  const restants = etat.personnes.filter(p => p.origine === eqId && p.equipe === eqId);
+  const gardes = new Set();
+  for (const nom of noms) {
+    const p = restants.find(x => x.nom === nom && !gardes.has(x.id));
+    if (p) gardes.add(p.id);
+    else { const n = { id: nouvelId(), nom, origine: eqId, equipe: eqId }; etat.personnes.push(n); gardes.add(n.id); }
+  }
+  for (const p of restants) if (!gardes.has(p.id)) {
+    J.retirerDesPlaces(etat, p.id, eqId);
+    etat.personnes = etat.personnes.filter(x => x.id !== p.id);
+  }
+  sauver(); rendreEquipes();
+});
+
+$('lancer-mercato').addEventListener('click', () => {
+  const n = Number($('nb-renforts').value);
+  if (!(n > 0)) return toast('Indiquer le nombre de renforts.', true);
+  let liste;
+  try { liste = J.mercato(etat, n); } catch (e) { return toast(e.message, true); }
+  journal('Mercato PCL : ' + liste.map(m => nomP(m.id) + ' (' + nomEq(m.de) + ')').join(', '));
+  sauver(); rendreEquipes();
+  montrerTirage({
+    t1: 'Mercato PCL', t2: n + ' renfort' + (n > 1 ? 's' : ''),
+    noms: liste.map(m => ({ nom: nomP(m.id), sous: nomEq(m.de) })),
+    pool: etat.personnes.filter(p => p.equipe !== J.PCL).map(p => p.nom)
+  });
+});
+$('annuler-mercato').addEventListener('click', () => {
+  if (!confirm('Annuler le mercato ? Les renforts retournent dans leur peloton et perdent leurs places au PCL.')) return;
+  J.annulerMercato(etat); journal('Mercato annulé'); sauver(); rendreEquipes();
+});
+
+$('demo').addEventListener('click', () => {
+  if (etat.personnes.length && !confirm('Remplacer les personnes actuelles par des noms fictifs ?')) return;
+  const prenoms = ['Alex', 'Camille', 'Sacha', 'Noa', 'Charlie', 'Eden', 'Lou', 'Maël', 'Robin', 'Sam', 'Jade', 'Hugo', 'Inès', 'Léo', 'Lina', 'Tom', 'Zoé', 'Yanis', 'Rose', 'Nils'];
+  etat.personnes = []; etat.compo = {}; etat.jokers = {}; etat.mercato = null;
+  for (const eq of etat.equipes) {
+    const n = eq.id === J.PCL ? 6 : 20;
+    for (let i = 0; i < n; i++) etat.personnes.push({ id: nouvelId() + i, nom: prenoms[i] + ' ' + eq.nom.replace(/\s/g, ''), origine: eq.id, equipe: eq.id });
+  }
+  journal('Données de démonstration chargées'); sauver(); rendreEquipes();
+});
+
+// ═════════ COMPOSITION ═════════
+function segEpreuves(conteneur, actuel, badge) {
+  conteneur.innerHTML = J.EPREUVES.map(ep => `<button data-ep="${ep.id}" aria-pressed="${ep.id === actuel}">${esc(ep.court)}${badge ? badge(ep) : ''}</button>`).join('');
+}
+$('compo-ep').addEventListener('click', e => { const b = e.target.closest('[data-ep]'); if (b) { epCompo = b.dataset.ep; rendreCompo(); } });
+
+function rendreCompo() {
+  segEpreuves($('compo-ep'), epCompo);
+  const ep = EQ(epCompo);
+  $('tirer-tout').textContent = 'Tirage public — ' + ep.court + ' : places vides de toutes les équipes';
+  $('compo').innerHTML = etat.equipes.map(eq => {
+    const gens = J.membres(etat, eq.id).slice().sort((a, b) => a.nom.localeCompare(b.nom));
+    const pl = J.places(etat, ep.id, eq.id);
+    const jokerLibre = !etat.jokers[eq.id];
+    return `<div class="eq" data-eq="${esc(eq.id)}">
+      <h3>${esc(eq.nom)} ${jokerLibre ? '' : '<span class="badge b-attente" title="Joker utilisé">joker ✓</span>'}</h3>
+      ${pl.map((x, i) => `<div class="place">
+        <span class="o ${x.o === 't' ? 't' : ''}" title="${x.o === 't' ? 'Tiré au sort' : x.o ? 'Désigné' : ''}">${x.o === 't' ? 'T' : x.o ? 'D' : ''}</span>
+        <select data-i="${i}" aria-label="${esc(ep.court)} ${esc(eq.nom)} place ${i + 1}">
+          <option value="">— ${ep.id === 'co' ? 'binôme ' + (Math.floor(i / 2) + 1) : 'place ' + (i + 1)} —</option>
+          ${gens.map(p => { const n = J.epreuvesDe(etat, p.id).length; return `<option value="${esc(p.id)}" ${p.id === x.p ? 'selected' : ''}>${esc(p.nom)}${n ? ' (' + n + ')' : ''}</option>`; }).join('')}
+        </select>
+        ${x.o === 't' && jokerLibre ? `<button class="joker" data-joker="${i}" title="Joker du chef">joker</button>` : ''}
+      </div>`).join('')}
+      <button class="btn sec petit" data-tirer style="margin-top:4px">Tirer les places vides</button>
+    </div>`;
+  }).join('');
+  rendreVerifs();
+}
+function rendreVerifs() {
+  const pb = J.verifier(etat);
+  const ordre = { erreur: 0, alerte: 1, info: 2 };
+  pb.sort((a, b) => ordre[a.niveau] - ordre[b.niveau]);
+  $('verifs').innerHTML = pb.length ? pb.map(x => `<li class="${x.niveau}"><b>${esc(nomEq(x.eq))}</b>${esc(x.msg)}</li>`).join('')
+    : '<li>Toutes les règles de composition sont respectées.</li>';
+  $('recap').innerHTML = etat.equipes.map(eq => `<div class="card"><h3 class="sous" style="margin-top:0">${esc(eq.nom)}</h3>
+    <table><tbody>${J.membres(etat, eq.id).slice().sort((a, b) => a.nom.localeCompare(b.nom)).map(p => {
+      const eps = J.epreuvesDe(etat, p.id);
+      return `<tr><td class="g">${esc(p.nom)}</td><td class="g" style="color:${eps.length ? 'inherit' : 'var(--rouge)'}">${eps.map(e => esc(EQ(e).court)).join(', ') || 'aucune'}</td></tr>`;
+    }).join('')}</tbody></table></div>`).join('');
+}
+$('compo').addEventListener('change', e => {
+  if (!e.target.matches('select[data-i]')) return;
+  const eqId = e.target.closest('[data-eq]').dataset.eq;
+  const pl = J.places(etat, epCompo, eqId);
+  const i = Number(e.target.dataset.i);
+  pl[i] = e.target.value ? { p: e.target.value, o: 'd' } : { p: null, o: null };
+  J.fixerPlaces(etat, epCompo, eqId, pl);
+  sauver(); rendreCompo();
+});
+$('compo').addEventListener('click', e => {
+  const carte = e.target.closest('[data-eq]');
+  if (!carte) return;
+  const eqId = carte.dataset.eq;
+  if (e.target.matches('[data-tirer]')) tiragePublic([eqId]);
+  if (e.target.matches('[data-joker]')) joker(eqId, Number(e.target.dataset.joker));
+});
+$('tirer-tout').addEventListener('click', () => tiragePublic(etat.equipes.map(e => e.id)));
+
+function tiragePublic(eqIds) {
+  const ep = EQ(epCompo);
+  const prio = $('priorite').checked;
+  const etapes = [];
+  for (const eqId of eqIds) {
+    const r = J.tirerPlaces(etat, ep.id, eqId, { prioriteSansEpreuve: prio });
+    if (!r.tires.length && !r.manque) continue;
+    journal('Tirage ' + ep.court + ' — ' + nomEq(eqId) + ' : ' + (r.tires.map(nomP).join(', ') || 'personne') + (r.manque ? ' (' + r.manque + ' place(s) sans candidat)' : ''));
+    etapes.push({ eqId, tires: r.tires, manque: r.manque });
+  }
+  sauver(); rendreCompo();
+  if (!etapes.length) return toast('Aucune place vide à tirer pour ' + ep.court + '.');
+  let k = 0;
+  const suivant = () => {
+    const s = etapes[k++];
+    const pl = J.places(etat, ep.id, s.eqId);
+    montrerTirage({
+      t1: ep.nom, t2: nomEq(s.eqId),
+      noms: s.tires.map(p => ({ nom: nomP(p), id: p })),
+      msg: s.manque ? s.manque + ' place(s) sans candidat possible : à désigner.' : '',
+      pool: J.membres(etat, s.eqId).map(p => p.nom),
+      joker: !etat.jokers[s.eqId] ? id => joker(s.eqId, pl.findIndex(x => x.p === id), true) : null,
+      suivant: k < etapes.length ? suivant : null
+    });
+  };
+  suivant();
+}
+
+function joker(eqId, index, public_) {
+  const ep = EQ(epCompo);
+  const avant = J.places(etat, ep.id, eqId)[index];
+  if (!public_ && !confirm('Joker du chef de ' + nomEq(eqId) + ' : retirer ' + nomP(avant.p) + ' du ' + ep.court + ' et retirer un nom au sort ?\nLe joker ne peut servir qu\'une fois.')) return null;
+  let r;
+  try { r = J.jouerJoker(etat, ep.id, eqId, index, { prioriteSansEpreuve: $('priorite').checked }); } catch (e) { toast(e.message, true); return null; }
+  journal('Joker ' + nomEq(eqId) + ' au ' + ep.court + ' : ' + nomP(r.retire) + ' retiré(e), remplacé(e) par ' + (r.remplace ? nomP(r.remplace) : 'personne'));
+  sauver(); rendreCompo();
+  if (!public_) montrerTirage({ t1: 'Joker — ' + ep.nom, t2: nomEq(eqId), noms: [{ nom: nomP(r.retire), barre: true }, ...(r.remplace ? [{ nom: nomP(r.remplace) }] : [])], pool: J.membres(etat, eqId).map(p => p.nom) });
+  return r;
+}
+
+// ── affichage plein écran d'un tirage (et recopie sur l'écran d'affichage) ──
+function montrerTirage({ t1, t2, noms, msg = '', pool = [], joker = null, suivant = null }) {
+  const tp = $('tp');
+  tp.hidden = false;
+  $('tp-t1').textContent = t1; $('tp-t2').textContent = t2; $('tp-msg').textContent = msg;
+  const liste_ = noms.map(n => ({ ...n }));
+  const publier = () => {
+    etat.ecran.tirage = { t1, t2, msg, noms: liste_.map(n => ({ nom: n.nom, sous: n.sous || '', barre: !!n.barre })), n: Date.now() };
+    etat.ecran.mode = 'tirage';
+    sauver();
+  };
+  const lent = !matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const rendreNoms = (revele) => {
+    $('tp-noms').innerHTML = liste_.map((n, i) => `<div class="nom ${n.barre ? 'barre' : ''} ${i >= revele ? 'roule' : ''}" data-i="${i}">${esc(i >= revele ? '…' : n.nom)}${n.sous && i < revele ? ' <small style="font-size:.45em;color:#8FA6C4">' + esc(n.sous) + '</small>' : ''}</div>`).join('');
+  };
+  const actions = () => {
+    $('tp-actions').innerHTML =
+      (joker ? liste_.filter(n => !n.barre && n.id).map(n => `<button class="btn sec" data-j="${esc(n.id)}">Joker : retirer ${esc(n.nom)}</button>`).join('') : '') +
+      (suivant ? '<button class="btn" data-a="suivant">Équipe suivante →</button>' : '') +
+      '<button class="btn sec" data-a="fermer">Fermer</button>';
+  };
+  // Révélation nom par nom, avec un défilement de noms de l'équipe avant chacun.
+  let revele = 0;
+  const reveler = () => {
+    if (revele >= liste_.length) { publier(); actions(); return; }
+    if (!lent || !pool.length) { revele++; rendreNoms(revele); return reveler(); }
+    rendreNoms(revele);
+    const el = $('tp-noms').querySelector(`[data-i="${revele}"]`);
+    let n = 0;
+    const iv = setInterval(() => {
+      el.textContent = pool[J.alea(pool.length)];
+      if (++n > 14) { clearInterval(iv); revele++; rendreNoms(revele); setTimeout(reveler, 350); }
+    }, 70);
+  };
+  $('tp-actions').innerHTML = '';
+  reveler();
+  tp.onclick = e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    if (b.dataset.j) {
+      const r = joker(b.dataset.j);
+      if (!r) return;
+      const x = liste_.find(n => n.id === b.dataset.j);
+      x.barre = true;
+      if (r.remplace) liste_.push({ nom: nomP(r.remplace), id: r.remplace });
+      $('tp-msg').textContent = 'Joker du chef : ' + nomP(r.retire) + ' est retiré(e).';
+      revele = liste_.length - (r.remplace ? 1 : 0);
+      rendreNoms(revele);
+      joker = null;
+      $('tp-actions').innerHTML = '';
+      reveler();
+    } else if (b.dataset.a === 'suivant') suivant();
+    else if (b.dataset.a === 'fermer') { tp.hidden = true; rendre(); }
+  };
+}
+
+$('imprimer-compo').addEventListener('click', () => imprimer('v-compo'));
+
+// ═════════ RÉSULTATS ═════════
+let formulaire = null, formulaireEp = null;
+$('res-ep').addEventListener('click', e => { const b = e.target.closest('[data-ep]'); if (b) { epRes = b.dataset.ep; formulaire = null; rendreResultats(); } });
+
+function badgeEp(ep) {
+  const c = J.classerEpreuve(ep, etat.resultats[ep.id], etat.equipes, etat.reglages);
+  return c.terminee ? ' ✓' : c.commencee ? ' …' : '';
+}
+// Nom affiché à côté de chaque ligne de saisie (coureur, lanceur, binôme).
+function nomLigne(eqId, i) {
+  const ep = EQ(epRes);
+  const pl = J.places(etat, ep.id, eqId);
+  if (ep.id === 'co') return [pl[2 * i], pl[2 * i + 1]].filter(x => x && x.p).map(x => nomP(x.p)).join(' / ');
+  if (ep.lignes === ep.places) return pl[i] && pl[i].p ? nomP(pl[i].p) : '';
+  return '';
+}
+function rendreResultats() {
+  const ep = EQ(epRes);
+  segEpreuves($('res-ep'), epRes, badgeEp);
+  $('res-titre').textContent = ep.nom;
+  $('res-regle').textContent = ep.regle;
+  if (!formulaire || formulaireEp !== epRes) {
+    formulaireEp = epRes;
+    formulaire = formulaireEpreuve($('saisie'), {
+      ep, equipes: etat.equipes, reglages: etat.reglages,
+      lire: eqId => (etat.resultats[ep.id] || {})[eqId],
+      ecrire: (eqId, res) => {
+        etat.resultats[ep.id] = etat.resultats[ep.id] || {};
+        etat.resultats[ep.id][eqId] = { ...res, par: 'Table centrale' };
+        sauver();
+        if (ligne && etat.enLigne) ligne.ecrireResultat(etat.enLigne.code, ep.id, eqId, res, 'Table centrale').catch(erreurLigne);
+        rendreClassementEpreuve();
+        segEpreuves($('res-ep'), epRes, badgeEp);
+      },
+      nomLigne,
+      majInfo: eqId => { const r = (etat.resultats[ep.id] || {})[eqId]; return r && r.par && r.t ? 'Saisi par ' + r.par + ' à ' + heure(r.t) : ''; }
+    });
+  } else formulaire.maj(etat.reglages);
+  rendreClassementEpreuve();
+}
+function rendreClassementEpreuve() {
+  const ep = EQ(epRes);
+  const c = J.classerEpreuve(ep, etat.resultats[ep.id], etat.equipes, etat.reglages);
+  $('res-classement').innerHTML = `<table><thead><tr><th>Place</th><th class="g">Équipe</th><th>Résultat</th><th>Points</th></tr></thead><tbody>
+    ${c.lignes.map(x => `<tr><td>${x.medaille ? `<span class="med ${x.medaille}"></span> ` : ''}${x.place || '—'}</td><td class="g">${esc(x.eq.nom)}</td>
+      <td>${x.etat === 'ok' ? J.formatValeur(ep, x.v) : { ab: 'Abandon', dq: 'Disqualifiée', vide: 'à saisir', incomplet: 'en cours', err: 'à corriger' }[x.etat]}</td>
+      <td class="${c.terminee ? '' : 'prov'}">${x.place ? x.points : 0}</td></tr>`).join('')}
+    </tbody></table><p class="hint" style="padding:0 10px 8px">${c.terminee ? 'Épreuve terminée : points acquis au classement général.' : 'Classement provisoire : les points comptent quand toutes les équipes ont un résultat.'}</p>`;
+}
+
+// ═════════ BONUS ═════════
+function rendreBonus() {
+  $('bonus').innerHTML = `<thead><tr><th class="g">Équipe</th>${J.BONUS.map(b => `<th>${esc(b.nom)}</th>`).join('')}<th>Total</th></tr></thead><tbody>
+    ${etat.equipes.map(eq => { const b = etat.bonus[eq.id] || {}; return `<tr data-eq="${esc(eq.id)}"><td class="g"><b>${esc(eq.nom)}</b></td>
+      ${J.BONUS.map(x => `<td><input type="text" inputmode="numeric" data-k="${x.k}" value="${esc(b[x.k] || '')}" style="width:70px;text-align:center" placeholder="0"></td>`).join('')}
+      <td class="fort" data-total>${J.sommeBonus(b)}</td></tr>`; }).join('')}</tbody>`;
+}
+$('bonus').addEventListener('input', e => {
+  const tr = e.target.closest('[data-eq]');
+  if (!tr) return;
+  const eqId = tr.dataset.eq;
+  const b = {};
+  tr.querySelectorAll('[data-k]').forEach(i => { b[i.dataset.k] = i.value.trim(); });
+  etat.bonus[eqId] = b;
+  tr.querySelector('[data-total]').textContent = J.sommeBonus(b);
+  sauver();
+  if (ligne && etat.enLigne) ligne.ecrireBonus(etat.enLigne.code, eqId, b).catch(erreurLigne);
+});
+
+// ═════════ CLASSEMENT ═════════
+function rendreClassement() {
+  const g = J.classementGeneral(etat);
+  const eqs = etat.equipes;
+  const col = id => g.lignes.find(r => r.eq.id === id);
+  $('cl-etat').textContent = g.terminees + ' épreuve(s) terminée(s) sur ' + J.EPREUVES.length;
+  $('general').innerHTML = `<thead><tr><th class="g">Épreuve</th>${eqs.map(e => `<th>${esc(e.nom)}</th>`).join('')}</tr></thead><tbody>
+    ${g.epreuves.map(c => `<tr><td class="g">${esc(c.ep.nom)} ${c.terminee ? '<span class="badge b-ok">terminée</span>' : c.commencee ? '<span class="badge b-attente">en cours</span>' : ''}</td>
+      ${eqs.map(e => { const x = col(e.id).parEpreuve[c.ep.id]; return `<td class="${c.terminee ? '' : 'prov'}">${x.medaille && x.etat !== 'vide' ? `<span class="med ${x.medaille}"></span> ` : ''}${c.commencee ? (c.terminee ? x.points : '(' + x.points + ')') : ''}</td>`; }).join('')}</tr>`).join('')}
+    <tr><td class="g">Bonus</td>${eqs.map(e => `<td>${col(e.id).bonus}</td>`).join('')}</tr>
+    <tr class="total"><td class="g">TOTAL</td>${eqs.map(e => `<td class="fort">${col(e.id).total}</td>`).join('')}</tr>
+    <tr><td class="g">Médailles (or / arg. / bronze)</td>${eqs.map(e => { const r = col(e.id); return `<td>${r.or} / ${r.argent} / ${r.bronze}</td>`; }).join('')}</tr>
+    <tr class="total"><td class="g">CLASSEMENT</td>${eqs.map(e => `<td class="fort">${col(e.id).place}${col(e.id).place === 1 ? 're' : 'e'}</td>`).join('')}</tr>
+  </tbody>`;
+  document.querySelectorAll('#ecran-mode button').forEach(b => b.setAttribute('aria-pressed', b.dataset.mode === etat.ecran.mode));
+  $('podium-suivant').textContent = 'Podium : révéler ' + ['le 3e', 'le 2e', 'le 1er', '(terminé)'][Math.min(3, etat.ecran.podium || 0)];
+}
+$('ecran-mode').addEventListener('click', e => {
+  const b = e.target.closest('[data-mode]'); if (!b) return;
+  etat.ecran.mode = b.dataset.mode; sauver(); rendreClassement();
+});
+$('podium-suivant').addEventListener('click', () => {
+  etat.ecran.mode = 'podium'; etat.ecran.podium = Math.min(3, (etat.ecran.podium || 0) + 1); sauver(); rendreClassement();
+});
+$('podium-zero').addEventListener('click', () => { etat.ecran.mode = 'podium'; etat.ecran.podium = 0; sauver(); rendreClassement(); });
+$('imprimer-cl').addEventListener('click', () => imprimer('v-classement'));
+
+function imprimer(id) {
+  document.querySelectorAll('section.vue').forEach(s => s.classList.toggle('imprimer', s.id === id));
+  print();
+}
+
+// ═════════ SAISIE À PLUSIEURS ═════════
+function etatLigne(on, texte) {
+  $('etat-ligne').classList.toggle('on', on);
+  $('etat-ligne').querySelector('span').textContent = texte;
+}
+function erreurLigne(e) {
+  toast('Saisie à plusieurs : ' + (ligne ? ligne.messageErreurFirebase(e).replace(/<[^>]+>/g, '') : e.message), true);
+}
+async function chargerLigne() {
+  if (!ligne) ligne = await import('./en-ligne.js');
+  return ligne;
+}
+async function brancher() {
+  try {
+    etatLigne(false, 'Connexion…');
+    await chargerLigne();
+    const code = etat.enLigne.code;
+    if (enLigneStop) enLigneStop();
+    enLigneStop = await ligne.suivreOrga(code, {
+      resultats: v => {
+        etat.resultats = v; sauver();
+        if (vue === 'resultats') rendreResultats();
+        if (vue === 'classement') rendreClassement();
+      },
+      bonus: v => {
+        etat.bonus = v; sauver();
+        if (vue === 'bonus' && !document.activeElement.closest('#bonus')) rendreBonus();
+        if (vue === 'classement') rendreClassement();
+      },
+      demandes: v => { demandes = v; rendrePastille(); if (vue === 'enligne') rendreEnLigne(); },
+      juges: v => { juges = v; if (vue === 'enligne') rendreEnLigne(); },
+      erreur: e => { etatLigne(false, 'Accès refusé'); erreurLigne(e); }
+    });
+    etatLigne(true, 'En ligne · ' + code);
+  } catch (e) { etatLigne(false, 'Hors ligne'); erreurLigne(e); }
+}
+function pousserInfos() {
+  if (ligne && etat.enLigne) ligne.ecrireInfos(etat.enLigne.code, etat).catch(erreurLigne);
+}
+function rendrePastille() {
+  const n = Object.keys(demandes).length;
+  $('nb-demandes').hidden = !n; $('nb-demandes').textContent = n;
+}
+const DROITS = [...J.EPREUVES.map(e => [e.id, e.court]), ['bonus', 'Bonus']];
+function lienJuge() { return new URL('juge.html?c=' + etat.enLigne.code, location.href).href; }
+function rendreEnLigne() {
+  const on = !!etat.enLigne;
+  $('el-off').hidden = on; $('el-on').hidden = !on;
+  if (!on) return;
+  const lien = lienJuge();
+  $('el-code').textContent = etat.enLigne.code;
+  $('el-lien').href = lien; $('el-lien').textContent = lien.replace(/^https?:\/\//, '');
+  if ($('el-qr').dataset.lien !== lien) {
+    $('el-qr').dataset.lien = lien; $('el-qr').innerHTML = '';
+    if (window.QRCode) new QRCode($('el-qr'), { text: lien, width: 168, height: 168, correctLevel: QRCode.CorrectLevel.M });
+    else $('el-qr').textContent = 'QR code indisponible (hors ligne)';
+  }
+  const ds = Object.entries(demandes).sort((a, b) => (a[1].t || 0) - (b[1].t || 0));
+  $('el-demandes').innerHTML = ds.length ? ds.map(([uid, d]) => `<div class="demande" data-uid="${esc(uid)}">
+      <span class="qui">${esc(d.nom)}<br><small style="font-weight:400;color:var(--acier)">${d.t ? heure(d.t) : ''}</small></span>
+      <span class="cases">${DROITS.map(([k, n]) => `<label><input type="checkbox" value="${k}" ${d.souhait === k ? 'checked' : ''}> ${esc(n)}</label>`).join('')}
+        <label title="Toutes les épreuves et les bonus"><input type="checkbox" value="tout" ${d.souhait === 'tout' ? 'checked' : ''}> <b>Tout</b></label></span>
+      <span style="margin-left:auto;display:flex;gap:6px"><button class="btn petit" data-valider>Valider</button><button class="btn sec petit" data-refuser>Refuser</button></span>
+    </div>`).join('') : '<p class="hint" style="margin:0">Aucune demande en attente.</p>';
+  const js = Object.entries(juges);
+  $('el-juges').innerHTML = `<thead><tr><th class="g">Juge</th><th class="g">Accès</th><th></th></tr></thead><tbody>${js.length ? js.map(([uid, j]) =>
+    `<tr><td class="g">${esc(j.nom)}</td><td class="g">${j.tout ? '<b>Tout</b>' : DROITS.filter(([k]) => j.epreuves && j.epreuves[k]).map(([, n]) => esc(n)).join(', ')}</td>
+     <td><button class="btn sec petit" data-retirer="${esc(uid)}">Retirer l'accès</button></td></tr>`).join('')
+    : '<tr><td class="g" colspan="3">Aucun juge pour l\'instant.</td></tr>'}</tbody>`;
+}
+$('el-creer').addEventListener('click', async () => {
+  $('el-creer').disabled = true;
+  try {
+    await chargerLigne();
+    const code = await ligne.creer(etat);
+    etat.enLigne = { code };
+    journal('Saisie à plusieurs ouverte (code ' + code + ')');
+    sauver(); await brancher(); rendreEnLigne();
+  } catch (e) { erreurLigne(e); }
+  $('el-creer').disabled = false;
+});
+$('el-demandes').addEventListener('click', async e => {
+  const d = e.target.closest('[data-uid]'); if (!d) return;
+  const uid = d.dataset.uid, nom = demandes[uid] && demandes[uid].nom;
+  try {
+    if (e.target.matches('[data-refuser]')) { await ligne.refuser(etat.enLigne.code, uid); journal('Accès refusé à ' + nom); }
+    if (e.target.matches('[data-valider]')) {
+      const cases = [...d.querySelectorAll('input:checked')].map(i => i.value);
+      if (!cases.length) return toast('Cocher au moins une épreuve.', true);
+      const droits = cases.includes('tout') ? { tout: true } : { epreuves: Object.fromEntries(cases.map(k => [k, true])) };
+      await ligne.valider(etat.enLigne.code, uid, nom, droits);
+      journal('Juge validé : ' + nom + ' (' + cases.join(', ') + ')');
+    }
+    sauver();
+  } catch (err) { erreurLigne(err); }
+});
+$('el-juges').addEventListener('click', async e => {
+  const uid = e.target.dataset.retirer; if (!uid) return;
+  try { await ligne.retirer(etat.enLigne.code, uid); journal('Accès retiré à ' + (juges[uid] || {}).nom); sauver(); } catch (err) { erreurLigne(err); }
+});
+$('el-copier').addEventListener('click', () => navigator.clipboard.writeText(lienJuge()).then(() => toast('Lien copié.')));
+$('el-quitter').addEventListener('click', async () => {
+  if (!confirm('Arrêter la saisie à plusieurs ?\nLes résultats restent sur cet appareil ; les juges perdent l\'accès et les données en ligne sont effacées.')) return;
+  try { await chargerLigne(); if (enLigneStop) enLigneStop(); await ligne.supprimer(etat.enLigne.code); } catch (e) { erreurLigne(e); }
+  journal('Saisie à plusieurs arrêtée'); etat.enLigne = null; enLigneStop = null; demandes = {}; juges = {};
+  sauver(); rendrePastille(); etatLigne(false, 'Hors ligne'); rendreEnLigne();
+});
+
+// ═════════ RÉGLAGES ═════════
+const PEN_LIBELLES = {
+  poiObstacle: 'PO indiv. : obstacle raté (s)', pocSol: 'PO charge : sac au sol (s) — à définir', pocZone: 'PO charge : hors zone (s)',
+  pocObstacle: 'PO charge : obstacle raté (s)', relaisZone: 'Relais : témoin hors zone (s)', coTranche: 'CO : tranche de retard (s)',
+  coPoints: 'CO : points retirés par tranche'
+};
+function rendreReglages() {
+  $('bareme').innerHTML = ['1re', '2e', '3e'].map((p, i) => `<div><label class="l">${p}</label><input type="number" min="0" data-b="${i}" value="${etat.reglages.bareme[i] ?? 0}" style="width:80px"></div>`).join('');
+  $('penalites').innerHTML = Object.entries(PEN_LIBELLES).map(([k, n]) => `<div><label class="l">${esc(n)}</label><input type="number" min="0" data-pen="${k}" value="${etat.reglages.pen[k]}"></div>`).join('');
+  if (document.activeElement !== $('balises')) $('balises').value = etat.reglages.balises || '';
+  infoBalises();
+  $('journal').innerHTML = etat.journal.length ? etat.journal.map(j => `<div><span class="num" style="color:var(--acier)">${heure(j.t)}</span> ${esc(j.msg)}</div>`).join('') : '<span class="hint">Vide.</span>';
+}
+function infoBalises() {
+  const n = J.lireBalises($('balises').value).size;
+  $('balises-info').textContent = n ? n + ' balise(s) reconnue(s). Les juges saisissent les numéros poinçonnés.' : 'Une balise par ligne : numéro puis points. Laisser vide pour saisir directement les points de chaque binôme.';
+}
+$('v-reglages').addEventListener('change', e => {
+  const t = e.target;
+  if (t.dataset.b != null) etat.reglages.bareme[Number(t.dataset.b)] = Number(t.value) || 0;
+  else if (t.dataset.pen) etat.reglages.pen[t.dataset.pen] = Number(t.value) || 0;
+  else if (t.id === 'balises') etat.reglages.balises = t.value;
+  else return;
+  formulaire = null; sauver(); pousserInfos(); rendreReglages();
+});
+$('balises').addEventListener('input', infoBalises);
+$('exporter').addEventListener('click', () => {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(etat, null, 1)], { type: 'application/json' }));
+  a.download = 'jo-5esc-' + new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-') + '.json';
+  a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+$('importer').addEventListener('change', async e => {
+  const f = e.target.files[0]; e.target.value = '';
+  if (!f) return;
+  try {
+    const nouveau = J.normaliser(JSON.parse(await f.text()));
+    if (!confirm('Remplacer toutes les données de cet appareil par celles du fichier ?')) return;
+    nouveau.enLigne = etat.enLigne;
+    etat = nouveau; formulaire = null; journal('Import de ' + f.name); sauver(); rendre(); toast('Fichier importé.');
+  } catch { toast('Fichier illisible.', true); }
+});
+$('raz-resultats').addEventListener('click', async () => {
+  if (!confirm('Effacer tous les résultats et bonus ? (équipes et composition conservées)')) return;
+  etat.resultats = {}; etat.bonus = {}; formulaire = null;
+  if (ligne && etat.enLigne) {
+    for (const ep of J.EPREUVES) for (const eq of etat.equipes) ligne.ecrireResultat(etat.enLigne.code, ep.id, eq.id, { l: [] }, '').catch(erreurLigne);
+    for (const eq of etat.equipes) ligne.ecrireBonus(etat.enLigne.code, eq.id, {}).catch(erreurLigne);
+  }
+  journal('Résultats effacés'); sauver(); rendre();
+});
+$('raz-tout').addEventListener('click', () => {
+  if (!confirm('Tout effacer sur cet appareil (équipes, composition, résultats) ?')) return;
+  const el = etat.enLigne;
+  etat = J.etatVide(); etat.enLigne = el; formulaire = null; sauver(); rendre();
+});
+
+// ═════════ démarrage ═════════
+let depart = 'equipes';
+try { depart = sessionStorage.getItem('esc.jo.vue') || depart; } catch {}
+montrer(depart);
+if (etat.enLigne) brancher();
+// Un autre onglet de la table centrale a modifié les données
+addEventListener('storage', e => { if (e.key === CLE) { etat = charger(); formulaire = null; rendre(); } });
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
+<script src="../assets/retour.js" defer></script>
+</body>
+</html>
