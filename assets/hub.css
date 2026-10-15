@@ -83,7 +83,7 @@ h1 .l2{color:transparent;-webkit-text-stroke:2px var(--or)}
 .fiche{opacity:0;transform:translateY(14px);animation:apparait .6s cubic-bezier(.2,.8,.3,1) forwards;animation-delay:var(--delai)}
 @keyframes apparait{to{opacity:1;transform:none}}
 
-.fiche a{
+.fiche a,.fiche .bientot{
   position:relative;overflow:hidden;isolation:isolate;
   display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:20px;
   padding:26px 24px;text-decoration:none;color:inherit;
@@ -104,6 +104,8 @@ h1 .l2{color:transparent;-webkit-text-stroke:2px var(--or)}
   box-shadow:0 16px 34px -22px rgba(0,0,0,.9);
 }
 .fiche a:focus-visible{outline:2px solid var(--or-clair);outline-offset:3px}
+/* fiche pas encore en ligne : même gabarit, sans lien ni effet de survol */
+.fiche .bientot{opacity:.62;cursor:default;border-style:dashed}
 
 .code{
   align-self:start;color:var(--or);border:1px solid rgba(201,162,39,.42);
@@ -132,13 +134,13 @@ footer p{
 
 /* ── écrans étroits ───────────────────────────────────────── */
 @media(max-width:560px){
-  .fiche a{grid-template-columns:auto 1fr;gap:14px 16px;padding:22px 20px}
+  .fiche a,.fiche .bientot{grid-template-columns:auto 1fr;gap:14px 16px;padding:22px 20px}
   .fleche{grid-column:2;justify-self:end;margin-top:-4px}
   .lede{font-size:16px}
 }
 @media(min-width:820px){
   .fiches{grid-template-columns:1fr 1fr}
-  .fiche a{grid-template-columns:auto 1fr;align-content:start;height:100%;padding:28px 26px}
+  .fiche a,.fiche .bientot{grid-template-columns:auto 1fr;align-content:start;height:100%;padding:28px 26px}
   .fleche{grid-column:2;justify-self:start;align-self:end;margin-top:10px}
 }
 
