@@ -1,1036 +1,595 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Quiz Editor – Formation Militaire</title>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Literata:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Éditeur de questions</title>
+<meta name="description" content="Rédiger et classer les questions de formation, les imprimer en PDF et exporter le fichier de référence du quiz.">
+<meta name="theme-color" content="#0B1B33">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@400;600;800&family=Barlow:wght@400;500;600&family=Spline+Sans+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/hub.css">
 <style>
-/* ═══════════════ RESET & BASE ═══════════════ */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+/* Éditeur de questions. Couleurs et polices du hub (assets/hub.css),
+   mêmes composants que quiz.html et la partie en direct (direct.css).
+   Les cartes imprimées restent sur fond blanc. */
 
 /* FORCE COULEURS À L'IMPRESSION */
-* {
-  -webkit-print-color-adjust: exact !important;
-  print-color-adjust: exact !important;
-  color-adjust: exact !important;
+*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}
+
+:root{
+  --juste:#2FA36B;
+  --juste-fond:rgba(47,163,107,.14);
+  --faux:#E5484D;
+  --faux-fond:rgba(200,16,46,.16);
+  --neuf:#E8892B;
+  /* une teinte par réponse, comme sur l'écran de la partie en direct */
+  --r0:#D6313F; --r1:#2F6FDB; --r2:#C9A227; --r3:#2FA36B; --r4:#8E5BD6; --r5:#D9822B;
+  --panneau:linear-gradient(180deg,var(--nuit-2),#0F2340);
 }
 
-:root {
-  --bg: #0f1117;
-  --surface: #181c27;
-  --surface2: #1f2436;
-  --border: #2a3050;
-  --text: #e8eaf2;
-  --text-dim: #7a839e;
-  --accent: #4f6ef7;
-
-  --cat-sit:      #1D3461;
-  --cat-istc:     #7B1D3A;
-  --cat-nrbc:     #2D5016;
-  --cat-armement: #3D3D4E;
-  --cat-rens:     #3D1A6E;
-  --cat-topo:     #5C3317;
-  --cat-trans:    #8B3A00;
-  --cat-cyber:    #004D2C;
-  --cat-imf:    #912A21;
-}
-
-body {
-  font-family: 'Literata', Georgia, serif;
-  background: var(--bg);
-  color: var(--text);
-  height: 100vh;
-  overflow: hidden;
-}
+html,body{height:100%}
+body{overflow:hidden;line-height:1.45}
+[hidden]{display:none!important}
 
 /* ═══════════════ LAYOUT ═══════════════ */
-#app { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+#app{position:relative;z-index:1;display:flex;flex-direction:column;height:100vh;height:100dvh;overflow:hidden}
 
-header {
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  padding: 14px 28px;
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  position: sticky;
-  top: 0;
-  z-index: 100;
+header{
+  display:flex;align-items:center;gap:22px;flex-wrap:wrap;
+  padding:16px 24px 14px;border-bottom:1px solid var(--nuit-3);
+  background:rgba(11,27,51,.72);backdrop-filter:blur(6px);
 }
+.marque{display:flex;flex-direction:column;gap:4px;min-width:0}
+.fanion a{color:var(--acier);text-decoration:none}
+.fanion a:hover{color:var(--or-clair)}
+.fanion .ver{color:var(--nuit-3)}
+header h1{
+  margin:0;font-size:36px;line-height:.9;flex-direction:row;gap:.22em;align-items:baseline;
+}
+header h1 .l2{-webkit-text-stroke-width:1.2px}
 
-header h1 {
-  font-family: 'Syne', sans-serif;
-  font-size: 17px;
-  font-weight: 800;
-  letter-spacing: 1px;
-  color: var(--text);
-  text-transform: uppercase;
-}
+.header-right{margin-left:auto;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.groupe{display:flex;gap:6px;align-items:center}
+.groupe + .groupe{padding-left:10px;border-left:1px solid var(--nuit-3)}
 
-header .badge {
-  font-family: 'Syne', sans-serif;
-  font-size: 10px;
-  font-weight: 700;
-  padding: 3px 8px;
-  border-radius: 4px;
-  background: var(--accent);
-  color: white;
-  letter-spacing: 1px;
-}
+.main-layout{display:grid;grid-template-columns:330px 1fr;flex:1;min-height:0;overflow:hidden}
 
-.header-right {
-  margin-left: auto;
-  display: flex;
-  gap: 10px;
-  align-items: center;
+/* ═══════════════ BOUTONS ═══════════════ */
+.btn{
+  appearance:none;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  font-family:var(--mono);font-size:.68rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;
+  padding:9px 13px;border-radius:2px;white-space:nowrap;text-decoration:none;
+  background:transparent;color:var(--acier);border:1px solid var(--nuit-3);
+  transition:border-color .15s,color .15s,background .15s,transform .15s;
 }
-
-.main-layout {
-  display: grid;
-  grid-template-columns: 320px 1fr;
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
+.btn:hover{border-color:var(--acier);color:var(--craie)}
+.btn:focus-visible{outline:2px solid var(--or-clair);outline-offset:3px}
+.btn .ic{font-size:.95rem;line-height:1;letter-spacing:0}
+.btn-primary{background:var(--or);border-color:var(--or);color:var(--nuit)}
+.btn-primary:hover{background:var(--or-clair);border-color:var(--or-clair);color:var(--nuit);transform:translateY(-1px)}
+.btn-success{color:var(--juste);border-color:rgba(47,163,107,.45)}
+.btn-success:hover{color:var(--juste);border-color:var(--juste);background:var(--juste-fond)}
+.btn-danger{color:var(--faux);border-color:rgba(229,72,77,.4)}
+.btn-danger:hover{color:var(--faux);border-color:var(--faux);background:var(--faux-fond)}
+.btn-warn{color:var(--neuf);border-color:rgba(232,137,43,.45)}
+.btn-warn:hover{color:var(--neuf);border-color:var(--neuf);background:rgba(232,137,43,.12)}
+.btn-sm{padding:7px 11px}
+/* gros bouton d'action, comme « Commencer » dans le quiz */
+.bouton{
+  appearance:none;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:10px;
+  font-family:var(--disp);font-weight:600;font-size:21px;text-transform:uppercase;letter-spacing:.04em;
+  padding:9px 18px;border-radius:2px;border:1px solid var(--or);
+  background:var(--or);color:var(--nuit);transition:background .15s,transform .15s;
 }
+.bouton:hover{background:var(--or-clair);transform:translateY(-1px)}
+.bouton:focus-visible{outline:2px solid var(--or-clair);outline-offset:3px}
 
 /* ═══════════════ SIDEBAR ═══════════════ */
-.sidebar {
-  background: var(--surface);
-  border-right: 1px solid var(--border);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  height: 100%;
-  min-height: 0;
+.sidebar{
+  display:flex;flex-direction:column;overflow:hidden;min-height:0;height:100%;
+  border-right:1px solid var(--nuit-3);background:rgba(18,41,74,.55);
 }
+.sidebar-top{padding:18px 18px 14px;border-bottom:1px solid var(--nuit-3);display:flex;flex-direction:column;gap:12px}
+.etiquette{
+  font-family:var(--mono);font-weight:600;font-size:.66rem;letter-spacing:.22em;text-transform:uppercase;
+  color:var(--acier);display:flex;align-items:center;gap:12px;
+}
+.etiquette::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--nuit-3),transparent)}
+.etiquette .opt{letter-spacing:.1em;opacity:.6;text-transform:none}
 
-.sidebar-top {
-  padding: 16px;
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+.recherche{
+  width:100%;font:inherit;font-size:15px;color:var(--craie);
+  padding:9px 12px 9px 34px;border-radius:2px;background:rgba(11,27,51,.7);border:1px solid var(--nuit-3);
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%238FA6C4' stroke-width='2'%3E%3Ccircle cx='7' cy='7' r='5'/%3E%3Cpath d='m11 11 4 4'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:11px 50%;outline:none;transition:border-color .15s;
 }
+.recherche:focus{border-color:var(--or)}
+.recherche::placeholder{color:#5d7699}
 
-.sidebar-top label {
-  font-family: 'Syne', sans-serif;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 1.5px;
-  color: var(--text-dim);
-  text-transform: uppercase;
+.cat-filter{display:flex;flex-wrap:wrap;gap:6px}
+.cat-chip{
+  --c:var(--acier);
+  appearance:none;cursor:pointer;display:inline-flex;align-items:center;gap:7px;
+  font-family:var(--mono);font-size:.62rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+  padding:6px 9px;border-radius:2px;background:transparent;color:var(--acier);border:1px solid var(--nuit-3);
+  transition:border-color .15s,color .15s,background .15s;
 }
+.cat-chip::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--c);flex:none}
+.cat-chip.sans-point::before{display:none}
+.cat-chip:hover{border-color:var(--acier);color:var(--craie)}
+.cat-chip.active{color:var(--or-clair);border-color:var(--or);background:rgba(201,162,39,.1)}
+.cat-chip.neuf{--c:var(--neuf)}
+.cat-chip.neuf.active{color:var(--neuf);border-color:var(--neuf);background:rgba(232,137,43,.12)}
+.cat-chip .nb{opacity:.55}
 
-.cat-filter {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+.q-list{flex:1;overflow-y:auto;padding:6px 0}
+.q-vide{padding:28px 18px;text-align:center;color:var(--acier);font-size:14px}
+.q-item{
+  --c:var(--acier);
+  position:relative;padding:11px 18px 11px 16px;cursor:pointer;
+  border-left:3px solid transparent;display:flex;align-items:flex-start;gap:12px;
+  transition:background .12s;
 }
+.q-item + .q-item::after{content:"";position:absolute;top:0;left:18px;right:18px;height:1px;background:rgba(27,58,99,.6)}
+.q-item:hover{background:rgba(27,58,99,.35)}
+.q-item.active{background:linear-gradient(90deg,rgba(201,162,39,.12),rgba(201,162,39,.02));border-left-color:var(--or)}
+.q-item.active::after,.q-item.active + .q-item::after{display:none}
+.q-item-dot{width:8px;height:8px;border-radius:50%;margin-top:5px;flex-shrink:0;background:var(--c)}
+.q-item-body{flex:1;min-width:0}
+.q-item-num{
+  font-family:var(--mono);font-size:.6rem;font-weight:600;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--acier);display:flex;align-items:center;gap:8px;margin-bottom:2px;
+}
+.q-item-text{font-size:14px;line-height:1.35;color:var(--craie);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.q-item.active .q-item-text{color:#fff}
+.q-item-multi{
+  flex-shrink:0;font-family:var(--mono);font-size:.56rem;font-weight:600;letter-spacing:.1em;
+  color:var(--acier);border:1px solid var(--nuit-3);border-radius:2px;padding:2px 5px;margin-top:2px;
+}
+.new-badge{
+  font-family:var(--mono);font-size:.54rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--neuf);border:1px solid rgba(232,137,43,.5);padding:1px 5px;border-radius:2px;flex-shrink:0;
+}
+.ic-img{color:var(--or);margin-right:4px}
 
-.cat-chip {
-  font-family: 'Syne', sans-serif;
-  font-size: 10px;
-  font-weight: 700;
-  padding: 4px 10px;
-  border-radius: 20px;
-  border: 1.5px solid transparent;
-  cursor: pointer;
-  letter-spacing: 0.5px;
-  transition: all 0.15s;
-  color: white;
-}
-.cat-chip.active { opacity: 1; border-color: white; }
-.cat-chip:not(.active) { opacity: 0.45; }
-
-.q-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 8px 0;
-}
-
-.q-item {
-  padding: 10px 16px;
-  cursor: pointer;
-  border-left: 3px solid transparent;
-  transition: background 0.12s;
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-}
-.q-item:hover { background: var(--surface2); }
-.q-item.active { background: var(--surface2); }
-
-.q-item-dot {
-  width: 8px; height: 8px;
-  border-radius: 50%;
-  margin-top: 5px;
-  flex-shrink: 0;
-}
-
-.q-item-body { flex: 1; min-width: 0; }
-.q-item-num {
-  font-family: 'Syne', sans-serif;
-  font-size: 9px;
-  font-weight: 700;
-  color: var(--text-dim);
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.q-item-text {
-  font-size: 12px;
-  line-height: 1.4;
-  color: var(--text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.q-item-multi {
-  font-size: 14px;
-  flex-shrink: 0;
-  opacity: 0.8;
-}
-
-.new-badge {
-  font-family: 'Syne', sans-serif;
-  font-size: 8px;
-  font-weight: 800;
-  letter-spacing: 0.5px;
-  color: white;
-  background: #e8630a;
-  padding: 1px 6px;
-  border-radius: 10px;
-  text-transform: uppercase;
-  flex-shrink: 0;
-}
+.sidebar-pied{padding:12px 18px;border-top:1px solid var(--nuit-3);color:var(--acier);text-align:right}
 
 /* ═══════════════ EDITOR ═══════════════ */
-.editor-area {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  height: 100%;
-  min-height: 0;
+.editor-area{display:flex;flex-direction:column;overflow:hidden;height:100%;min-height:0}
+
+.editor-toolbar{
+  padding:12px 28px;border-bottom:1px solid var(--nuit-3);
+  display:flex;gap:10px;align-items:center;flex-shrink:0;background:rgba(11,27,51,.45);
+}
+.editor-toolbar .pos{color:var(--acier)}
+.editor-toolbar .pos b{color:var(--or-clair);font-weight:600}
+
+.editor-scroll{flex:1;overflow-y:auto;padding:30px 32px 60px;display:flex;gap:36px;align-items:flex-start}
+.editor-form{flex:1;min-width:0;max-width:620px}
+
+.form-group{margin-bottom:26px}
+.form-label{display:flex;margin-bottom:10px}
+
+.form-input,.form-textarea,.form-select{
+  width:100%;font:inherit;font-size:17px;color:var(--craie);
+  padding:12px 14px;border-radius:3px;background:rgba(11,27,51,.7);border:1px solid var(--nuit-3);
+  outline:none;transition:border-color .15s,background .15s;
+}
+.form-input:focus,.form-textarea:focus,.form-select:focus{border-color:var(--or);background:rgba(11,27,51,.9)}
+.form-textarea{
+  resize:vertical;min-height:96px;
+  font-family:var(--disp);font-weight:600;font-size:26px;line-height:1.1;letter-spacing:.005em;
+}
+.form-textarea::placeholder,.form-input::placeholder{color:#5d7699}
+.form-select{appearance:none;cursor:pointer;font-family:var(--mono);font-size:.8rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase}
+.form-select option{background:var(--nuit-2);color:var(--craie)}
+
+/* sélecteur de sujet : pastille de couleur + chevron */
+.cat-select-wrap{position:relative}
+.cat-dot-indicator{position:absolute;left:14px;top:50%;transform:translateY(-50%);width:10px;height:10px;border-radius:50%;pointer-events:none}
+.cat-select-wrap::after{
+  content:"";position:absolute;right:16px;top:50%;width:8px;height:8px;pointer-events:none;
+  border-right:1.5px solid var(--acier);border-bottom:1.5px solid var(--acier);transform:translateY(-70%) rotate(45deg);
+}
+.cat-select-wrap .form-select{padding-left:36px}
+
+/* ── réponses : mêmes lignes colorées que la partie en direct ── */
+.answers-head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:12px;flex-wrap:wrap}
+.answers-head .form-label{margin:0;flex:1;min-width:160px}
+.answers-list{display:grid;gap:10px}
+.answer-row-editor{
+  --c:var(--acier);
+  display:grid;grid-template-columns:auto 1fr auto auto;align-items:center;gap:12px;
+  padding:8px 10px 8px 12px;border-radius:3px;
+  background:rgba(11,27,51,.55);border:1px solid var(--nuit-3);border-left:4px solid var(--c);
+  transition:border-color .15s,background .15s;
+}
+.answer-row-editor:focus-within{border-color:var(--c);border-left-color:var(--c)}
+.answer-row-editor.juste{border-color:var(--juste);border-left-color:var(--juste);background:var(--juste-fond)}
+.answer-row-editor[data-i="0"]{--c:var(--r0)} .answer-row-editor[data-i="1"]{--c:var(--r1)} .answer-row-editor[data-i="2"]{--c:var(--r2)}
+.answer-row-editor[data-i="3"]{--c:var(--r3)} .answer-row-editor[data-i="4"]{--c:var(--r4)} .answer-row-editor[data-i="5"]{--c:var(--r5)}
+
+.answer-letter-badge{
+  font-family:var(--mono);font-size:.78rem;font-weight:600;
+  width:32px;height:32px;display:grid;place-items:center;border-radius:2px;
+  background:var(--c);color:#fff;flex-shrink:0;
+}
+.answer-row-editor[data-i="2"] .answer-letter-badge{color:var(--nuit)}
+.answer-row-editor.juste .answer-letter-badge{background:var(--juste);color:#fff}
+
+.answer-input-wrap{min-width:0}
+.answer-input-wrap input{
+  width:100%;font:inherit;font-size:17px;color:var(--craie);
+  padding:8px 4px;border:none;background:transparent;outline:none;
+}
+.answer-input-wrap input::placeholder{color:#5d7699}
+
+.answer-correct-btn{
+  appearance:none;cursor:pointer;display:inline-flex;align-items:center;gap:6px;
+  font-family:var(--mono);font-size:.62rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;
+  padding:6px 9px;border-radius:2px;border:1px solid var(--nuit-3);background:transparent;color:var(--acier);
+  transition:all .15s;flex-shrink:0;
+}
+.answer-correct-btn::before{content:"";width:12px;height:12px;border-radius:2px;border:1.5px solid currentColor;box-sizing:border-box}
+.answer-correct-btn:hover{border-color:var(--acier);color:var(--craie)}
+.answer-correct-btn.on{border-color:var(--juste);color:var(--juste);background:rgba(47,163,107,.12)}
+.answer-correct-btn.on::before{background:var(--juste);border-color:var(--juste);
+  box-shadow:inset 0 0 0 2px var(--nuit-2)}
+.answer-correct-btn:focus-visible,.answer-del-btn:focus-visible{outline:2px solid var(--or-clair);outline-offset:2px}
+
+.answer-del-btn{
+  appearance:none;width:28px;height:28px;border-radius:2px;border:1px solid transparent;
+  background:transparent;color:var(--acier);cursor:pointer;font-size:18px;line-height:1;
+  display:grid;place-items:center;flex-shrink:0;transition:all .15s;
+}
+.answer-del-btn:hover{color:var(--faux);border-color:rgba(229,72,77,.4);background:var(--faux-fond)}
+.answer-del-vide{width:28px}
+
+.ajout-reponse{
+  margin-top:10px;width:100%;padding:12px;border-style:dashed;
+}
+.ajout-reponse:hover{border-style:solid;border-color:var(--or);color:var(--or-clair)}
+
+/* bascule « réponses multiples », comme les réglages du quiz */
+.multi-toggle{display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none}
+.toggle-track{flex:none;width:38px;height:22px;border-radius:999px;background:var(--nuit-3);position:relative;transition:background .2s}
+.toggle-thumb{position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:var(--craie);transition:transform .2s,background .2s}
+.toggle-track.on{background:var(--or)}
+.toggle-track.on .toggle-thumb{transform:translateX(16px);background:var(--nuit)}
+.toggle-label{font-family:var(--mono);font-size:.62rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--acier)}
+.multi-toggle:focus-visible{outline:2px solid var(--or-clair);outline-offset:4px}
+
+.aide{color:var(--acier);font-size:14px;margin:10px 0 0}
+.aide.alerte{color:var(--neuf)}
+
+/* ── image ── */
+.img-upload-zone{
+  border:1px dashed var(--nuit-3);border-radius:3px;padding:20px 16px;text-align:center;cursor:pointer;
+  background:rgba(11,27,51,.45);transition:border-color .15s,background .15s;
+}
+.img-upload-zone:hover{border-color:var(--or);background:rgba(201,162,39,.06)}
+.img-upload-zone.has-img{border-style:solid;padding:10px;text-align:left}
+.img-upload-label{font-family:var(--mono);font-size:.66rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--acier);pointer-events:none}
+.img-upload-zone:hover .img-upload-label{color:var(--or-clair)}
+.img-upload-icon{display:block;margin:0 auto 8px;width:28px;height:28px;color:var(--acier)}
+.img-upload-sous{font-size:13px;color:#5d7699;margin-top:4px}
+.img-preview-wrap{position:relative;display:inline-block}
+.img-preview-wrap img{max-width:100%;max-height:180px;border-radius:2px;display:block;object-fit:contain}
+.img-remove-btn{
+  position:absolute;top:-9px;right:-9px;width:24px;height:24px;border-radius:50%;
+  background:var(--faux);color:#fff;border:2px solid var(--nuit);font-size:14px;cursor:pointer;
+  display:grid;place-items:center;line-height:1;
 }
 
-.editor-toolbar {
-  padding: 12px 24px;
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  background: var(--surface);
-  flex-shrink: 0;
+/* ═══════════════ APERÇU ═══════════════ */
+.preview-panel{width:380px;flex-shrink:0}
+.preview-tabs{display:flex;gap:6px;margin-bottom:14px}
+.preview-tabs .cat-chip{flex:1;justify-content:center}
+.preview-tabs .cat-chip::before{display:none}
+.preview-note{color:var(--acier);font-size:13px;margin-top:12px}
+
+/* aperçu « quiz en ligne » : reprise des composants de quiz.html */
+.apercu-ligne{background:var(--panneau);border:1px solid var(--nuit-3);border-radius:3px;padding:20px}
+.apercu-ligne .enonce{margin:12px 0 4px;font-family:var(--disp);font-weight:600;font-size:26px;line-height:1.05}
+.apercu-ligne .consigne{color:var(--acier);margin:0 0 14px;font-size:14px}
+.apercu-ligne .illus img{max-width:100%;max-height:160px;border-radius:3px;border:1px solid var(--nuit-3);display:block;margin-bottom:14px}
+.apercu-ligne .reponses{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.apercu-ligne .reponse{
+  display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;
+  padding:11px 12px;border-radius:3px;font-size:15px;
+  background:rgba(11,27,51,.55);border:1px solid var(--nuit-3);
+}
+.apercu-ligne .reponse .lettre{
+  font-family:var(--mono);font-size:.68rem;font-weight:600;width:26px;height:26px;display:grid;place-items:center;
+  border-radius:2px;border:1px solid var(--nuit-3);color:var(--acier);
+}
+.apercu-ligne .reponse .etat{font-family:var(--mono);font-size:.62rem;letter-spacing:.12em;text-transform:uppercase;color:var(--juste)}
+.apercu-ligne .reponse.juste{border-color:var(--juste);background:var(--juste-fond)}
+.apercu-ligne .reponse.juste .lettre{border-color:var(--juste);color:var(--juste)}
+.apercu-ligne .vide{color:#5d7699;font-style:italic}
+
+/* ═══════════════ QUIZ CARD (aperçu + impression) ═══════════════ */
+.quiz-card{
+  border-radius:6px;overflow:hidden;position:relative;background:#fff;
+  box-shadow:0 18px 40px -20px rgba(0,0,0,.9);border:1px solid rgba(255,255,255,.08);
+  font-family:var(--texte);
+}
+.card-header{padding:8px 13px;display:flex;justify-content:space-between;align-items:center}
+.card-header-title{
+  color:#fff;font-family:var(--disp);font-size:17px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+  display:flex;align-items:center;gap:6px;line-height:1;
+}
+.multi-badge{font-size:12px;line-height:1}
+.card-header-num{color:rgba(255,255,255,.65);font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.1em}
+.card-new-ribbon{
+  position:absolute;top:8px;right:-28px;transform:rotate(40deg);
+  background:#e8630a;color:#fff;font-family:var(--mono);font-size:8px;font-weight:600;letter-spacing:.14em;
+  padding:2px 32px;text-transform:uppercase;box-shadow:0 2px 6px rgba(0,0,0,.3);z-index:5;
+}
+.card-question{
+  padding:10px 13px 9px;font-size:13.5px;font-weight:600;color:#111827;line-height:1.4;
+  border-bottom:1px solid #e5e9f4;background:#f7f9fd;
+}
+.card-answers{background:#fff;padding:2px 0}
+.card-answer{display:flex;align-items:center;gap:9px;padding:7px 13px 7px 10px;border-bottom:1px solid #edf0f8;min-height:36px}
+.card-answer:last-child{border-bottom:none}
+.card-answer-letter{
+  width:26px;height:26px;min-width:26px;min-height:26px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;color:#fff;
+  font-family:var(--mono);font-size:10px;line-height:26px;font-weight:600;flex-shrink:0;aspect-ratio:1/1;
+}
+.card-answer-text{flex:1;font-size:12.5px;color:#1e2a40;line-height:1.35}
+.card-answer-check{font-size:15px;color:#1a3a1a;font-weight:800;width:16px;text-align:right;flex-shrink:0}
+.card-image{
+  width:100%;max-height:110px;object-fit:contain;display:block;background:#f0f2f8;
+  padding:4px 8px;border-bottom:1px solid #e5e9f4;
 }
 
-.editor-scroll {
-  flex: 1;
-  overflow-y: auto;
-  padding: 28px 32px;
-  display: flex;
-  gap: 32px;
+/* ═══════════════ ÉTAT VIDE ═══════════════ */
+.empty-state{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;color:var(--acier);text-align:center;padding:24px}
+.empty-state .titre-vide{font-family:var(--disp);font-weight:800;font-size:44px;line-height:.9;text-transform:uppercase;color:transparent;-webkit-text-stroke:1.5px var(--nuit-3)}
+
+/* ═══════════════ FENÊTRES ═══════════════ */
+#cat-modal,#ref-modal{
+  display:none;position:fixed;inset:0;z-index:500;align-items:center;justify-content:center;padding:16px;
+  background:rgba(5,12,24,.78);backdrop-filter:blur(3px);
+}
+#ref-modal{z-index:520}
+#cat-modal.show,#ref-modal.show{display:flex}
+.cat-modal-box{
+  background:var(--panneau);border:1px solid var(--nuit-3);border-radius:3px;
+  padding:26px 28px;width:500px;max-width:100%;max-height:84vh;
+  display:flex;flex-direction:column;gap:18px;box-shadow:0 30px 70px -20px rgba(0,0,0,.9);
+  animation:ouvre .3s cubic-bezier(.2,.8,.3,1);
+}
+@keyframes ouvre{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.modal-tete{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.cat-modal-box h2{margin:4px 0 0;font-family:var(--disp);font-weight:800;font-size:34px;line-height:.9;text-transform:uppercase}
+.modal-tete .code{display:inline-block}
+
+.cat-list-manage{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:6px;margin:0 -4px;padding:0 4px}
+.cat-manage-row{
+  display:flex;align-items:center;gap:10px;padding:7px 8px;
+  background:rgba(11,27,51,.55);border:1px solid var(--nuit-3);border-radius:3px;
+}
+.cat-manage-row:focus-within{border-color:var(--or)}
+.cat-color-swatch,.new-cat-color{
+  width:30px;height:30px;border-radius:2px;flex-shrink:0;cursor:pointer;position:relative;overflow:hidden;
+  border:1px solid rgba(255,255,255,.2);
+}
+.cat-color-swatch input[type=color],.new-cat-color input[type=color]{
+  position:absolute;inset:-4px;width:calc(100% + 8px);height:calc(100% + 8px);opacity:0;cursor:pointer;border:none;
+}
+.cat-label-input{
+  flex:1;min-width:0;background:transparent;border:none;outline:none;color:var(--craie);
+  font-family:var(--mono);font-size:.78rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;
+}
+.cat-label-input::placeholder{color:#5d7699;text-transform:none;letter-spacing:0}
+.cat-count{color:var(--acier);font-family:var(--mono);font-size:.62rem;letter-spacing:.1em;white-space:nowrap}
+.cat-del-btn{
+  appearance:none;width:28px;height:28px;border-radius:2px;border:1px solid transparent;background:transparent;
+  color:var(--acier);cursor:pointer;font-size:18px;display:grid;place-items:center;flex-shrink:0;transition:all .15s;
+}
+.cat-del-btn:hover{color:var(--faux);border-color:rgba(229,72,77,.4);background:var(--faux-fond)}
+.cat-add-row{display:flex;gap:8px;align-items:center;padding-top:16px;border-top:1px solid var(--nuit-3)}
+.new-cat-color{width:38px;height:38px}
+.new-cat-name{
+  flex:1;min-width:0;background:rgba(11,27,51,.7);border:1px solid var(--nuit-3);border-radius:2px;color:var(--craie);
+  font-family:var(--mono);font-size:.78rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;
+  padding:10px 12px;outline:none;transition:border-color .15s;
+}
+.new-cat-name:focus{border-color:var(--or)}
+.new-cat-name::placeholder{font-family:var(--texte);font-size:15px;font-weight:400;text-transform:none;letter-spacing:0;color:#5d7699}
+
+/* données de référence */
+.ref-msg{font-size:15px;color:var(--acier);line-height:1.55}
+.ref-source{background:rgba(11,27,51,.55);border:1px solid var(--nuit-3);border-left:3px solid var(--or);border-radius:3px;padding:12px 14px;font-size:15px;color:var(--acier)}
+.ref-source b{color:var(--craie);font-weight:600}
+.ref-stats{display:grid;gap:6px}
+.ref-stat{display:flex;align-items:baseline;gap:14px;padding:9px 14px;background:rgba(11,27,51,.55);border:1px solid var(--nuit-3);border-radius:3px;font-size:15px}
+.ref-stat .n{font-family:var(--disp);font-weight:800;font-size:28px;line-height:1;min-width:36px;text-align:right;color:var(--or-clair)}
+.ref-stat .lbl{color:var(--acier)}
+.ref-stat.danger{border-color:rgba(229,72,77,.5);background:var(--faux-fond)}
+.ref-stat.danger .n{color:var(--faux)}
+.ref-stat.danger .lbl{color:#f0a5b2}
+.ref-error{background:var(--faux-fond);border:1px solid rgba(229,72,77,.5);border-left:3px solid var(--faux);border-radius:3px;padding:12px 14px;font-size:15px;color:#f0a5b2;line-height:1.55}
+.ref-error b{display:block;font-family:var(--disp);font-size:24px;text-transform:uppercase;color:var(--faux);margin-bottom:2px}
+.ref-backup{font-size:14px;color:var(--acier);border-top:1px dashed var(--nuit-3);padding-top:12px;margin-top:14px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+#ref-actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+
+/* ═══════════════ IMPRESSION ═══════════════ */
+#print-overlay{
+  display:none;position:fixed;inset:0;z-index:1000;flex-direction:column;align-items:center;
+  padding:0 20px 30px;overflow-y:auto;background:rgba(5,12,24,.94);
+}
+#print-overlay.show{display:flex}
+.print-toolbar{
+  position:sticky;top:0;z-index:2;align-self:stretch;
+  display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:center;
+  padding:16px 0;margin-bottom:20px;flex-shrink:0;
+  background:linear-gradient(180deg,rgba(5,12,24,.98) 70%,transparent);
+}
+.print-toolbar #print-info{color:var(--acier);font-family:var(--mono);font-size:.68rem;letter-spacing:.12em;text-transform:uppercase}
+.print-scope-toggle{display:flex;gap:6px;flex-wrap:wrap}
+.print-scope-btn{
+  appearance:none;cursor:pointer;font-family:var(--mono);font-size:.64rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;
+  padding:8px 11px;border-radius:2px;background:transparent;color:var(--acier);border:1px solid var(--nuit-3);
+  transition:all .15s;
+}
+.print-scope-btn:hover{border-color:var(--acier);color:var(--craie)}
+.print-scope-btn.active{color:var(--or-clair);border-color:var(--or);background:rgba(201,162,39,.1)}
+.print-vide{color:var(--acier);padding:40px;text-align:center}
+
+.print-page{
+  width:210mm;min-height:297mm;background:#fff;padding:8mm 10mm;
+  display:grid;grid-template-columns:1fr 1fr;gap:5mm;align-content:start;
+  margin-bottom:14px;box-shadow:0 10px 40px rgba(0,0,0,.6);
+}
+.print-page .quiz-card{box-shadow:none;border:1.5px solid rgba(0,0,0,.18)}
+
+@media print{
+  body{overflow:visible;height:auto;background:#fff}
+  body > *:not(#print-overlay){display:none!important}
+  #print-overlay{display:block!important;position:static;background:#fff;padding:0;overflow:visible}
+  .print-toolbar{display:none!important}
+  .print-page{margin:0;page-break-after:always;box-shadow:none}
 }
 
-.editor-form { flex: 1; min-width: 0; max-width: 560px; }
+/* ═══════════════ DIVERS ═══════════════ */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--nuit-3);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--acier)}
 
-.form-group { margin-bottom: 20px; }
-
-.form-label {
-  display: block;
-  font-family: 'Syne', sans-serif;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  color: var(--text-dim);
-  margin-bottom: 7px;
+#toast{
+  position:fixed;bottom:24px;right:24px;z-index:9999;
+  display:flex;align-items:center;gap:10px;
+  background:var(--nuit-2);color:var(--craie);border:1px solid var(--nuit-3);border-left:3px solid var(--juste);
+  font-family:var(--mono);font-size:.7rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;
+  padding:12px 16px;border-radius:2px;box-shadow:0 16px 34px -18px rgba(0,0,0,.9);
+  opacity:0;transform:translateY(10px);transition:opacity .25s,transform .25s;pointer-events:none;
 }
-
-.form-input, .form-textarea, .form-select {
-  width: 100%;
-  background: var(--surface2);
-  border: 1.5px solid var(--border);
-  border-radius: 8px;
-  color: var(--text);
-  font-family: 'Literata', serif;
-  font-size: 14px;
-  padding: 10px 13px;
-  outline: none;
-  transition: border-color 0.15s;
-}
-.form-input:focus, .form-textarea:focus, .form-select:focus {
-  border-color: var(--accent);
-}
-.form-textarea { resize: vertical; min-height: 80px; }
-.form-select option { background: #1f2436; }
-
-/* Answers */
-.answers-list { display: flex; flex-direction: column; gap: 8px; }
-
-.answer-row-editor {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.answer-letter-badge {
-  width: 28px; height: 28px;
-  border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  font-family: 'Syne', sans-serif;
-  font-size: 11px; font-weight: 800;
-  color: white;
-  flex-shrink: 0;
-}
-
-.answer-input-wrap { flex: 1; }
-.answer-input-wrap input {
-  width: 100%;
-  background: var(--surface2);
-  border: 1.5px solid var(--border);
-  border-radius: 7px;
-  color: var(--text);
-  font-family: 'Literata', serif;
-  font-size: 13px;
-  padding: 8px 11px;
-  outline: none;
-  transition: border-color 0.15s;
-}
-.answer-input-wrap input:focus { border-color: var(--accent); }
-
-.answer-correct-btn {
-  width: 28px; height: 28px;
-  border-radius: 6px;
-  border: 1.5px solid var(--border);
-  background: transparent;
-  color: var(--text-dim);
-  cursor: pointer;
-  font-size: 14px;
-  display: flex; align-items: center; justify-content: center;
-  transition: all 0.12s;
-  flex-shrink: 0;
-}
-.answer-correct-btn.on {
-  border-color: #22c55e;
-  background: rgba(34,197,94,0.15);
-  color: #22c55e;
-}
-
-.answer-del-btn {
-  width: 24px; height: 24px;
-  border-radius: 5px;
-  border: none;
-  background: transparent;
-  color: #ef4444;
-  cursor: pointer;
-  font-size: 15px;
-  display: flex; align-items: center; justify-content: center;
-  opacity: 0.5;
-  transition: opacity 0.12s;
-  flex-shrink: 0;
-}
-.answer-del-btn:hover { opacity: 1; }
-
-/* ═══════════════ CARD PREVIEW ═══════════════ */
-.preview-panel {
-  width: 380px;
-  flex-shrink: 0;
-  padding-top: 4px;
-}
-
-.preview-panel h3 {
-  font-family: 'Syne', sans-serif;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  color: var(--text-dim);
-  margin-bottom: 14px;
-}
-
-/* ═══════════════ QUIZ CARD (preview + print) ═══════════════ */
-.quiz-card {
-  border-radius: 10px;
-  overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
-  border: 2px solid rgba(255,255,255,0.1);
-  background: white;
-  font-family: 'DM Sans', 'Literata', sans-serif;
-  position: relative;
-}
-
-.card-header {
-  padding: 8px 13px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-.card-header-title {
-  color: white;
-  font-family: 'Syne', sans-serif;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.multi-badge {
-  font-size: 13px;
-  line-height: 1;
-}
-.card-header-num {
-  color: rgba(255,255,255,0.55);
-  font-family: 'Syne', sans-serif;
-  font-size: 10px;
-  font-weight: 600;
-}
-
-.card-new-ribbon {
-  position: absolute;
-  top: 8px;
-  right: -28px;
-  transform: rotate(40deg);
-  background: #e8630a;
-  color: white;
-  font-family: 'Syne', sans-serif;
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 1px;
-  padding: 2px 32px;
-  text-transform: uppercase;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-  z-index: 5;
-}
-
-.card-question {
-  padding: 10px 13px 8px;
-  font-size: 13px;
-  font-weight: 600;
-  color: #111827;
-  line-height: 1.45;
-  border-bottom: 1px solid #e5e9f4;
-  background: #f7f9fd;
-  font-family: 'Literata', serif;
-}
-
-.card-answers { background: white; padding: 2px 0; }
-
-.card-answer {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 8px 13px 8px 10px;
-  border-bottom: 1px solid #edf0f8;
-  min-height: 38px;
-}
-.card-answer:last-child { border-bottom: none; }
-
-.card-answer-letter {
-  width: 28px; height: 28px;
-  min-width: 28px; min-height: 28px;
-  border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  color: white;
-  font-family: 'Syne', sans-serif;
-  font-size: 10px;
-  line-height: 28px;
-  font-weight: 800;
-  flex-shrink: 0;
-  aspect-ratio: 1 / 1;
-}
-
-.card-answer-text {
-  flex: 1;
-  font-size: 12px;
-  color: #1e2a40;
-  line-height: 1.35;
-  font-family: 'Literata', serif;
-}
-
-.card-answer-check {
-  font-size: 16px;
-  color: #1a3a1a;
-  font-weight: 800;
-  width: 16px;
-  text-align: right;
-  flex-shrink: 0;
-}
-
-/* ═══════════════ BUTTONS ═══════════════ */
-.btn {
-  font-family: 'Syne', sans-serif;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  padding: 8px 16px;
-  border-radius: 7px;
-  border: none;
-  cursor: pointer;
-  text-transform: uppercase;
-  transition: all 0.15s;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-.btn-primary { background: var(--accent); color: white; }
-.btn-primary:hover { background: #3d5be0; }
-.btn-secondary { background: var(--surface2); color: var(--text); border: 1.5px solid var(--border); }
-.btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
-.btn-danger { background: rgba(239,68,68,0.12); color: #ef4444; border: 1.5px solid rgba(239,68,68,0.3); }
-.btn-danger:hover { background: rgba(239,68,68,0.25); }
-.btn-success { background: rgba(34,197,94,0.15); color: #22c55e; border: 1.5px solid rgba(34,197,94,0.3); }
-.btn-success:hover { background: rgba(34,197,94,0.25); }
-.btn-warn { background: rgba(232,99,10,0.15); color: #e8630a; border: 1.5px solid rgba(232,99,10,0.35); }
-.btn-warn:hover { background: rgba(232,99,10,0.28); }
-.btn-sm { padding: 5px 11px; font-size: 10px; }
-
-/* ═══════════════ EMPTY STATE ═══════════════ */
-.empty-state {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  color: var(--text-dim);
-  font-family: 'Syne', sans-serif;
-  font-size: 13px;
-  text-align: center;
-}
-.empty-state .icon { font-size: 40px; opacity: 0.4; }
-
-/* ═══════════════ PRINT OVERLAY ═══════════════ */
-#print-overlay {
-  display: none;
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.85);
-  z-index: 1000;
-  flex-direction: column;
-  align-items: center;
-  padding: 20px;
-  overflow-y: auto;
-}
-#print-overlay.show { display: flex; }
-
-.print-toolbar {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 20px;
-  align-items: center;
-  flex-shrink: 0;
-  flex-wrap: wrap;
-}
-.print-toolbar span { color: #aaa; font-family: 'Syne', sans-serif; font-size: 12px; }
-
-.print-scope-toggle {
-  display: flex;
-  gap: 4px;
-  background: #1f2436;
-  padding: 4px;
-  border-radius: 8px;
-}
-.print-scope-btn {
-  font-family: 'Syne', sans-serif;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  padding: 6px 12px;
-  border-radius: 6px;
-  border: none;
-  cursor: pointer;
-  background: transparent;
-  color: #9aa3bd;
-  text-transform: uppercase;
-}
-.print-scope-btn.active { background: var(--accent); color: white; }
-
-/* ═══════════════ PRINT PAGES ═══════════════ */
-.print-page {
-  width: 210mm;
-  min-height: 297mm;
-  background: white;
-  padding: 8mm 10mm;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 5mm;
-  align-content: start;
-  margin-bottom: 10px;
-  box-shadow: 0 4px 30px rgba(0,0,0,0.5);
-}
-
-/* print card sizing */
-.print-page .quiz-card { box-shadow: none; border: 1.5px solid rgba(0,0,0,0.18); }
-
-@media print {
-  body > *:not(#print-overlay) { display: none !important; }
-  #print-overlay {
-    display: block !important;
-    position: static;
-    background: white;
-    padding: 0;
-    overflow: visible;
-  }
-  .print-toolbar { display: none !important; }
-  .print-page {
-    margin: 0;
-    page-break-after: always;
-    box-shadow: none;
-  }
-}
-
-/* ═══════════════ SCROLLBAR ═══════════════ */
-::-webkit-scrollbar { width: 5px; height: 5px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-
-/* ═══════════════ TOAST ═══════════════ */
-#toast {
-  position: fixed;
-  bottom: 24px;
-  right: 24px;
-  background: #22c55e;
-  color: white;
-  font-family: 'Syne', sans-serif;
-  font-size: 12px;
-  font-weight: 700;
-  padding: 10px 18px;
-  border-radius: 8px;
-  opacity: 0;
-  transform: translateY(10px);
-  transition: all 0.25s;
-  z-index: 9999;
-  letter-spacing: 0.5px;
-}
-#toast.show { opacity: 1; transform: translateY(0); }
-
-/* multi-correct toggle */
-.multi-toggle {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  cursor: pointer;
-}
-.toggle-track {
-  width: 38px; height: 20px;
-  background: var(--border);
-  border-radius: 10px;
-  position: relative;
-  transition: background 0.15s;
-}
-.toggle-track.on { background: var(--accent); }
-.toggle-thumb {
-  width: 14px; height: 14px;
-  background: white;
-  border-radius: 50%;
-  position: absolute;
-  top: 3px; left: 3px;
-  transition: left 0.15s;
-}
-.toggle-track.on .toggle-thumb { left: 21px; }
-.toggle-label {
-  font-family: 'Syne', sans-serif;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-  color: var(--text-dim);
-}
-
-/* cat select color indicator */
-.cat-select-wrap { position: relative; }
-.cat-dot-indicator {
-  position: absolute;
-  left: 12px; top: 50%;
-  transform: translateY(-50%);
-  width: 10px; height: 10px;
-  border-radius: 50%;
-  pointer-events: none;
-}
-.cat-select-wrap .form-select { padding-left: 32px; }
-
-/* ═══════════════ CAT MANAGER MODAL ═══════════════ */
-#cat-modal {
-  display: none;
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.75);
-  z-index: 500;
-  align-items: center;
-  justify-content: center;
-}
-#cat-modal.show { display: flex; }
-
-.cat-modal-box {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 28px 30px;
-  width: 480px;
-  max-height: 80vh;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
-}
-
-.cat-modal-box h2 {
-  font-family: 'Syne', sans-serif;
-  font-size: 14px;
-  font-weight: 800;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  color: var(--text);
-}
-
-.cat-list-manage {
-  flex: 1;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.cat-manage-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  background: var(--surface2);
-  border-radius: 8px;
-  border: 1px solid var(--border);
-}
-
-.cat-color-swatch {
-  width: 28px; height: 28px;
-  border-radius: 6px;
-  flex-shrink: 0;
-  cursor: pointer;
-  border: 2px solid rgba(255,255,255,0.15);
-  position: relative;
-  overflow: hidden;
-}
-.cat-color-swatch input[type=color] {
-  position: absolute;
-  inset: -4px;
-  width: calc(100% + 8px);
-  height: calc(100% + 8px);
-  opacity: 0;
-  cursor: pointer;
-  border: none;
-}
-
-.cat-label-input {
-  flex: 1;
-  background: transparent;
-  border: none;
-  color: var(--text);
-  font-family: 'Syne', sans-serif;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  outline: none;
-  text-transform: uppercase;
-  min-width: 0;
-}
-.cat-label-input::placeholder { color: var(--text-dim); text-transform: none; }
-
-.cat-del-btn {
-  width: 26px; height: 26px;
-  border-radius: 5px;
-  border: none;
-  background: transparent;
-  color: #ef4444;
-  cursor: pointer;
-  font-size: 15px;
-  display: flex; align-items: center; justify-content: center;
-  opacity: 0.5;
-  flex-shrink: 0;
-  transition: opacity 0.12s;
-}
-.cat-del-btn:hover { opacity: 1; }
-
-.cat-add-row {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  padding-top: 4px;
-  border-top: 1px solid var(--border);
-}
-
-.new-cat-color {
-  width: 34px; height: 34px;
-  border-radius: 8px;
-  flex-shrink: 0;
-  cursor: pointer;
-  border: 2px solid rgba(255,255,255,0.2);
-  position: relative;
-  overflow: hidden;
-}
-.new-cat-color input[type=color] {
-  position: absolute;
-  inset: -4px;
-  width: calc(100% + 8px);
-  height: calc(100% + 8px);
-  opacity: 0;
-  cursor: pointer;
-}
-
-.new-cat-name {
-  flex: 1;
-  background: var(--surface2);
-  border: 1.5px solid var(--border);
-  border-radius: 8px;
-  color: var(--text);
-  font-family: 'Syne', sans-serif;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  padding: 8px 12px;
-  outline: none;
-  text-transform: uppercase;
-  transition: border-color 0.15s;
-}
-.new-cat-name:focus { border-color: var(--accent); }
-.new-cat-name::placeholder { font-weight: 400; text-transform: none; letter-spacing: 0; }
-
-/* ═══════════════ IMAGE UPLOAD ═══════════════ */
-.img-upload-zone {
-  border: 2px dashed var(--border);
-  border-radius: 10px;
-  padding: 16px;
-  text-align: center;
-  cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
-  background: var(--surface2);
-  position: relative;
-}
-.img-upload-zone:hover { border-color: var(--accent); background: rgba(79,110,247,0.06); }
-.img-upload-zone.has-img { border-style: solid; border-color: var(--accent); padding: 8px; }
-
-.img-upload-label {
-  font-family: 'Syne', sans-serif;
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--text-dim);
-  letter-spacing: 0.5px;
-  pointer-events: none;
-}
-.img-upload-icon { font-size: 22px; display: block; margin-bottom: 6px; }
-
-.img-preview-wrap {
-  position: relative;
-  display: inline-block;
-}
-.img-preview-wrap img {
-  max-width: 100%;
-  max-height: 160px;
-  border-radius: 7px;
-  display: block;
-  object-fit: contain;
-}
-.img-remove-btn {
-  position: absolute;
-  top: -8px; right: -8px;
-  width: 22px; height: 22px;
-  border-radius: 50%;
-  background: #ef4444;
-  color: white;
-  border: none;
-  font-size: 13px;
-  cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  line-height: 1;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
-}
-
-/* Image dans la carte */
-.card-image {
-  width: 100%;
-  max-height: 110px;
-  object-fit: contain;
-  display: block;
-  background: #f0f2f8;
-  padding: 4px 8px;
-  border-bottom: 1px solid #e5e9f4;
-}
-
-/* ── Données de référence ─────────────────────────────── */
-#ref-modal {
-  display: none;
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.75);
-  z-index: 520;
-  align-items: center;
-  justify-content: center;
-}
-#ref-modal.show { display: flex; }
-.ref-msg { font-size: 13px; color: var(--text-dim); line-height: 1.6; }
-.ref-source {
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: 9px;
-  padding: 12px 14px;
-  font-size: 12.5px;
-  color: var(--text-dim);
-  line-height: 1.6;
-}
-.ref-source b { color: var(--text); font-weight: 600; }
-.ref-stats { display: flex; flex-direction: column; gap: 1px; }
-.ref-stat {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
-  padding: 9px 14px;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  font-size: 13px;
-}
-.ref-stat:first-child { border-radius: 9px 9px 0 0; }
-.ref-stat:last-child  { border-radius: 0 0 9px 9px; }
-.ref-stat .n {
-  font-family: 'Syne', sans-serif;
-  font-weight: 800;
-  font-size: 17px;
-  min-width: 34px;
-  text-align: right;
-  color: var(--text);
-}
-.ref-stat .lbl { color: var(--text-dim); }
-.ref-stat.danger { border-color: #7a2432; background: #26161c; }
-.ref-stat.danger .n   { color: #ff8095; }
-.ref-stat.danger .lbl { color: #f0a5b2; }
-.ref-error {
-  background: #26161c;
-  border: 1px solid #7a2432;
-  border-radius: 9px;
-  padding: 12px 14px;
-  font-size: 13px;
-  color: #f0a5b2;
-  line-height: 1.55;
-}
-.ref-backup {
-  font-size: 12px;
-  color: var(--text-dim);
-  border-top: 1px dashed var(--border);
-  padding-top: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
+#toast::before{content:"✓";color:var(--juste);font-size:.9rem}
+#toast.show{opacity:1;transform:none}
 
 /* ═══════════════ MOBILE ═══════════════ */
 /* Visible uniquement sur petit écran, où la liste et l'éditeur
    se partagent la même place au lieu d'être côte à côte. */
-#retour-liste { display: none; }
+#retour-liste{display:none}
 
-@media (max-width: 780px) {
-  /* dvh : sur mobile, 100vh déborde sous la barre d'adresse */
-  body, #app { height: 100dvh; }
+@media (max-width:1180px){
+  .editor-scroll{flex-direction:column;align-items:stretch}
+  .editor-form{max-width:none}
+  .preview-panel{width:100%;max-width:520px}
+}
 
-  header {
-    position: static;
-    padding: 10px 12px;
-    gap: 8px 10px;
-    flex-wrap: wrap;
-  }
-  header .badge { display: none; }
-  .header-right {
-    margin-left: 0;
-    width: 100%;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    gap: 6px;
-    padding-bottom: 2px;
-    scrollbar-width: none;
-  }
-  .header-right::-webkit-scrollbar { display: none; }
-  .header-right .btn { flex: 0 0 auto; }
+@media (max-width:980px){
+  .groupe + .groupe{padding-left:0;border-left:0}
+  .header-right{margin-left:0;width:100%}
+}
+
+@media (max-width:780px){
+  header{padding:12px 14px 10px;gap:10px}
+  header h1{font-size:30px}
+  .header-right{flex-wrap:nowrap;overflow-x:auto;gap:6px;padding-bottom:2px;scrollbar-width:none}
+  .header-right::-webkit-scrollbar{display:none}
+  .groupe{flex:0 0 auto}
 
   /* Une seule colonne : la liste et l'éditeur s'échangent la place */
-  .main-layout { grid-template-columns: 1fr; }
-  .sidebar { border-right: 0; }
-  body.vue-editeur .sidebar { display: none; }
-  body:not(.vue-editeur) .editor-area { display: none; }
-  #retour-liste { display: inline-flex; }
+  .main-layout{grid-template-columns:1fr}
+  .sidebar{border-right:0}
+  body.vue-editeur .sidebar{display:none}
+  body:not(.vue-editeur) .editor-area{display:none}
+  #retour-liste{display:inline-flex}
 
-  .editor-toolbar { padding: 10px 12px; flex-wrap: wrap; gap: 8px; }
-  .editor-scroll { flex-direction: column; padding: 16px 14px; gap: 20px; }
-  .editor-form { max-width: none; }
-  .preview-panel { width: 100%; }
+  .editor-toolbar{padding:10px 14px;flex-wrap:wrap;gap:8px}
+  .editor-toolbar .pos{display:none}
+  .editor-scroll{padding:18px 16px;gap:24px}
+  .form-textarea{font-size:22px}
+  .answer-row-editor{grid-template-columns:auto 1fr auto;gap:8px 10px}
+  .answer-row-editor .answer-correct-btn{grid-column:2;justify-self:start}
+  .answer-row-editor .answer-del-btn,.answer-row-editor .answer-del-vide{grid-column:3;grid-row:1}
 
-  /* Les fenêtres ont une largeur fixe, parfois en style inline :
-     !important est nécessaire pour la neutraliser. */
-  .cat-modal-box {
-    width: auto !important;
-    max-width: calc(100vw - 22px);
-    max-height: 88vh;
-    padding: 20px 18px;
-  }
-  .print-toolbar { flex-wrap: wrap; gap: 8px; }
+  .cat-modal-box{padding:20px 18px;max-height:88vh}
+  .cat-modal-box h2{font-size:28px}
 
   /* Le bouton flottant « ← Escadron » ne doit pas masquer le dernier élément */
-  .q-list, .editor-scroll { padding-bottom: 60px; }
+  .q-list,.editor-scroll{padding-bottom:70px}
+  #toast{left:16px;right:16px;bottom:70px}
+}
+
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
 }
 </style>
 </head>
 <body>
+
+<div class="champ" aria-hidden="true"></div>
+
 <div id="app">
 
   <header>
-    <h1>🎖 Quiz Editor</h1>
-    <span style="font-family:'Syne',sans-serif;font-size:9px;font-weight:700;color:var(--text-dim);letter-spacing:0.5px;margin-left:2px;align-self:flex-end;margin-bottom:3px">v1.1.0</span>
-    <span class="badge">FORMATION MILITAIRE</span>
+    <div class="marque">
+      <div class="fanion">
+        <span class="pastille"></span>
+        <a class="mono" href="./" title="Revenir au choix entre quiz en ligne, partie en direct et éditeur">← Quizzer</a>
+        <span class="sep">/</span>
+        <span class="mono">Rédaction</span>
+        <span class="mono ver">v1.2</span>
+      </div>
+      <h1><span class="l1">Éditeur</span><span class="l2">de questions</span></h1>
+    </div>
     <div class="header-right">
-      <a class="btn btn-secondary btn-sm" href="./" title="Revenir au choix entre quiz en ligne et éditeur" style="text-decoration:none">← Accueil</a>
-      <button class="btn btn-secondary btn-sm" onclick="openRefModal()" title="Récupérer le jeu de questions officiel publié sur le serveur">🌐 Charger les données de référence</button>
-      <button class="btn btn-secondary btn-sm" onclick="importJSON()">📂 Charger JSON</button>
-      <button class="btn btn-secondary btn-sm" onclick="exportJSON()">💾 Sauvegarder JSON</button>
-      <button class="btn btn-warn btn-sm" onclick="markAllSeen()">✓ Tout marquer vu</button>
-      <button class="btn btn-secondary btn-sm" onclick="openCatManager()">🏷 Sujets</button>
-      <button class="btn btn-primary btn-sm" onclick="openPrint()">🖨 Générer PDF</button>
+      <div class="groupe">
+        <button class="btn btn-sm" onclick="openRefModal()" title="Récupérer le jeu de questions officiel publié sur le serveur"><span class="ic" aria-hidden="true">↓</span> Données de référence</button>
+        <button class="btn btn-sm" onclick="importJSON()" title="Ouvrir un fichier JSON enregistré"><span class="ic" aria-hidden="true">⤒</span> Charger JSON</button>
+        <button class="btn btn-sm" onclick="exportJSON()" title="Enregistrer toutes les questions dans un fichier JSON"><span class="ic" aria-hidden="true">⤓</span> Sauvegarder JSON</button>
+      </div>
+      <div class="groupe">
+        <button class="btn btn-sm" onclick="openCatManager()">Sujets</button>
+        <button class="btn btn-warn btn-sm" onclick="markAllSeen()">Tout marquer vu</button>
+        <button class="btn btn-primary btn-sm" onclick="openPrint()"><span class="ic" aria-hidden="true">⎙</span> Générer PDF</button>
+      </div>
     </div>
   </header>
 
   <div class="main-layout">
 
     <!-- SIDEBAR -->
-    <div class="sidebar">
+    <aside class="sidebar">
       <div class="sidebar-top">
-        <label>Filtrer par catégorie</label>
+        <button class="bouton" onclick="newQuestion()">+ Nouvelle question</button>
+        <input class="recherche" type="search" id="recherche" placeholder="Rechercher une question…" oninput="setRecherche(this.value)" aria-label="Rechercher une question">
+        <span class="etiquette">Filtrer par sujet</span>
         <div class="cat-filter" id="cat-filter"></div>
-        <div style="display:flex;gap:8px;margin-top:4px;">
-          <button class="btn btn-primary btn-sm" style="flex:1" onclick="newQuestion()">+ Nouvelle question</button>
-        </div>
       </div>
       <div class="q-list" id="q-list"></div>
-    </div>
+      <div class="sidebar-pied mono" id="sidebar-pied"></div>
+    </aside>
 
     <!-- EDITOR -->
-    <div class="editor-area" id="editor-area">
+    <main class="editor-area" id="editor-area">
 
       <!-- État vide -->
       <div class="empty-state" id="empty-state">
-        <div class="icon">📋</div>
-        <div>Sélectionne une question<br>ou crée-en une nouvelle</div>
+        <div class="titre-vide">Aucune<br>question</div>
+        <div>Sélectionnez une question dans la liste<br>ou créez-en une nouvelle.</div>
+        <button class="bouton" onclick="newQuestion()">+ Nouvelle question</button>
       </div>
 
       <!-- Éditeur persistant -->
       <div id="editor-content" style="display:none;flex-direction:column;flex:1;overflow:hidden">
 
         <div class="editor-toolbar">
-          <button class="btn btn-secondary btn-sm" id="retour-liste" onclick="retourListe()">← Liste</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteQuestion()">🗑 Supprimer</button>
+          <button class="btn btn-sm" id="retour-liste" onclick="retourListe()">← Liste</button>
+          <span class="pos mono" id="ed-pos"></span>
           <div id="new-toggle-wrap"></div>
           <div style="margin-left:auto;display:flex;gap:8px">
-            <button class="btn btn-success btn-sm" onclick="saveActiveQuestion();toast('Sauvegardé !')">💾 Sauvegarder</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteQuestion()">Supprimer</button>
+            <button class="btn btn-success btn-sm" onclick="saveActiveQuestion();toast('Sauvegardé')">Sauvegarder</button>
           </div>
         </div>
 
@@ -1038,7 +597,7 @@ header .badge {
           <div class="editor-form">
 
             <div class="form-group">
-              <label class="form-label">Catégorie</label>
+              <label class="form-label etiquette" for="ed-category">Sujet</label>
               <div class="cat-select-wrap">
                 <div class="cat-dot-indicator" id="cat-dot"></div>
                 <select class="form-select" id="ed-category" onchange="onCatChange()"></select>
@@ -1046,57 +605,64 @@ header .badge {
             </div>
 
             <div class="form-group">
-              <label class="form-label">Question</label>
+              <label class="form-label etiquette" for="ed-question">Question</label>
               <textarea class="form-textarea" id="ed-question" placeholder="Saisir la question…" oninput="liveUpdate()"></textarea>
             </div>
 
             <div class="form-group">
-              <label class="form-label">Image <span style="opacity:0.5;font-size:9px;font-weight:400;text-transform:none;letter-spacing:0">(optionnelle)</span></label>
+              <span class="form-label etiquette">Image <span class="opt">(optionnelle)</span></span>
               <div id="img-zone-wrap"></div>
             </div>
 
             <div class="form-group">
-              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-                <label class="form-label" style="margin:0" id="answers-count-label">Réponses</label>
-                <div style="display:flex;align-items:center;gap:12px">
-                  <div class="multi-toggle" onclick="toggleMulti()">
-                    <div class="toggle-track" id="multi-track">
-                      <div class="toggle-thumb"></div>
-                    </div>
-                    <span class="toggle-label">Réponses multiples</span>
+              <div class="answers-head">
+                <span class="form-label etiquette" id="answers-count-label">Réponses</span>
+                <div class="multi-toggle" onclick="toggleMulti()" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();toggleMulti()}" role="switch" tabindex="0" id="multi-switch" aria-checked="false">
+                  <div class="toggle-track" id="multi-track">
+                    <div class="toggle-thumb"></div>
                   </div>
+                  <span class="toggle-label">Réponses multiples</span>
                 </div>
               </div>
               <div class="answers-list" id="answers-list"></div>
               <div id="add-answer-wrap"></div>
+              <p class="aide" id="answers-aide"></p>
             </div>
 
           </div>
 
           <!-- PREVIEW -->
           <div class="preview-panel">
-            <h3>Aperçu carte</h3>
+            <span class="etiquette" style="margin-bottom:12px">Aperçu</span>
+            <div class="preview-tabs" id="preview-tabs">
+              <button class="cat-chip" data-vue="carte" onclick="setApercu('carte')">Carte imprimée</button>
+              <button class="cat-chip" data-vue="ligne" onclick="setApercu('ligne')">Quiz en ligne</button>
+            </div>
             <div id="card-preview"></div>
+            <p class="preview-note" id="preview-note"></p>
           </div>
 
         </div>
       </div>
 
-    </div>
+    </main>
 
   </div>
 </div>
 
 <!-- CAT MANAGER MODAL -->
 <div id="cat-modal">
-  <div class="cat-modal-box">
-    <div style="display:flex;align-items:center;justify-content:space-between">
-      <h2>🏷 Gérer les sujets</h2>
-      <button class="btn btn-secondary btn-sm" onclick="closeCatManager()">✕ Fermer</button>
+  <div class="cat-modal-box" role="dialog" aria-modal="true" aria-labelledby="cat-modal-titre">
+    <div class="modal-tete">
+      <div>
+        <span class="code mono">QZR · Sujets</span>
+        <h2 id="cat-modal-titre">Gérer les sujets</h2>
+      </div>
+      <button class="btn btn-sm" onclick="closeCatManager()">✕ Fermer</button>
     </div>
     <div class="cat-list-manage" id="cat-list-manage"></div>
     <div class="cat-add-row">
-      <div class="new-cat-color" id="new-cat-color-swatch" style="background:#4f6ef7">
+      <div class="new-cat-color" id="new-cat-color-swatch" style="background:#4f6ef7" title="Choisir la couleur">
         <input type="color" id="new-cat-color" value="#4f6ef7" oninput="document.getElementById('new-cat-color-swatch').style.background=this.value">
       </div>
       <input class="new-cat-name" type="text" id="new-cat-name" placeholder="Nom du nouveau sujet…" maxlength="24" onkeydown="if(event.key==='Enter')addCategory()">
@@ -1107,23 +673,26 @@ header .badge {
 
 <!-- REFERENCE DATA MODAL -->
 <div id="ref-modal">
-  <div class="cat-modal-box" style="width:520px;gap:16px">
-    <div style="display:flex;align-items:center;justify-content:space-between">
-      <h2>🌐 Données de référence</h2>
-      <button class="btn btn-secondary btn-sm" onclick="closeRefModal()">✕ Fermer</button>
+  <div class="cat-modal-box" style="width:540px" role="dialog" aria-modal="true" aria-labelledby="ref-modal-titre">
+    <div class="modal-tete">
+      <div>
+        <span class="code mono">QZR · Serveur</span>
+        <h2 id="ref-modal-titre">Données de référence</h2>
+      </div>
+      <button class="btn btn-sm" onclick="closeRefModal()">✕ Fermer</button>
     </div>
     <div id="ref-body"></div>
-    <div id="ref-actions" style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap"></div>
+    <div id="ref-actions"></div>
   </div>
 </div>
 
 <!-- PRINT OVERLAY -->
 <div id="print-overlay">
   <div class="print-toolbar">
-    <button class="btn btn-danger" onclick="closePrint()">✕ Fermer</button>
-    <button class="btn btn-primary" onclick="window.print()">🖨 Imprimer / PDF</button>
+    <button class="btn" onclick="closePrint()">✕ Fermer</button>
     <div class="print-scope-toggle" id="print-scope-toggle"></div>
     <span id="print-info"></span>
+    <button class="bouton" onclick="window.print()">Imprimer / PDF</button>
   </div>
   <div id="print-pages"></div>
 </div>
@@ -1131,7 +700,7 @@ header .badge {
 <!-- INPUT FILE HIDDEN -->
 <input type="file" id="file-input" accept=".json" style="display:none" onchange="loadFile(event)">
 <input type="file" id="img-input" accept="image/*" style="display:none" onchange="loadImage(event)">
-<div id="toast"></div>
+<div id="toast" role="status" aria-live="polite"></div>
 
 <script>
 // ═══════════════════════════════════════════
@@ -1176,6 +745,9 @@ let questions = [];
 let activeId = null;
 let filterCat = 'all';       // 'all' | 'new' | <cat-id>
 let printScope = 'current';  // 'current' | 'new'
+let recherche = '';          // texte de la barre de recherche (liste seulement)
+let vueApercu = 'carte';     // 'carte' | 'ligne'
+try { vueApercu = localStorage.getItem('quiz_apercu') === 'ligne' ? 'ligne' : 'carte'; } catch (e) {}
 
 function getCat(id) { return CATEGORIES.find(c => c.id === id) || CATEGORIES[0]; }
 function nextId() { return 'q_' + Date.now() + '_' + Math.random().toString(36).slice(2,6); }
@@ -1185,8 +757,8 @@ function nextId() { return 'q_' + Date.now() + '_' + Math.random().toString(36).
 // ═══════════════════════════════════════════
 function init() {
   loadCategories();
-  renderCatFilter();
   loadFromStorage();
+  renderCatFilter();
   renderList();
   if (questions.length > 0) selectQuestion(questions[0].id);
 }
@@ -1237,7 +809,7 @@ function exportJSON() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a'); a.href = url; a.download = buildExportFilename(); a.click();
   URL.revokeObjectURL(url);
-  toast('Fichier JSON sauvegardé !');
+  toast('Fichier JSON sauvegardé');
 }
 
 function importJSON() { document.getElementById('file-input').click(); }
@@ -1251,7 +823,7 @@ function loadImage(e) {
     saveToStorage();
     renderEditor();
     renderPreview();
-    toast('Image ajoutée !');
+    toast('Image ajoutée');
   };
   reader.readAsDataURL(file);
   e.target.value = '';
@@ -1279,7 +851,7 @@ function loadFile(e) {
         activeId = null;
         document.getElementById('empty-state').style.display = 'flex';
         document.getElementById('editor-content').style.display = 'none';
-        toast(data.length + ' questions chargées !');
+        toast(data.length + ' questions chargées');
       }
     } catch(err) { alert('Fichier JSON invalide'); }
   };
@@ -1301,7 +873,7 @@ function markAllSeen() {
   renderCatFilter();
   renderList();
   if (activeId) renderEditor();
-  toast('Tout est marqué comme vu !');
+  toast('Tout est marqué comme vu');
 }
 
 function toggleActiveNew() {
@@ -1319,17 +891,31 @@ function toggleActiveNew() {
 function renderCatFilter() {
   const el = document.getElementById('cat-filter');
   const newCount = countNew();
-  el.innerHTML = `<span class="cat-chip ${filterCat==='all'?'active':''}" style="background:#444;border-color:${filterCat==='all'?'white':'transparent'}" onclick="setFilter('all')">TOUT</span>`;
-  el.innerHTML += `<span class="cat-chip ${filterCat==='new'?'active':''}" style="background:#e8630a;border-color:${filterCat==='new'?'white':'transparent'}" onclick="setFilter('new')">🆕 NOUVELLES${newCount ? ' ('+newCount+')' : ''}</span>`;
+  const nb = id => questions.filter(q => q.category === id).length;
+  let html = `<button class="cat-chip sans-point ${filterCat==='all'?'active':''}" onclick="setFilter('all')">Tout <span class="nb">${questions.length}</span></button>`;
+  html += `<button class="cat-chip neuf ${filterCat==='new'?'active':''}" onclick="setFilter('new')">Nouvelles${newCount ? ' <span class="nb">'+newCount+'</span>' : ''}</button>`;
   CATEGORIES.forEach(c => {
-    el.innerHTML += `<span class="cat-chip ${filterCat===c.id?'active':''}" style="background:${c.color}" onclick="setFilter('${c.id}')">${c.label}</span>`;
+    const n = nb(c.id);
+    html += `<button class="cat-chip ${filterCat===c.id?'active':''}" style="--c:${c.color}" onclick="setFilter('${c.id}')">${escHtml(c.label)}${n ? ' <span class="nb">'+n+'</span>' : ''}</button>`;
   });
+  el.innerHTML = html;
 }
 
 function setFilter(cat) {
   filterCat = cat;
   renderCatFilter();
   renderList();
+}
+
+function setRecherche(val) {
+  recherche = val.trim().toLowerCase();
+  renderList();
+}
+
+function correspond(q) {
+  if (!recherche) return true;
+  const txt = [q.question].concat((q.answers || []).map(a => a.text)).join(' ').toLowerCase();
+  return txt.indexOf(recherche) > -1;
 }
 
 function getFilteredQuestions(scope) {
@@ -1345,25 +931,32 @@ function getFilteredQuestions(scope) {
 function renderList() {
   const el = document.getElementById('q-list');
   const filtered = getFilteredQuestions();
+  const visibles = filtered.filter(correspond);
 
-  if (filtered.length === 0) {
-    el.innerHTML = `<div style="padding:20px;text-align:center;color:var(--text-dim);font-size:12px;font-family:'Syne',sans-serif">Aucune question</div>`;
+  document.getElementById('sidebar-pied').textContent =
+    visibles.length + ' / ' + questions.length + ' question' + (questions.length > 1 ? 's' : '');
+
+  if (visibles.length === 0) {
+    el.innerHTML = `<div class="q-vide">${recherche ? 'Aucune question ne correspond à la recherche.' : 'Aucune question dans ce sujet.'}</div>`;
     return;
   }
 
-  // Group by cat for numbering
+  // Numérotation par sujet, calculée avant la recherche pour rester stable
   const catCount = {};
-  el.innerHTML = filtered.map(q => {
-    const cat = getCat(q.category);
+  const numeros = {};
+  filtered.forEach(q => {
     catCount[q.category] = (catCount[q.category] || 0) + 1;
-    const num = catCount[q.category];
-    return `<div class="q-item ${q.id===activeId?'active':''}" onclick="selectQuestion('${q.id}')" style="border-left-color:${q.id===activeId?cat.color:'transparent'}">
-      <div class="q-item-dot" style="background:${cat.color}"></div>
+    numeros[q.id] = catCount[q.category];
+  });
+  el.innerHTML = visibles.map(q => {
+    const cat = getCat(q.category);
+    return `<div class="q-item ${q.id===activeId?'active':''}" onclick="selectQuestion('${q.id}')" style="--c:${cat.color}">
+      <div class="q-item-dot"></div>
       <div class="q-item-body">
-        <div class="q-item-num">${cat.label} · Q${num}${q.isNew ? '<span class="new-badge">Nouveau</span>' : ''}</div>
-        <div class="q-item-text">${q.image ? '🖼 ' : ''}${q.question || '(sans question)'}</div>
+        <div class="q-item-num">${escHtml(cat.label)} · Q${numeros[q.id]}${q.isNew ? '<span class="new-badge">Nouveau</span>' : ''}</div>
+        <div class="q-item-text">${q.image ? '<span class="ic-img" title="Avec image">▣</span>' : ''}${escHtml(q.question) || '<i style="color:var(--acier)">(sans question)</i>'}</div>
       </div>
-      ${q.multiCorrect ? '<div class="q-item-multi">✔✔</div>' : ''}
+      ${q.multiCorrect ? '<div class="q-item-multi" title="Plusieurs réponses justes">Multi</div>' : ''}
     </div>`;
   }).join('');
 }
@@ -1400,7 +993,7 @@ function newQuestion() {
   renderCatFilter();
   renderList();
   renderEditor();
-  toast('Nouvelle question créée !');
+  toast('Nouvelle question créée');
 }
 
 function deleteQuestion() {
@@ -1448,13 +1041,16 @@ function renderEditor() {
 
   // Badge "nouvelle" toggle dans la toolbar
   document.getElementById('new-toggle-wrap').innerHTML = q.isNew
-    ? `<button class="btn btn-warn btn-sm" onclick="toggleActiveNew()" title="Cliquer pour marquer comme vue">🆕 Nouvelle · cliquer pour marquer vue</button>`
-    : `<button class="btn btn-secondary btn-sm" onclick="toggleActiveNew()" title="Marquer comme nouvelle">Marquer comme nouvelle</button>`;
+    ? `<button class="btn btn-warn btn-sm" onclick="toggleActiveNew()" title="Cliquer pour marquer comme vue">● Nouvelle · marquer vue</button>`
+    : `<button class="btn btn-sm" onclick="toggleActiveNew()" title="Marquer comme nouvelle">Marquer comme nouvelle</button>`;
+  const memes = questions.filter(x => x.category === q.category);
+  document.getElementById('ed-pos').innerHTML =
+    `${escHtml(cat.label)} · <b>Q${memes.indexOf(q) + 1}</b> / ${memes.length}`;
 
   // Catégorie
   const catSel = document.getElementById('ed-category');
   catSel.innerHTML = CATEGORIES.map(c =>
-    `<option value="${c.id}" ${c.id===q.category?'selected':''}>${c.label}</option>`
+    `<option value="${c.id}" ${c.id===q.category?'selected':''}>${escHtml(c.label)}</option>`
   ).join('');
   document.getElementById('cat-dot').style.background = cat.color;
 
@@ -1472,32 +1068,34 @@ function renderEditor() {
     </div>`;
   } else {
     imgWrap.innerHTML = `<div class="img-upload-zone" onclick="document.getElementById('img-input').click()">
-      <span class="img-upload-icon">🖼</span>
+      <svg class="img-upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="1.5"/><circle cx="9" cy="10" r="2"/><path d="m4 18 5-5 4 4 3-3 4 4"/></svg>
       <div class="img-upload-label">Cliquer pour ajouter une image</div>
-      <div style="font-size:10px;color:var(--text-dim);margin-top:4px">JPG, PNG, GIF, WEBP…</div>
+      <div class="img-upload-sous">JPG, PNG, GIF, WEBP…</div>
     </div>`;
   }
 
   // Multi toggle
   const track = document.getElementById('multi-track');
   track.classList.toggle('on', q.multiCorrect);
+  document.getElementById('multi-switch').setAttribute('aria-checked', q.multiCorrect ? 'true' : 'false');
 
   // Réponses
   document.getElementById('answers-count-label').textContent = `Réponses (${q.answers.length}/6)`;
   document.getElementById('answers-list').innerHTML = q.answers.map((a, i) => `
-    <div class="answer-row-editor" id="ans-row-${i}">
-      <div class="answer-letter-badge" style="background:${cat.color}">${LETTERS[i]}</div>
+    <div class="answer-row-editor ${a.correct?'juste':''}" id="ans-row-${i}" data-i="${i}">
+      <div class="answer-letter-badge">${LETTERS[i]}</div>
       <div class="answer-input-wrap">
-        <input class="ans-input" type="text" placeholder="Réponse ${LETTERS[i]}…" value="${escHtml(a.text)}" oninput="liveUpdate()" data-idx="${i}">
+        <input class="ans-input" type="text" placeholder="Réponse ${LETTERS[i]}…" value="${escHtml(a.text)}" oninput="liveUpdate()" data-idx="${i}" aria-label="Réponse ${LETTERS[i]}">
       </div>
-      <button class="answer-correct-btn ${a.correct?'on':''}" onclick="toggleCorrect(${i})" title="Bonne réponse">✓</button>
-      ${q.answers.length > 2 ? `<button class="answer-del-btn" onclick="removeAnswer(${i})">×</button>` : '<div style="width:24px"></div>'}
+      <button class="answer-correct-btn ${a.correct?'on':''}" onclick="toggleCorrect(${i})" aria-pressed="${a.correct}" title="Marquer comme bonne réponse">Juste</button>
+      ${q.answers.length > 2 ? `<button class="answer-del-btn" onclick="removeAnswer(${i})" title="Retirer la réponse ${LETTERS[i]}" aria-label="Retirer la réponse ${LETTERS[i]}">×</button>` : '<div class="answer-del-vide"></div>'}
     </div>
   `).join('');
 
   document.getElementById('add-answer-wrap').innerHTML = q.answers.length < 6
-    ? `<button class="btn btn-secondary btn-sm" style="margin-top:8px;width:100%" onclick="addAnswer()">+ Ajouter une réponse</button>`
+    ? `<button class="btn ajout-reponse" onclick="addAnswer()">+ Ajouter une réponse</button>`
     : '';
+  renderAide();
 
   document.getElementById('ed-multi').dataset.on = q.multiCorrect ? '1' : '0';
   renderPreview();
@@ -1509,9 +1107,9 @@ function onCatChange() {
   q.category = sel.value;
   const cat = getCat(q.category);
   document.getElementById('cat-dot').style.background = cat.color;
-  // Update letter badges color
-  document.querySelectorAll('.answer-letter-badge').forEach(b => b.style.background = cat.color);
   liveUpdate();
+  renderCatFilter();
+  renderList();
 }
 
 function toggleMulti() {
@@ -1519,7 +1117,7 @@ function toggleMulti() {
   q.multiCorrect = !q.multiCorrect;
   const track = document.getElementById('multi-track');
   track.classList.toggle('on', q.multiCorrect);
-  track.dataset = track.dataset || {};
+  document.getElementById('multi-switch').setAttribute('aria-checked', q.multiCorrect ? 'true' : 'false');
   document.getElementById('ed-multi') && (document.getElementById('ed-multi').dataset.on = q.multiCorrect?'1':'0');
   // if single, keep only first correct
   if (!q.multiCorrect) {
@@ -1533,9 +1131,27 @@ function toggleMulti() {
 function refreshAnswerButtons() {
   const q = getActiveQ(); if (!q) return;
   q.answers.forEach((a,i) => {
-    const btn = document.querySelector(`#ans-row-${i} .answer-correct-btn`);
-    if (btn) btn.className = `answer-correct-btn ${a.correct?'on':''}`;
+    const row = document.getElementById(`ans-row-${i}`);
+    if (!row) return;
+    row.classList.toggle('juste', !!a.correct);
+    const btn = row.querySelector('.answer-correct-btn');
+    btn.classList.toggle('on', !!a.correct);
+    btn.setAttribute('aria-pressed', !!a.correct);
   });
+  renderAide();
+}
+
+// Rappel sous les réponses : bonne réponse manquante, ou consigne du mode multiple
+function renderAide() {
+  const q = getActiveQ(); if (!q) return;
+  const el = document.getElementById('answers-aide');
+  const n = q.answers.filter(a => a.correct).length;
+  el.classList.toggle('alerte', n === 0);
+  el.textContent = n === 0
+    ? 'Aucune bonne réponse cochée : le quiz en ligne ne pourra pas corriger cette question.'
+    : q.multiCorrect
+      ? n + ' bonne' + (n > 1 ? 's' : '') + ' réponse' + (n > 1 ? 's' : '') + ' : le joueur doit toutes les cocher.'
+      : 'Une seule bonne réponse. Activez « Réponses multiples » pour en cocher plusieurs.';
 }
 
 function toggleCorrect(idx) {
@@ -1582,7 +1198,40 @@ function liveUpdate() {
 function renderPreview() {
   const el = document.getElementById('card-preview'); if (!el) return;
   const q = getActiveQ(); if (!q) return;
-  el.innerHTML = buildCard(q, 1);
+  document.querySelectorAll('#preview-tabs .cat-chip').forEach(b =>
+    b.classList.toggle('active', b.dataset.vue === vueApercu));
+  if (vueApercu === 'ligne') {
+    el.innerHTML = buildApercuLigne(q);
+    document.getElementById('preview-note').textContent = 'Correction affichée, telle que le joueur la voit après avoir validé.';
+  } else {
+    const memes = questions.filter(x => x.category === q.category);
+    el.innerHTML = buildCard(q, memes.indexOf(q) + 1);
+    document.getElementById('preview-note').textContent = 'Six cartes par page A4 à l\'impression.';
+  }
+}
+
+function setApercu(vue) {
+  vueApercu = vue;
+  try { localStorage.setItem('quiz_apercu', vue); } catch (e) {}
+  renderPreview();
+}
+
+// Même rendu que quiz.html, en état « corrigé »
+function buildApercuLigne(q) {
+  const cat = getCat(q.category);
+  const reps = q.answers.map((a, i) => `
+    <li class="reponse ${a.correct ? 'juste' : ''}">
+      <span class="lettre">${LETTERS[i]}</span>
+      <span>${escHtml(a.text) || '<span class="vide">Réponse vide</span>'}</span>
+      <span class="etat">${a.correct ? 'Juste' : ''}</span>
+    </li>`).join('');
+  return `<div class="apercu-ligne">
+    <span class="code mono">${escHtml(cat.label)}</span>
+    <div class="enonce">${escHtml(q.question) || '<span class="vide">Question…</span>'}</div>
+    <p class="consigne">${q.multiCorrect ? 'Plusieurs réponses possibles.' : 'Une seule bonne réponse.'}</p>
+    ${q.image ? `<div class="illus"><img src="${q.image}" alt=""></div>` : ''}
+    <ul class="reponses">${reps}</ul>
+  </div>`;
 }
 
 function buildCard(q, num) {
@@ -1601,7 +1250,7 @@ function buildCard(q, num) {
     <div class="quiz-card">
       ${q.isNew ? '<div class="card-new-ribbon">Nouveau</div>' : ''}
       <div class="card-header" style="background:${cat.color}">
-        <div class="card-header-title">${multiIcon}${cat.label}</div>
+        <div class="card-header-title">${multiIcon}${escHtml(cat.label)}</div>
         <div class="card-header-num">Q${num}</div>
       </div>
       <div class="card-question">${escHtml(q.question) || 'Question…'}</div>
@@ -1638,7 +1287,7 @@ function renderPrintPages() {
   renderPrintScopeToggle();
 
   if (toShow.length === 0) {
-    document.getElementById('print-pages').innerHTML = `<div style="color:white;font-family:'Syne',sans-serif;padding:40px;text-align:center">Aucune question à imprimer pour cette sélection.</div>`;
+    document.getElementById('print-pages').innerHTML = `<div class="print-vide">Aucune question à imprimer pour cette sélection.</div>`;
     document.getElementById('print-info').textContent = '0 question';
     return;
   }
@@ -1708,6 +1357,7 @@ function renderCatManagerList() {
       <input class="cat-label-input" type="text" value="${escHtml(c.label)}" maxlength="20"
         placeholder="Nom du sujet"
         oninput="updateCatLabel('${c.id}', this.value)">
+      <span class="cat-count">${questions.filter(q => q.category === c.id).length} Q</span>
       <button class="cat-del-btn" onclick="deleteCategory('${c.id}')" title="Supprimer">×</button>
     </div>
   `).join('');
@@ -1755,7 +1405,7 @@ function addCategory() {
   colorInp.value = nextColor;
   document.getElementById('new-cat-color-swatch').style.background = nextColor;
   renderCatManagerList();
-  toast('Sujet "' + name + '" créé !');
+  toast('Sujet « ' + name + ' » créé');
 }
 
 function hslToHex(h, s, l) {
@@ -1873,7 +1523,7 @@ function closeRefModal() {
 
 function refEchec(titre, detail) {
   document.getElementById('ref-body').innerHTML =
-    '<div class="ref-error"><b>' + titre + '</b><br>' + detail + '</div>';
+    '<div class="ref-error"><b>' + titre + '</b>' + detail + '</div>';
   document.getElementById('ref-actions').innerHTML =
     '<button class="btn btn-secondary btn-sm" onclick="closeRefModal()">Fermer</button>' +
     '<button class="btn btn-primary btn-sm" onclick="openRefModal()">Réessayer</button>';
@@ -1970,7 +1620,7 @@ function refRenderBackup() {
   const box = document.createElement('div');
   box.className = 'ref-backup';
   box.innerHTML = '<span>Sauvegarde disponible' + (d ? ' du ' + d : '') + '</span>' +
-    '<button class="btn btn-secondary btn-sm" onclick="refRestaurer()">↩ Restaurer</button>';
+    '<button class="btn btn-sm" onclick="refRestaurer()">↩ Restaurer</button>';
   document.getElementById('ref-body').appendChild(box);
 }
 
@@ -2031,9 +1681,10 @@ function refApresChangement(message) {
 }
 
 document.addEventListener('keydown', function (e) {
-  if (e.key === 'Escape' && document.getElementById('ref-modal').classList.contains('show')) {
-    closeRefModal();
-  }
+  if (e.key !== 'Escape') return;
+  if (document.getElementById('ref-modal').classList.contains('show')) closeRefModal();
+  else if (document.getElementById('cat-modal').classList.contains('show')) closeCatManager();
+  else if (document.getElementById('print-overlay').classList.contains('show')) closePrint();
 });
 
 
