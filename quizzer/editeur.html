@@ -491,6 +491,18 @@ header h1 .l2{-webkit-text-stroke-width:1.2px}
 .ed-ajout input::placeholder{color:#5d7699}
 @media (max-width:560px){.ed-ajout{grid-template-columns:1fr}}
 
+/* lecture seule : base consultée sans droits de modification */
+body.lecture-seule .modif,
+body.lecture-seule .answer-del-btn,body.lecture-seule .answer-del-vide,
+body.lecture-seule .ajout-reponse,body.lecture-seule .img-remove-btn,
+body.lecture-seule .answer-correct-btn:not(.on),
+body.lecture-seule .form-group:has(.img-upload-zone:not(.has-img)),
+body.lecture-seule .cat-select-wrap::after{display:none!important}
+body.lecture-seule .answer-correct-btn,body.lecture-seule .multi-toggle,body.lecture-seule .img-upload-zone{pointer-events:none}
+body.lecture-seule .editor-form :disabled{opacity:1;color:var(--craie);cursor:default;-webkit-text-fill-color:var(--craie)}
+body.lecture-seule .answer-row-editor{grid-template-columns:auto 1fr auto}
+body.lecture-seule .multi-toggle:not(:has(.on)){opacity:.5}
+
 /* ═══════════════ DIVERS ═══════════════ */
 ::-webkit-scrollbar{width:6px;height:6px}
 ::-webkit-scrollbar-track{background:transparent}
@@ -578,13 +590,13 @@ header h1 .l2{-webkit-text-stroke-width:1.2px}
     </div>
     <div class="header-right">
       <div class="groupe">
-        <button class="btn btn-sm" onclick="openRefModal()" title="Récupérer le jeu de questions officiel publié sur le serveur"><span class="ic" aria-hidden="true">↓</span> Données de référence</button>
-        <button class="btn btn-sm" onclick="importJSON()" title="Ouvrir un fichier JSON enregistré"><span class="ic" aria-hidden="true">⤒</span> Charger JSON</button>
+        <button class="btn btn-sm modif" onclick="openRefModal()" title="Récupérer le jeu de questions officiel publié sur le serveur"><span class="ic" aria-hidden="true">↓</span> Données de référence</button>
+        <button class="btn btn-sm modif" onclick="importJSON()" title="Ouvrir un fichier JSON enregistré"><span class="ic" aria-hidden="true">⤒</span> Charger JSON</button>
         <button class="btn btn-sm" onclick="exportJSON()" title="Enregistrer toutes les questions dans un fichier JSON"><span class="ic" aria-hidden="true">⤓</span> Sauvegarder JSON</button>
       </div>
       <div class="groupe">
-        <button class="btn btn-sm" onclick="openCatManager()">Sujets</button>
-        <button class="btn btn-warn btn-sm" onclick="markAllSeen()">Tout marquer vu</button>
+        <button class="btn btn-sm modif" onclick="openCatManager()">Sujets</button>
+        <button class="btn btn-warn btn-sm modif" onclick="markAllSeen()">Tout marquer vu</button>
         <button class="btn btn-primary btn-sm" onclick="openPrint()"><span class="ic" aria-hidden="true">⎙</span> Générer PDF</button>
       </div>
     </div>
@@ -596,7 +608,7 @@ header h1 .l2{-webkit-text-stroke-width:1.2px}
     <aside class="sidebar">
       <div class="sidebar-top">
         <div class="en-ligne" id="en-ligne"></div>
-        <button class="bouton" onclick="newQuestion()">+ Nouvelle question</button>
+        <button class="bouton modif" onclick="newQuestion()">+ Nouvelle question</button>
         <input class="recherche" type="search" id="recherche" placeholder="Rechercher une question…" oninput="setRecherche(this.value)" aria-label="Rechercher une question">
         <span class="etiquette">Filtrer par sujet</span>
         <div class="cat-filter" id="cat-filter"></div>
@@ -612,7 +624,7 @@ header h1 .l2{-webkit-text-stroke-width:1.2px}
       <div class="empty-state" id="empty-state">
         <div class="titre-vide">Aucune<br>question</div>
         <div>Sélectionnez une question dans la liste<br>ou créez-en une nouvelle.</div>
-        <button class="bouton" onclick="newQuestion()">+ Nouvelle question</button>
+        <button class="bouton modif" onclick="newQuestion()">+ Nouvelle question</button>
       </div>
 
       <!-- Éditeur persistant -->
@@ -621,8 +633,8 @@ header h1 .l2{-webkit-text-stroke-width:1.2px}
         <div class="editor-toolbar">
           <button class="btn btn-sm" id="retour-liste" onclick="retourListe()">← Liste</button>
           <span class="pos mono" id="ed-pos"></span>
-          <div id="new-toggle-wrap"></div>
-          <div style="margin-left:auto;display:flex;gap:8px">
+          <div id="new-toggle-wrap" class="modif"></div>
+          <div class="modif" style="margin-left:auto;display:flex;gap:8px">
             <button class="btn btn-danger btn-sm" onclick="deleteQuestion()">Supprimer</button>
             <button class="btn btn-success btn-sm" onclick="saveActiveQuestion();toast('Sauvegardé')">Sauvegarder</button>
           </div>
@@ -814,6 +826,8 @@ function nextId() { return 'q_' + Date.now() + '_' + Math.random().toString(36).
 // ═══════════════════════════════════════════
 function init() {
   loadCategories();
+  // En mode base, les questions arrivent de Firebase (voir BASE PARTAGÉE)
+  if (modeVoulu() === 'base') { renderCatFilter(); renderList(); return; }
   loadFromStorage();
   renderCatFilter();
   renderList();
@@ -1169,6 +1183,7 @@ function renderEditor() {
   renderAide();
 
   document.getElementById('ed-multi').dataset.on = q.multiCorrect ? '1' : '0';
+  appliquerLecture();
   renderPreview();
 }
 
@@ -1797,10 +1812,12 @@ document.addEventListener('DOMContentLoaded', function () { vueEditeur(false); }
 // ═══════════════════════════════════════════
 // BASE PARTAGÉE (Firebase, plusieurs éditeurs)
 // ═══════════════════════════════════════════
-// Sans connexion, l'éditeur travaille dans le navigateur comme avant.
+// Par défaut, l'éditeur affiche la base partagée (nœud `quiz`, lecture publique)
+// en lecture seule ; si elle ne répond pas, le fichier publié data/quiz.json.
 // Connecté avec un compte Google inscrit dans « editeurs » (ou administrateur),
-// il lit et écrit le nœud `quiz` de la base : une entrée par question, pour que
-// deux personnes puissent travailler en même temps sans s'écraser.
+// on modifie la base : une entrée par question, pour que deux personnes
+// puissent travailler en même temps sans s'écraser.
+// « Travailler en local » garde l'ancien fonctionnement (brouillons dans le navigateur).
 // Les droits sont vérifiés par les règles de la base (regles-firebase.json),
 // pas par cette page.
 
@@ -1809,16 +1826,28 @@ const enLigne = {
   user: null,          // compte Google connecté
   admin: false,
   autorise: false,
-  actif: false,        // l'éditeur travaille sur la base
+  actif: false,        // les questions affichées viennent de la base (ou du fichier de secours)
+  source: '',          // 'base' | 'fichier' | '' (chargement)
   nom: '',
   envoye: new Map(),   // id → signature de la version présente dans la base
   catsEnvoyees: '',
   dernier: null,       // dernier état reçu, pour annuler une suppression massive
   vide: false,
+  premier: true,       // première réception : on ouvre la première question
   arret: null,
+  secours: null,       // minuteur avant le repli sur le fichier
   arretEditeurs: null,
   erreur: '',
 };
+
+// Modification de la base possible : compte autorisé et base joignable
+const enEdition = () => enLigne.actif && enLigne.autorise && enLigne.source === 'base';
+const enLecture = () => enLigne.actif && !enEdition();
+
+function modeVoulu() {
+  if (location.protocol === 'file:') return 'local';
+  try { return localStorage.getItem('quiz_mode') === 'local' ? 'local' : 'base'; } catch (e) { return 'base'; }
+}
 
 const cleEmail = e => String(e || '').trim().toLowerCase().replace(/\./g, ',');
 
@@ -1846,9 +1875,10 @@ function versBase(q) {
   return o;
 }
 const sigQ = q => JSON.stringify(versBase(q));
+const listeFb = v => Array.isArray(v) ? v.filter(x => x != null) : (v ? Object.values(v) : []);
 
 function depuisBase(id, v) {
-  const q = versBase(Object.assign({}, v, { answers: enLigne.fb.liste(v.answers) }));
+  const q = versBase(Object.assign({}, v, { answers: listeFb(v.answers) }));
   q.id = id;
   if (!q.image) q.image = null;
   if (v.modifie) q.modifie = v.modifie;
@@ -1856,6 +1886,21 @@ function depuisBase(id, v) {
 }
 const sigCats = () => JSON.stringify(CATEGORIES.map(c => [c.id, c.label, c.color]));
 const parOrdre = (a, b) => (a.ordre || 0) - (b.ordre || 0) || String(a.id).localeCompare(String(b.id));
+
+// ── lecture seule : les actions de modification sont bloquées ──
+function peutModifier() {
+  if (!enLecture()) return true;
+  toast(enLigne.source === 'fichier' ? 'Base injoignable : lecture seule'
+    : enLigne.user ? "Votre compte n'est pas autorisé à modifier" : 'Connectez-vous pour modifier');
+  return false;
+}
+
+function appliquerLecture() {
+  const lecture = enLecture();
+  document.body.classList.toggle('lecture-seule', lecture);
+  document.querySelectorAll('.editor-form input, .editor-form textarea, .editor-form select')
+    .forEach(el => { el.disabled = lecture; });
+}
 
 // ── connexion ─────────────────────────────
 async function connexionGoogle() {
@@ -1884,46 +1929,63 @@ async function surCompte(user) {
   // Un compte anonyme (laissé par la partie en direct) ne compte pas comme connexion
   enLigne.user = user && !user.isAnonymous ? user : null;
   enLigne.admin = enLigne.autorise = false;
-  if (!enLigne.user) { quitterBase(); renderEnLigne(); return; }
-
-  const fb = enLigne.fb;
-  renderEnLigne('Vérification des droits…');
-  try {
-    const [a, e] = await Promise.all([
-      fb.get(fb.ref(fb.db, 'admins/' + user.uid)).catch(() => null),
-      user.email ? fb.get(fb.ref(fb.db, 'editeurs/' + cleEmail(user.email))).catch(() => null) : null,
-    ]);
-    enLigne.admin = !!(a && a.val() === true);
-    const fiche = e && e.val();
-    enLigne.autorise = enLigne.admin || !!fiche;
-    enLigne.nom = (fiche && fiche.nom) || user.displayName || user.email || 'Éditeur';
-  } catch (err) {
-    enLigne.erreur = fb.messageErreurFirebase(err);
+  if (enLigne.user) {
+    const fb = enLigne.fb;
+    renderEnLigne('Vérification des droits…');
+    try {
+      const [a, e] = await Promise.all([
+        fb.get(fb.ref(fb.db, 'admins/' + user.uid)).catch(() => null),
+        user.email ? fb.get(fb.ref(fb.db, 'editeurs/' + cleEmail(user.email))).catch(() => null) : null,
+      ]);
+      enLigne.admin = !!(a && a.val() === true);
+      const fiche = e && e.val();
+      enLigne.autorise = enLigne.admin || !!fiche;
+      enLigne.nom = (fiche && fiche.nom) || user.displayName || user.email || 'Éditeur';
+    } catch (err) {
+      enLigne.erreur = fb.messageErreurFirebase(err);
+    }
   }
-  if (enLigne.autorise) entrerBase();
-  else { quitterBase(); renderEnLigne(); }
+  renderEnLigne();
+  if (activeId) renderEditor();
 }
 
-// ── synchronisation ───────────────────────
+// ── changement de mode ────────────────────
 function entrerBase() {
-  const fb = enLigne.fb;
   if (enLigne.actif) return;
+  try { localStorage.removeItem('quiz_mode'); } catch (e) {}
   saveActiveQuestion();             // dernière saisie locale gardée dans le navigateur
   enLigne.actif = true;
+  enLigne.source = '';
+  enLigne.premier = true;
   enLigne.envoye = new Map();
   enLigne.catsEnvoyees = '';
+  questions = [];
   activeId = null;
   afficherVide();
+  renderCatFilter();
+  renderList();
   renderEnLigne('Chargement de la base…');
-  enLigne.arret = fb.onValue(fb.ref(fb.db, 'quiz'),
-    snap => recevoir(snap.val() || {}),
-    err => { enLigne.erreur = fb.messageErreurFirebase(err); quitterBase(); renderEnLigne(); });
+  chargerFirebase().then(fb => {
+    if (!enLigne.actif) return;
+    enLigne.arret = fb.onValue(fb.ref(fb.db, 'quiz'),
+      snap => recevoir(snap.val() || {}),
+      err => { enLigne.erreur = fb.messageErreurFirebase(err); chargerSecours(); });
+  }).catch(chargerSecours);
+  // La base ne répond pas : on affiche le fichier publié en attendant
+  clearTimeout(enLigne.secours);
+  enLigne.secours = setTimeout(() => { if (enLigne.actif && !enLigne.source) chargerSecours(); }, 6000);
+}
+
+function travaillerEnLocal() {
+  try { localStorage.setItem('quiz_mode', 'local'); } catch (e) {}
+  quitterBase();
 }
 
 function quitterBase() {
+  clearTimeout(enLigne.secours);
   if (enLigne.arret) { enLigne.arret(); enLigne.arret = null; }
-  if (!enLigne.actif) return;
   enLigne.actif = false;
+  enLigne.source = '';
   enLigne.envoye = new Map();
   // Retour aux questions de ce navigateur
   questions = [];
@@ -1931,8 +1993,43 @@ function quitterBase() {
   loadFromStorage();
   activeId = null;
   afficherVide();
+  appliquerLecture();
+  renderEnLigne();
   renderCatFilter();
   renderList();
+  if (questions.length) ouvrirPremiere();
+}
+
+async function chargerSecours() {
+  if (!enLigne.actif || enLigne.source === 'base') return;
+  try {
+    const r = await fetch(REF_URL + '?v=' + Date.now(), { cache: 'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const d = refNormalise(await r.json());
+    if (!enLigne.actif || enLigne.source === 'base') return;
+    enLigne.source = 'fichier';
+    questions = d.questions.map((q, i) => Object.assign({ ordre: i }, q));
+    if (d.categories) fusionnerSujets(d.categories);
+  } catch (err) {
+    enLigne.source = 'fichier';
+    questions = [];
+    enLigne.erreur = 'Ni la base ni le fichier publié ne répondent.';
+  }
+  activeId = null;
+  afficherVide();
+  renderEnLigne();
+  renderCatFilter();
+  renderList();
+  if (questions.length) ouvrirPremiere();
+}
+
+function fusionnerSujets(cats) {
+  cats.forEach(rc => {
+    if (!rc || !rc.id) return;
+    const i = CATEGORIES.findIndex(c => c.id === rc.id);
+    if (i >= 0) CATEGORIES[i] = Object.assign({}, CATEGORIES[i], rc);
+    else CATEGORIES.push({ id: rc.id, label: rc.label, color: rc.color || '#4f6ef7' });
+  });
 }
 
 function afficherVide() {
@@ -1941,8 +2038,23 @@ function afficherVide() {
   vueEditeur(false);
 }
 
+// Sur grand écran, on ouvre la première question ; sur téléphone on reste sur la liste
+function ouvrirPremiere() {
+  activeId = questions[0].id;
+  renderList();
+  renderEditor();
+  vueEditeur(false);
+}
+
+// ── synchronisation ───────────────────────
 function recevoir(val) {
+  clearTimeout(enLigne.secours);
+  const etaitFichier = enLigne.source === 'fichier';
+  enLigne.source = 'base';
+  enLigne.erreur = '';
   enLigne.dernier = val;
+  if (etaitFichier) { questions = []; activeId = null; afficherVide(); }
+
   const brutes = val.questions || {};
   const actifLocal = getActiveQ();
   const sigAvant = actifLocal ? sigQ(actifLocal) : null;
@@ -1968,6 +2080,7 @@ function recevoir(val) {
   renderEnLigne();
   renderCatFilter();
   renderList();
+  if (enLigne.premier && questions.length) { enLigne.premier = false; ouvrirPremiere(); return; }
   if (activeId && !getActiveQ()) { activeId = null; afficherVide(); toast('Question supprimée par un autre éditeur'); return; }
   // La question ouverte a changé ailleurs : on la redessine, sauf pendant la saisie
   const q = getActiveQ();
@@ -1978,7 +2091,7 @@ function recevoir(val) {
 }
 
 function enLigneEnvoyer() {
-  if (!enLigne.actif) return;
+  if (!enEdition()) return;
   const fb = enLigne.fb;
   const maj = {};
   const presentes = new Set();
@@ -2012,6 +2125,7 @@ function enLigneEnvoyer() {
 
 // Première mise en ligne : la base est vide, on y copie un jeu existant
 async function importerDansBase(source) {
+  if (!enEdition()) return;
   let qs, cats = null;
   if (source === 'fichier') {
     try {
@@ -2027,14 +2141,7 @@ async function importerDansBase(source) {
   if (!qs || !qs.length) { toast('Aucune question à importer'); return; }
   if (!confirm('Copier ' + qs.length + ' questions dans la base partagée ?')) return;
   questions = qs.map((q, i) => Object.assign({}, q, { id: q.id || nextId(), ordre: i }));
-  if (Array.isArray(cats) && cats.length) {
-    cats.forEach(rc => {
-      if (!rc || !rc.id) return;
-      const i = CATEGORIES.findIndex(c => c.id === rc.id);
-      if (i >= 0) CATEGORIES[i] = Object.assign({}, CATEGORIES[i], rc);
-      else CATEGORIES.push({ id: rc.id, label: rc.label, color: rc.color || '#4f6ef7' });
-    });
-  }
+  if (Array.isArray(cats) && cats.length) fusionnerSujets(cats);
   enLigne.catsEnvoyees = '';
   enLigneEnvoyer();
   toast(qs.length + ' questions copiées dans la base');
@@ -2042,30 +2149,45 @@ async function importerDansBase(source) {
 
 // ── encart d'état dans la barre latérale ──
 function renderEnLigne(attente) {
+  appliquerLecture();
   const el = document.getElementById('en-ligne');
   const u = enLigne.user;
-  el.className = 'en-ligne' + (enLigne.actif ? ' actif' : (u && !enLigne.autorise && !attente ? ' refus' : ''));
+  const edition = enEdition();
+  el.className = 'en-ligne' + (attente ? '' : edition ? ' actif' : (enLigne.actif && u && !enLigne.autorise ? ' refus' : ''));
   const erreur = enLigne.erreur ? `<div class="aide alerte" style="margin:0">${escHtml(enLigne.erreur)}</div>` : '';
+  const btnConnexion = '<button class="btn btn-sm btn-google" onclick="connexionGoogle()">Se connecter avec Google</button>';
+  const btnDeconnexion = '<button class="btn btn-sm" onclick="deconnexion()">Se déconnecter</button>';
+  const btnLocal = '<button class="btn btn-sm" onclick="travaillerEnLocal()" title="Brouillons gardés dans ce navigateur, sans toucher la base">Travailler en local</button>';
 
   if (attente) {
     el.innerHTML = `<span class="statut">${escHtml(attente)}</span>`;
-  } else if (!u) {
+  } else if (!enLigne.actif) {
     el.innerHTML = `
       <div class="ligne"><span class="statut">Mode local</span></div>
-      <div>Questions gardées dans ce navigateur. Connectez-vous pour modifier la base partagée.</div>
-      <div class="actions-ligne"><button class="btn btn-sm btn-google" onclick="connexionGoogle()">Se connecter avec Google</button></div>${erreur}`;
+      <div>Brouillons gardés dans ce navigateur, sans effet sur le quiz en ligne.</div>
+      ${location.protocol === 'file:' ? '' : '<div class="actions-ligne"><button class="btn btn-sm btn-primary" onclick="entrerBase()">Revenir à la base partagée</button></div>'}${erreur}`;
+  } else if (enLigne.source === 'fichier') {
+    el.innerHTML = `
+      <div class="ligne"><span class="statut">Fichier publié · lecture seule</span></div>
+      <div>La base partagée ne répond pas : affichage de data/quiz.json. Les modifications reprendront dès son retour.</div>
+      <div class="actions-ligne">${btnLocal}</div>${erreur}`;
+  } else if (!u) {
+    el.innerHTML = `
+      <div class="ligne"><span class="statut">Base partagée · lecture seule</span></div>
+      <div>Connectez-vous pour modifier les questions.</div>
+      <div class="actions-ligne">${btnConnexion}${btnLocal}</div>${erreur}`;
   } else if (!enLigne.autorise) {
     el.innerHTML = `
-      <div class="ligne"><span class="statut">Accès non autorisé</span></div>
+      <div class="ligne"><span class="statut">Accès non autorisé · lecture seule</span></div>
       <div><b style="color:var(--craie)">${escHtml(u.email || '')}</b> n'est pas dans la liste des éditeurs. Demandez à l'administrateur de vous ajouter.</div>
       <div style="font-size:12px">Identifiant du compte : <code>${escHtml(u.uid)}</code></div>
-      <div class="actions-ligne"><button class="btn btn-sm" onclick="deconnexion()">Se déconnecter</button></div>${erreur}`;
+      <div class="actions-ligne">${btnDeconnexion}${btnLocal}</div>${erreur}`;
   } else {
     el.innerHTML = `
       <div class="ligne"><span class="statut">Base partagée</span><span class="qui">${escHtml(enLigne.nom)}${enLigne.admin ? ' · admin' : ''}</span></div>
       <div class="actions-ligne">
         ${enLigne.admin ? '<button class="btn btn-sm" onclick="ouvrirEditeurs()">Éditeurs</button>' : ''}
-        <button class="btn btn-sm" onclick="deconnexion()">Se déconnecter</button>
+        ${btnDeconnexion}${btnLocal}
       </div>
       ${enLigne.vide ? `<div class="vide-base">
         <div>La base en ligne est vide. Copiez-y un jeu de questions pour commencer :</div>
@@ -2123,14 +2245,24 @@ function retirerEditeur(cle) {
   fb.remove(fb.ref(fb.db, 'editeurs/' + cle)).catch(err => toast('Refusé : ' + fb.messageErreurFirebase(err)));
 }
 
-// Au démarrage : on reprend la session Google éventuelle (Firebase la garde
-// d'une visite à l'autre). Sans réseau, l'éditeur reste en mode local.
+// En lecture seule, les actions qui modifient les questions sont refusées
+// (les boutons correspondants sont aussi masqués, classe .modif).
+['newQuestion', 'deleteQuestion', 'toggleCorrect', 'toggleMulti', 'addAnswer', 'removeAnswer',
+ 'markAllSeen', 'toggleActiveNew', 'openCatManager', 'importJSON', 'openRefModal', 'loadImage', 'removeImage']
+  .forEach(nom => {
+    const f = window[nom];
+    window[nom] = function () { if (!peutModifier()) return; return f.apply(this, arguments); };
+  });
+
+// Au démarrage : base partagée (sauf choix du mode local), et reprise de la
+// session Google éventuelle, que Firebase garde d'une visite à l'autre.
 document.addEventListener('DOMContentLoaded', () => {
-  renderEnLigne();
+  if (modeVoulu() === 'base') entrerBase();
+  else renderEnLigne();
   if (location.protocol === 'file:') return;
   chargerFirebase()
     .then(fb => fb.onAuthStateChanged(fb.auth, surCompte))
-    .catch(() => { enLigne.erreur = 'Firebase injoignable : mode local uniquement.'; renderEnLigne(); });
+    .catch(() => { enLigne.erreur = 'Firebase injoignable.'; if (enLigne.actif) chargerSecours(); else renderEnLigne(); });
 });
 
 </script>

@@ -36,7 +36,7 @@ aucune donnée transmise : tout s'exécute dans le navigateur.
 │   ├── index.html      Accueil : choix entre quiz en ligne et éditeur
 │   ├── quiz.html       Quiz en ligne
 │   ├── animateur.html  Partie en direct (grand écran) ; joueur.html côté téléphones
-│   ├── editeur.html    Éditeur : mode local, ou base partagée après connexion Google
+│   ├── editeur.html    Éditeur : base partagée (lecture seule sans connexion Google), ou mode local
 │   ├── banque.js       Chargement des questions : base partagée, sinon data/quiz.json
 │   └── data/quiz.json  Jeu de questions de secours, exporté depuis l'éditeur
 ├── ccpg/index.html
