@@ -74,6 +74,108 @@
           }
         }
       }
+    },
+    "quiz": {
+      ".read": true,
+      "questions": {
+        "$id": {
+          ".write": "auth != null && (root.child('admins/' + auth.uid).val() === true || (auth.token.email_verified === true && root.child('editeurs/' + auth.token.email.toLowerCase().replace('.', ',')).exists()))",
+          ".validate": "$id.matches(/^[A-Za-z0-9_-]{1,40}$/) && newData.hasChildren(['question', 'category', 'answers'])",
+          "question": {
+            ".validate": "newData.isString() && newData.val().length <= 1000"
+          },
+          "category": {
+            ".validate": "newData.isString() && newData.val().length <= 40"
+          },
+          "image": {
+            ".validate": "newData.isString() && newData.val().length <= 600000"
+          },
+          "multiCorrect": {
+            ".validate": "newData.isBoolean()"
+          },
+          "isNew": {
+            ".validate": "newData.isBoolean()"
+          },
+          "ordre": {
+            ".validate": "newData.isNumber()"
+          },
+          "answers": {
+            "$i": {
+              ".validate": "$i.matches(/^[0-5]$/) && newData.hasChildren(['text', 'correct'])",
+              "text": {
+                ".validate": "newData.isString() && newData.val().length <= 300"
+              },
+              "correct": {
+                ".validate": "newData.isBoolean()"
+              },
+              "$autre": {
+                ".validate": false
+              }
+            }
+          },
+          "modifie": {
+            ".validate": "newData.hasChildren(['nom', 't']) && newData.child('t').val() === now",
+            "nom": {
+              ".validate": "newData.isString() && newData.val().length <= 60"
+            },
+            "t": {
+              ".validate": true
+            },
+            "$autre": {
+              ".validate": false
+            }
+          },
+          "$autre": {
+            ".validate": false
+          }
+        }
+      },
+      "categories": {
+        ".write": "auth != null && (root.child('admins/' + auth.uid).val() === true || (auth.token.email_verified === true && root.child('editeurs/' + auth.token.email.toLowerCase().replace('.', ',')).exists()))",
+        "$id": {
+          ".validate": "$id.matches(/^[A-Za-z0-9_-]{1,40}$/) && newData.hasChildren(['label', 'color'])",
+          "label": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 24"
+          },
+          "color": {
+            ".validate": "newData.isString() && newData.val().matches(/^#[0-9a-fA-F]{6}$/)"
+          },
+          "ordre": {
+            ".validate": "newData.isNumber()"
+          },
+          "$autre": {
+            ".validate": false
+          }
+        }
+      },
+      "$autre": {
+        ".validate": false
+      }
+    },
+    "editeurs": {
+      ".read": "auth != null && root.child('admins/' + auth.uid).val() === true",
+      ".write": "auth != null && root.child('admins/' + auth.uid).val() === true",
+      "$cle": {
+        ".read": "auth != null && auth.token.email_verified === true && auth.token.email.toLowerCase().replace('.', ',') === $cle",
+        ".validate": "newData.hasChildren(['nom', 'email']) && newData.child('email').val().toLowerCase().replace('.', ',') === $cle",
+        "nom": {
+          ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 40"
+        },
+        "email": {
+          ".validate": "newData.isString() && newData.val().length <= 120"
+        },
+        "ajoute": {
+          ".validate": "newData.val() === now"
+        },
+        "$autre": {
+          ".validate": false
+        }
+      }
+    },
+    "admins": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid"
+      }
     }
   }
 }

@@ -352,12 +352,12 @@ header h1 .l2{-webkit-text-stroke-width:1.2px}
 .empty-state .titre-vide{font-family:var(--disp);font-weight:800;font-size:44px;line-height:.9;text-transform:uppercase;color:transparent;-webkit-text-stroke:1.5px var(--nuit-3)}
 
 /* ═══════════════ FENÊTRES ═══════════════ */
-#cat-modal,#ref-modal{
+#cat-modal,#ref-modal,#ed-modal{
   display:none;position:fixed;inset:0;z-index:500;align-items:center;justify-content:center;padding:16px;
   background:rgba(5,12,24,.78);backdrop-filter:blur(3px);
 }
 #ref-modal{z-index:520}
-#cat-modal.show,#ref-modal.show{display:flex}
+#cat-modal.show,#ref-modal.show,#ed-modal.show{display:flex}
 .cat-modal-box{
   background:var(--panneau);border:1px solid var(--nuit-3);border-radius:3px;
   padding:26px 28px;width:500px;max-width:100%;max-height:84vh;
@@ -456,6 +456,40 @@ header h1 .l2{-webkit-text-stroke-width:1.2px}
   .print-toolbar{display:none!important}
   .print-page{margin:0;page-break-after:always;box-shadow:none}
 }
+
+/* ═══════════════ BASE PARTAGÉE ═══════════════ */
+.en-ligne{
+  --etat:var(--acier);
+  border:1px solid var(--nuit-3);border-left:3px solid var(--etat);border-radius:3px;
+  padding:10px 12px;background:rgba(11,27,51,.55);display:grid;gap:8px;font-size:14px;color:var(--acier);
+}
+.en-ligne.actif{--etat:var(--juste)}
+.en-ligne.refus{--etat:var(--faux)}
+.en-ligne .ligne{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.en-ligne .statut{font-family:var(--mono);font-size:.64rem;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--etat);display:flex;align-items:center;gap:8px}
+.en-ligne .statut::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--etat)}
+.en-ligne.actif .statut::before{animation:pouls-vert 2.4s ease-out infinite}
+@keyframes pouls-vert{0%{box-shadow:0 0 0 0 rgba(47,163,107,.55)}70%{box-shadow:0 0 0 8px rgba(47,163,107,0)}100%{box-shadow:0 0 0 0 rgba(47,163,107,0)}}
+.en-ligne .qui{color:var(--craie);font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.en-ligne .actions-ligne{display:flex;gap:6px;flex-wrap:wrap}
+.en-ligne code{font-family:var(--mono);font-size:.7rem;color:var(--or-clair);word-break:break-all;user-select:all}
+.en-ligne .vide-base{border-top:1px dashed var(--nuit-3);padding-top:8px;display:grid;gap:6px}
+.btn-google{color:var(--craie);border-color:var(--acier)}
+.btn-google:hover{border-color:var(--or);color:var(--or-clair)}
+.q-item-auteur{font-size:12px;color:#5d7699;margin-top:2px}
+.modifie-par{color:var(--acier);font-size:13px;margin:-14px 0 22px}
+
+.ed-ligne{display:flex;align-items:center;gap:10px;padding:9px 12px;background:rgba(11,27,51,.55);border:1px solid var(--nuit-3);border-radius:3px}
+.ed-ligne .nom{color:var(--craie);font-weight:600}
+.ed-ligne .mail{color:var(--acier);font-size:14px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ed-ajout{display:grid;grid-template-columns:1fr 1.4fr auto;gap:8px;padding-top:16px;border-top:1px solid var(--nuit-3)}
+.ed-ajout input{
+  min-width:0;font:inherit;font-size:15px;color:var(--craie);padding:9px 12px;border-radius:2px;
+  background:rgba(11,27,51,.7);border:1px solid var(--nuit-3);outline:none;
+}
+.ed-ajout input:focus{border-color:var(--or)}
+.ed-ajout input::placeholder{color:#5d7699}
+@media (max-width:560px){.ed-ajout{grid-template-columns:1fr}}
 
 /* ═══════════════ DIVERS ═══════════════ */
 ::-webkit-scrollbar{width:6px;height:6px}
@@ -561,6 +595,7 @@ header h1 .l2{-webkit-text-stroke-width:1.2px}
     <!-- SIDEBAR -->
     <aside class="sidebar">
       <div class="sidebar-top">
+        <div class="en-ligne" id="en-ligne"></div>
         <button class="bouton" onclick="newQuestion()">+ Nouvelle question</button>
         <input class="recherche" type="search" id="recherche" placeholder="Rechercher une question…" oninput="setRecherche(this.value)" aria-label="Rechercher une question">
         <span class="etiquette">Filtrer par sujet</span>
@@ -608,6 +643,7 @@ header h1 .l2{-webkit-text-stroke-width:1.2px}
               <label class="form-label etiquette" for="ed-question">Question</label>
               <textarea class="form-textarea" id="ed-question" placeholder="Saisir la question…" oninput="liveUpdate()"></textarea>
             </div>
+            <p class="modifie-par" id="ed-modifie" hidden></p>
 
             <div class="form-group">
               <span class="form-label etiquette">Image <span class="opt">(optionnelle)</span></span>
@@ -686,6 +722,26 @@ header h1 .l2{-webkit-text-stroke-width:1.2px}
   </div>
 </div>
 
+<!-- EDITEURS MODAL (administrateur) -->
+<div id="ed-modal">
+  <div class="cat-modal-box" role="dialog" aria-modal="true" aria-labelledby="ed-modal-titre">
+    <div class="modal-tete">
+      <div>
+        <span class="code mono">QZR · Accès</span>
+        <h2 id="ed-modal-titre">Éditeurs</h2>
+      </div>
+      <button class="btn btn-sm" onclick="fermerEditeurs()">✕ Fermer</button>
+    </div>
+    <p class="ref-msg" style="margin:0">Les personnes de cette liste peuvent modifier les questions après s'être connectées avec leur compte Google. Saisissez l'adresse exacte de ce compte.</p>
+    <div class="cat-list-manage" id="ed-liste"></div>
+    <form class="ed-ajout" onsubmit="event.preventDefault();ajouterEditeur()">
+      <input type="text" id="ed-nom" placeholder="Prénom Nom" maxlength="40" required>
+      <input type="email" id="ed-email" placeholder="adresse@gmail.com" maxlength="120" required>
+      <button class="btn btn-primary btn-sm" type="submit">+ Ajouter</button>
+    </form>
+  </div>
+</div>
+
 <!-- PRINT OVERLAY -->
 <div id="print-overlay">
   <div class="print-toolbar">
@@ -733,6 +789,7 @@ function loadCategories() {
 }
 
 function saveCategories() {
+  if (enLigne.actif) { enLigneEnvoyer(); return; }
   localStorage.setItem('quiz_categories', JSON.stringify(CATEGORIES));
 }
 
@@ -766,8 +823,18 @@ function init() {
 // ═══════════════════════════════════════════
 // PERSISTENCE
 // ═══════════════════════════════════════════
+// En ligne, les questions partagées ne remplacent pas celles gardées dans le
+// navigateur : elles partent dans la base, le stockage local reste intact.
 function saveToStorage() {
+  if (enLigne.actif) { enLigneEnvoyer(); return; }
   localStorage.setItem('quiz_data', JSON.stringify(questions));
+}
+
+// Enregistrement automatique pendant la saisie
+let minuteurSauvegarde = null;
+function planifierSauvegarde() {
+  clearTimeout(minuteurSauvegarde);
+  minuteurSauvegarde = setTimeout(() => { saveActiveQuestion(); renderList(); }, 700);
 }
 
 function loadFromStorage() {
@@ -975,6 +1042,7 @@ function newQuestion() {
   saveActiveQuestion();
   const q = {
     id: nextId(),
+    ordre: Date.now(),
     category: (filterCat !== 'all' && filterCat !== 'new') ? filterCat : 'sit',
     question: '',
     image: null,
@@ -1056,6 +1124,9 @@ function renderEditor() {
 
   // Question
   document.getElementById('ed-question').value = q.question || '';
+  const mod = document.getElementById('ed-modifie');
+  mod.hidden = !(enLigne.actif && q.modifie);
+  if (!mod.hidden) mod.textContent = 'Modifiée par ' + q.modifie.nom + (refDate(q.modifie.t) ? ' le ' + refDate(q.modifie.t) : '');
 
   // Image zone
   const imgWrap = document.getElementById('img-zone-wrap');
@@ -1165,6 +1236,7 @@ function toggleCorrect(idx) {
   }
   refreshAnswerButtons();
   renderPreview();
+  planifierSauvegarde();
 }
 
 function addAnswer() {
@@ -1190,6 +1262,7 @@ function liveUpdate() {
   if (qText) q.question = qText.value;
   document.querySelectorAll('.ans-input').forEach((inp,i) => { if(q.answers[i]) q.answers[i].text = inp.value; });
   renderPreview();
+  planifierSauvegarde();
 }
 
 // ═══════════════════════════════════════════
@@ -1682,7 +1755,8 @@ function refApresChangement(message) {
 
 document.addEventListener('keydown', function (e) {
   if (e.key !== 'Escape') return;
-  if (document.getElementById('ref-modal').classList.contains('show')) closeRefModal();
+  if (document.getElementById('ed-modal').classList.contains('show')) fermerEditeurs();
+  else if (document.getElementById('ref-modal').classList.contains('show')) closeRefModal();
   else if (document.getElementById('cat-modal').classList.contains('show')) closeCatManager();
   else if (document.getElementById('print-overlay').classList.contains('show')) closePrint();
 });
@@ -1719,6 +1793,345 @@ deleteQuestion = function () { _deleteQuestion(); if (!activeId) vueEditeur(fals
 // Au démarrage, init() sélectionne la première question : sur mobile on
 // veut malgré tout arriver sur la liste, pas dans l'éditeur.
 document.addEventListener('DOMContentLoaded', function () { vueEditeur(false); });
+
+// ═══════════════════════════════════════════
+// BASE PARTAGÉE (Firebase, plusieurs éditeurs)
+// ═══════════════════════════════════════════
+// Sans connexion, l'éditeur travaille dans le navigateur comme avant.
+// Connecté avec un compte Google inscrit dans « editeurs » (ou administrateur),
+// il lit et écrit le nœud `quiz` de la base : une entrée par question, pour que
+// deux personnes puissent travailler en même temps sans s'écraser.
+// Les droits sont vérifiés par les règles de la base (regles-firebase.json),
+// pas par cette page.
+
+const enLigne = {
+  fb: null,            // modules Firebase, chargés à la demande
+  user: null,          // compte Google connecté
+  admin: false,
+  autorise: false,
+  actif: false,        // l'éditeur travaille sur la base
+  nom: '',
+  envoye: new Map(),   // id → signature de la version présente dans la base
+  catsEnvoyees: '',
+  dernier: null,       // dernier état reçu, pour annuler une suppression massive
+  vide: false,
+  arret: null,
+  arretEditeurs: null,
+  erreur: '',
+};
+
+const cleEmail = e => String(e || '').trim().toLowerCase().replace(/\./g, ',');
+
+async function chargerFirebase() {
+  if (enLigne.fb) return enLigne.fb;
+  const [base, authMod] = await Promise.all([
+    import('./direct.js'),
+    import('https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js'),
+  ]);
+  enLigne.fb = Object.assign({}, base, authMod);
+  return enLigne.fb;
+}
+
+// Version de la question telle qu'elle est stockée (sans id ni auteur)
+function versBase(q) {
+  const o = {
+    category: q.category || '',
+    question: String(q.question || ''),
+    multiCorrect: !!q.multiCorrect,
+    isNew: !!q.isNew,
+    ordre: typeof q.ordre === 'number' ? q.ordre : 0,
+    answers: (q.answers || []).slice(0, 6).map(a => ({ text: String(a.text || ''), correct: !!a.correct })),
+  };
+  if (q.image) o.image = q.image;
+  return o;
+}
+const sigQ = q => JSON.stringify(versBase(q));
+
+function depuisBase(id, v) {
+  const q = versBase(Object.assign({}, v, { answers: enLigne.fb.liste(v.answers) }));
+  q.id = id;
+  if (!q.image) q.image = null;
+  if (v.modifie) q.modifie = v.modifie;
+  return q;
+}
+const sigCats = () => JSON.stringify(CATEGORIES.map(c => [c.id, c.label, c.color]));
+const parOrdre = (a, b) => (a.ordre || 0) - (b.ordre || 0) || String(a.id).localeCompare(String(b.id));
+
+// ── connexion ─────────────────────────────
+async function connexionGoogle() {
+  try {
+    const fb = await chargerFirebase();
+    enLigne.erreur = '';
+    renderEnLigne('Connexion…');
+    await fb.signInWithPopup(fb.auth, new fb.GoogleAuthProvider());
+  } catch (err) {
+    const c = String(err && (err.code || err.message) || err);
+    enLigne.erreur = /popup-closed|cancelled-popup/.test(c) ? '' :
+      /operation-not-allowed|configuration-not-found/.test(c) ? "La connexion Google n'est pas activée dans Firebase." :
+      /unauthorized-domain/.test(c) ? "Ce site n'est pas autorisé dans Firebase (Authentication → Paramètres → Domaines autorisés)." :
+      /network/.test(c) ? 'Pas de connexion internet.' : c;
+    renderEnLigne();
+  }
+}
+
+async function deconnexion() {
+  const fb = await chargerFirebase();
+  saveActiveQuestion();
+  await fb.signOut(fb.auth);
+}
+
+async function surCompte(user) {
+  // Un compte anonyme (laissé par la partie en direct) ne compte pas comme connexion
+  enLigne.user = user && !user.isAnonymous ? user : null;
+  enLigne.admin = enLigne.autorise = false;
+  if (!enLigne.user) { quitterBase(); renderEnLigne(); return; }
+
+  const fb = enLigne.fb;
+  renderEnLigne('Vérification des droits…');
+  try {
+    const [a, e] = await Promise.all([
+      fb.get(fb.ref(fb.db, 'admins/' + user.uid)).catch(() => null),
+      user.email ? fb.get(fb.ref(fb.db, 'editeurs/' + cleEmail(user.email))).catch(() => null) : null,
+    ]);
+    enLigne.admin = !!(a && a.val() === true);
+    const fiche = e && e.val();
+    enLigne.autorise = enLigne.admin || !!fiche;
+    enLigne.nom = (fiche && fiche.nom) || user.displayName || user.email || 'Éditeur';
+  } catch (err) {
+    enLigne.erreur = fb.messageErreurFirebase(err);
+  }
+  if (enLigne.autorise) entrerBase();
+  else { quitterBase(); renderEnLigne(); }
+}
+
+// ── synchronisation ───────────────────────
+function entrerBase() {
+  const fb = enLigne.fb;
+  if (enLigne.actif) return;
+  saveActiveQuestion();             // dernière saisie locale gardée dans le navigateur
+  enLigne.actif = true;
+  enLigne.envoye = new Map();
+  enLigne.catsEnvoyees = '';
+  activeId = null;
+  afficherVide();
+  renderEnLigne('Chargement de la base…');
+  enLigne.arret = fb.onValue(fb.ref(fb.db, 'quiz'),
+    snap => recevoir(snap.val() || {}),
+    err => { enLigne.erreur = fb.messageErreurFirebase(err); quitterBase(); renderEnLigne(); });
+}
+
+function quitterBase() {
+  if (enLigne.arret) { enLigne.arret(); enLigne.arret = null; }
+  if (!enLigne.actif) return;
+  enLigne.actif = false;
+  enLigne.envoye = new Map();
+  // Retour aux questions de ce navigateur
+  questions = [];
+  loadCategories();
+  loadFromStorage();
+  activeId = null;
+  afficherVide();
+  renderCatFilter();
+  renderList();
+}
+
+function afficherVide() {
+  document.getElementById('empty-state').style.display = 'flex';
+  document.getElementById('editor-content').style.display = 'none';
+  vueEditeur(false);
+}
+
+function recevoir(val) {
+  enLigne.dernier = val;
+  const brutes = val.questions || {};
+  const actifLocal = getActiveQ();
+  const sigAvant = actifLocal ? sigQ(actifLocal) : null;
+  // Saisie pas encore partie : on garde la version locale de la question ouverte
+  const enAttente = actifLocal && enLigne.envoye.has(actifLocal.id) && enLigne.envoye.get(actifLocal.id) !== sigAvant;
+
+  const recues = Object.keys(brutes).map(id => depuisBase(id, brutes[id])).sort(parOrdre);
+  enLigne.envoye = new Map(recues.map(q => [q.id, sigQ(q)]));
+  if (enAttente) {
+    const i = recues.findIndex(q => q.id === actifLocal.id);
+    if (i >= 0) recues[i] = actifLocal;
+  }
+  questions = recues;
+  enLigne.vide = recues.length === 0;
+
+  if (val.categories) {
+    CATEGORIES = Object.keys(val.categories)
+      .map(id => Object.assign({ id: id }, val.categories[id])).sort(parOrdre)
+      .map(c => ({ id: c.id, label: c.label, color: c.color }));
+    enLigne.catsEnvoyees = sigCats();
+  }
+
+  renderEnLigne();
+  renderCatFilter();
+  renderList();
+  if (activeId && !getActiveQ()) { activeId = null; afficherVide(); toast('Question supprimée par un autre éditeur'); return; }
+  // La question ouverte a changé ailleurs : on la redessine, sauf pendant la saisie
+  const q = getActiveQ();
+  if (q && !enAttente && sigQ(q) !== sigAvant) {
+    const el = document.activeElement;
+    if (!el || !/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)) renderEditor();
+  }
+}
+
+function enLigneEnvoyer() {
+  if (!enLigne.actif) return;
+  const fb = enLigne.fb;
+  const maj = {};
+  const presentes = new Set();
+  questions.forEach((q, i) => {
+    presentes.add(q.id);
+    if (typeof q.ordre !== 'number') q.ordre = i;
+    const v = versBase(q);
+    if (enLigne.envoye.get(q.id) === JSON.stringify(v)) return;
+    v.modifie = { nom: enLigne.nom, t: fb.serverTimestamp() };
+    maj['quiz/questions/' + q.id] = v;
+  });
+  const supprimees = [...enLigne.envoye.keys()].filter(id => !presentes.has(id));
+  if (supprimees.length > 3 &&
+      !confirm(supprimees.length + ' questions vont être supprimées de la base partagée, pour tous les éditeurs. Continuer ?')) {
+    recevoir(enLigne.dernier || {});
+    return;
+  }
+  supprimees.forEach(id => { maj['quiz/questions/' + id] = null; });
+
+  if (sigCats() !== enLigne.catsEnvoyees) {
+    const cats = {};
+    CATEGORIES.forEach((c, i) => { cats[c.id] = { label: c.label, color: c.color, ordre: i }; });
+    maj['quiz/categories'] = cats;
+  }
+  if (!Object.keys(maj).length) return;
+  fb.update(fb.ref(fb.db), maj).catch(err => {
+    toast('Non enregistré : ' + fb.messageErreurFirebase(err));
+    recevoir(enLigne.dernier || {});
+  });
+}
+
+// Première mise en ligne : la base est vide, on y copie un jeu existant
+async function importerDansBase(source) {
+  let qs, cats = null;
+  if (source === 'fichier') {
+    try {
+      const r = await fetch(REF_URL + '?v=' + Date.now(), { cache: 'no-store' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const d = refNormalise(await r.json());
+      qs = d.questions; cats = d.categories;
+    } catch (err) { toast('Fichier illisible : ' + (err.message || err)); return; }
+  } else {
+    try { qs = JSON.parse(localStorage.getItem('quiz_data') || '[]'); } catch (e) { qs = []; }
+    try { cats = JSON.parse(localStorage.getItem('quiz_categories') || 'null'); } catch (e) {}
+  }
+  if (!qs || !qs.length) { toast('Aucune question à importer'); return; }
+  if (!confirm('Copier ' + qs.length + ' questions dans la base partagée ?')) return;
+  questions = qs.map((q, i) => Object.assign({}, q, { id: q.id || nextId(), ordre: i }));
+  if (Array.isArray(cats) && cats.length) {
+    cats.forEach(rc => {
+      if (!rc || !rc.id) return;
+      const i = CATEGORIES.findIndex(c => c.id === rc.id);
+      if (i >= 0) CATEGORIES[i] = Object.assign({}, CATEGORIES[i], rc);
+      else CATEGORIES.push({ id: rc.id, label: rc.label, color: rc.color || '#4f6ef7' });
+    });
+  }
+  enLigne.catsEnvoyees = '';
+  enLigneEnvoyer();
+  toast(qs.length + ' questions copiées dans la base');
+}
+
+// ── encart d'état dans la barre latérale ──
+function renderEnLigne(attente) {
+  const el = document.getElementById('en-ligne');
+  const u = enLigne.user;
+  el.className = 'en-ligne' + (enLigne.actif ? ' actif' : (u && !enLigne.autorise && !attente ? ' refus' : ''));
+  const erreur = enLigne.erreur ? `<div class="aide alerte" style="margin:0">${escHtml(enLigne.erreur)}</div>` : '';
+
+  if (attente) {
+    el.innerHTML = `<span class="statut">${escHtml(attente)}</span>`;
+  } else if (!u) {
+    el.innerHTML = `
+      <div class="ligne"><span class="statut">Mode local</span></div>
+      <div>Questions gardées dans ce navigateur. Connectez-vous pour modifier la base partagée.</div>
+      <div class="actions-ligne"><button class="btn btn-sm btn-google" onclick="connexionGoogle()">Se connecter avec Google</button></div>${erreur}`;
+  } else if (!enLigne.autorise) {
+    el.innerHTML = `
+      <div class="ligne"><span class="statut">Accès non autorisé</span></div>
+      <div><b style="color:var(--craie)">${escHtml(u.email || '')}</b> n'est pas dans la liste des éditeurs. Demandez à l'administrateur de vous ajouter.</div>
+      <div style="font-size:12px">Identifiant du compte : <code>${escHtml(u.uid)}</code></div>
+      <div class="actions-ligne"><button class="btn btn-sm" onclick="deconnexion()">Se déconnecter</button></div>${erreur}`;
+  } else {
+    el.innerHTML = `
+      <div class="ligne"><span class="statut">Base partagée</span><span class="qui">${escHtml(enLigne.nom)}${enLigne.admin ? ' · admin' : ''}</span></div>
+      <div class="actions-ligne">
+        ${enLigne.admin ? '<button class="btn btn-sm" onclick="ouvrirEditeurs()">Éditeurs</button>' : ''}
+        <button class="btn btn-sm" onclick="deconnexion()">Se déconnecter</button>
+      </div>
+      ${enLigne.vide ? `<div class="vide-base">
+        <div>La base en ligne est vide. Copiez-y un jeu de questions pour commencer :</div>
+        <div class="actions-ligne">
+          <button class="btn btn-sm btn-primary" onclick="importerDansBase('fichier')">Fichier publié</button>
+          <button class="btn btn-sm" onclick="importerDansBase('local')">Mes questions locales</button>
+        </div></div>` : ''}${erreur}`;
+  }
+}
+
+// ── gestion des éditeurs (administrateur) ─
+function ouvrirEditeurs() {
+  if (!enLigne.admin) return;
+  const fb = enLigne.fb;
+  document.getElementById('ed-modal').classList.add('show');
+  document.getElementById('ed-liste').innerHTML = '<div class="ref-msg">Chargement…</div>';
+  if (enLigne.arretEditeurs) enLigne.arretEditeurs();
+  enLigne.arretEditeurs = fb.onValue(fb.ref(fb.db, 'editeurs'), snap => {
+    const v = snap.val() || {};
+    const cles = Object.keys(v).sort((a, b) => String(v[a].nom).localeCompare(String(v[b].nom)));
+    document.getElementById('ed-liste').innerHTML = cles.length ? cles.map(k => `
+      <div class="ed-ligne">
+        <span class="nom">${escHtml(v[k].nom)}</span>
+        <span class="mail">${escHtml(v[k].email)}</span>
+        <button class="cat-del-btn" onclick="retirerEditeur('${escHtml(k)}')" title="Retirer l'accès" aria-label="Retirer l'accès de ${escHtml(v[k].nom)}">×</button>
+      </div>`).join('')
+      : '<div class="ref-msg">Aucun éditeur pour l\'instant. Vous seul (administrateur) pouvez modifier.</div>';
+  }, err => {
+    document.getElementById('ed-liste').innerHTML = `<div class="ref-error">${fb.messageErreurFirebase(err)}</div>`;
+  });
+}
+
+function fermerEditeurs() {
+  if (enLigne.arretEditeurs) { enLigne.arretEditeurs(); enLigne.arretEditeurs = null; }
+  document.getElementById('ed-modal').classList.remove('show');
+}
+
+function ajouterEditeur() {
+  const fb = enLigne.fb;
+  const nom = document.getElementById('ed-nom').value.trim();
+  const email = document.getElementById('ed-email').value.trim().toLowerCase();
+  if (!nom || !/^[^\s@#$\[\]\/]+@[^\s@#$\[\]\/]+\.[^\s@#$\[\]\/]+$/.test(email)) { toast('Nom ou adresse invalide'); return; }
+  fb.set(fb.ref(fb.db, 'editeurs/' + cleEmail(email)), { nom: nom, email: email, ajoute: fb.serverTimestamp() })
+    .then(() => {
+      document.getElementById('ed-nom').value = '';
+      document.getElementById('ed-email').value = '';
+      toast(nom + ' peut maintenant modifier');
+    })
+    .catch(err => toast('Refusé : ' + fb.messageErreurFirebase(err)));
+}
+
+function retirerEditeur(cle) {
+  const fb = enLigne.fb;
+  if (!confirm("Retirer l'accès de cette personne ?")) return;
+  fb.remove(fb.ref(fb.db, 'editeurs/' + cle)).catch(err => toast('Refusé : ' + fb.messageErreurFirebase(err)));
+}
+
+// Au démarrage : on reprend la session Google éventuelle (Firebase la garde
+// d'une visite à l'autre). Sans réseau, l'éditeur reste en mode local.
+document.addEventListener('DOMContentLoaded', () => {
+  renderEnLigne();
+  if (location.protocol === 'file:') return;
+  chargerFirebase()
+    .then(fb => fb.onAuthStateChanged(fb.auth, surCompte))
+    .catch(() => { enLigne.erreur = 'Firebase injoignable : mode local uniquement.'; renderEnLigne(); });
+});
 
 </script>
 <script src="../assets/retour.js" defer></script>

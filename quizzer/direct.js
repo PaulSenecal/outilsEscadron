@@ -19,7 +19,7 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
+export const auth = getAuth(app);
 export const db = getDatabase(app);
 
 // Connexion anonyme : chaque navigateur garde le même identifiant d'une visite

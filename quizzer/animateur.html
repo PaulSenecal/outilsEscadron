@@ -189,6 +189,7 @@ body.en-jeu .tete{display:none}
 </main>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="banque.js"></script>
 <script type="module">
 import {
   db, connexion, messageErreurFirebase, maintenant, ref, get, set, update, remove, onValue, serverTimestamp,
@@ -196,7 +197,7 @@ import {
 } from './direct.js';
 
 // ═══════════════════════════════════════════
-// DONNÉES (même fichier et mêmes règles que quiz.html)
+// DONNÉES (même source et mêmes règles que quiz.html, voir banque.js)
 // ═══════════════════════════════════════════
 const REF_URL = 'data/quiz.json';
 const SUJETS_DEFAUT = [
@@ -235,9 +236,7 @@ async function demarrer() {
   }
   let data;
   try {
-    const r = await fetch(REF_URL + '?v=' + Date.now(), { cache: 'no-store' });
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    data = await r.json();
+    data = await chargerBanque();
   } catch (err) {
     echec('Jeu de questions indisponible', 'Impossible de lire <b>' + REF_URL + '</b> (' + esc(err.message) + ').');
     return;

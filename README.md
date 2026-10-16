@@ -34,9 +34,11 @@ aucune donnée transmise : tout s'exécute dans le navigateur.
 │   └── tests/          Tests (données fictives uniquement) : node suivi/tests/run.mjs, ui.mjs, csp.mjs
 ├── quizzer/
 │   ├── index.html      Accueil : choix entre quiz en ligne et éditeur
-│   ├── quiz.html       Quiz en ligne, lit data/quiz.json
-│   ├── editeur.html    Éditeur de questions (sauvegarde locale)
-│   └── data/quiz.json  Jeu de questions publié, exporté depuis l'éditeur
+│   ├── quiz.html       Quiz en ligne
+│   ├── animateur.html  Partie en direct (grand écran) ; joueur.html côté téléphones
+│   ├── editeur.html    Éditeur : mode local, ou base partagée après connexion Google
+│   ├── banque.js       Chargement des questions : base partagée, sinon data/quiz.json
+│   └── data/quiz.json  Jeu de questions de secours, exporté depuis l'éditeur
 ├── ccpg/index.html
 └── jo/
     ├── index.html      Table centrale : équipes, composition, résultats, bonus, classement, réglages
@@ -48,9 +50,26 @@ aucune donnée transmise : tout s'exécute dans le navigateur.
     └── tests/calcul.mjs  node jo/tests/calcul.mjs
 ```
 
+### Quizzer : questions partagées entre éditeurs
+
+Les questions vivent dans la base Firebase (nœud `quiz`, lecture publique). Le quiz en ligne et la
+partie en direct la lisent, et retombent sur `quizzer/data/quiz.json` si elle est vide ou injoignable :
+exporter ce fichier de temps en temps (« Sauvegarder JSON ») sert de sauvegarde.
+
+Seuls les comptes Google inscrits dans `editeurs` (ou un administrateur) peuvent modifier ; ce sont
+les règles de la base qui le vérifient, pas la page. Mise en place, une seule fois :
+
+1. Console Firebase → Authentication → Méthode de connexion → activer **Google**.
+2. Authentication → Paramètres → Domaines autorisés → ajouter `paulsenecal.github.io`.
+3. Publier les règles de `quizzer/regles-firebase.json` (voir ci-dessous).
+4. Se connecter dans l'éditeur : l'encart « Accès non autorisé » affiche l'identifiant du compte.
+   Dans Realtime Database → Données, créer `admins/<cet identifiant>` avec la valeur `true`.
+5. Recharger l'éditeur : bouton « Éditeurs » pour ajouter les autres comptes, et import du jeu
+   de questions si la base est vide.
+
 ### JO : saisie à plusieurs
 
-Les règles de la base Firebase sont dans `quizzer/regles-firebase.json` (nœuds `salles` et `jo`).
+Les règles de la base Firebase sont dans `quizzer/regles-firebase.json` (nœuds `salles`, `jo`, `quiz`, `editeurs` et `admins`).
 Après toute modification, les recopier dans la console Firebase → Realtime Database → Règles → Publier.
 Seuls les noms des équipes, les résultats et le nom des juges passent par Firebase ; les noms
 des cadets restent dans le navigateur de la table centrale.
