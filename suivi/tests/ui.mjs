@@ -133,14 +133,14 @@ const valeur = (sel, v) => { const e = document.querySelector(sel); e.value = v;
   verif("Fusion sans conflit : ses modifications et les miennes", v(id0).gant === "11" && v(id1).gant === "7" && ecrit.length === 1 && !$("#dlg-fusion").open);
   const relu = (await decryptFile(ecrit[0], "demonstration")).data, rv = id => relu.personnes.find(p => p.id === id).v;
   verif("Fusion : le fichier écrit contient la version fusionnée", rv(id0).gant === "11" && rv(id1).gant === "7" && relu.journal.some(j => j.qui === "Collègue"));
-  const B2 = JSON.parse(state.base); B2.personnes.find(p => p.id === id2).v.gant = "8";
+  const B2 = JSON.parse(state.base); B2.personnes.find(p => p.id === id2).v.gant = "97";
   surDisque = await versionDe(B2, "2026-10-07T10:00:00.000Z");
-  v(id2).gant = "10";
+  v(id2).gant = "98";
   const enCours = save(); await quand(() => $("#dlg-fusion").open);
   verif("Conflit sur la même case : fenêtre de choix", document.querySelectorAll("#fusion-list .fusion-item").length === 1, $("#fusion-list").textContent);
   document.querySelector('#fusion-list input[value="autre"]').click(); $("#form-fusion").requestSubmit(); await enCours;
-  verif("Conflit : sa version choisie puis enregistrée", v(id2).gant === "8" && ecrit.length === 2);
-  surDisque = ecrit.at(-1); v(id2).gant = "9";
+  verif("Conflit : sa version choisie puis enregistrée", v(id2).gant === "97" && ecrit.length === 2);
+  surDisque = ecrit.at(-1); v(id2).gant = "99";
   await save();
   verif("Fichier inchangé ailleurs : enregistrement direct", ecrit.length === 3 && !$("#dlg-fusion").open);
   // Relecture après écriture : un fichier relu différent n'est pas considéré comme enregistré
@@ -354,6 +354,62 @@ const valeur = (sel, v) => { const e = document.querySelector(sel); e.value = v;
   const apresSecours = await encryptData();
   verif("Nouveau mot de passe habituel, secours conservé", state.kek && state.dirty && (await decryptFile(apresSecours, "mot-de-passe-retrouve")).via === "principal"
     && (await decryptFile(apresSecours, "coffre-fort-du-capitaine")).via === "secours" && state.data.journal.at(-1).quoi.includes("secours"));
+
+  // Accès chef de peloton : défini par l'administrateur, le chef ne voit et ne modifie que son peloton
+  state.dirty = false; lock();
+  // Démo préparée d'un bloc, verrouillage automatique coupé avant que les données n'existent (sinon il peut se
+  // déclencher pendant le chiffrement, Chrome accélérant le temps virtuel). Peu d'itérations PBKDF2 : chaque dérivation
+  // à 600 000 consomme du temps virtuel, et ce passage en enchaîne une dizaine.
+  const cleChef = await clesNeuves("demonstration", 1000), demoChef = normalize(donneesDemo());
+  demoChef.meta.verrouMinutes = 0; demoChef.meta.accesKdf = KDF(1000, toB64(aleatoire(16)));
+  Object.assign(state, { data: demoChef, ...cleChef, lecture: { id: cleChef.cleId, key: cleChef.key }, mdpChange: false, autoSuspendu: "", handle: null, fileName: null,
+    dirty: false, auteur: "Testeur", lastIv: null, role: null, modele: null });
+  state.base = JSON.stringify(state.data); showApp();
+  const total = state.data.personnes.length, pChef = state.data.personnes[0].v;
+  clic("#btn-champs"); clic("#btn-acces");
+  const iPel = accesChoix.findIndex(([e, pl]) => e === pChef.escadron && pl === pChef.peloton);
+  valeur("#acces-pel", String(iPel)); valeur("#acces-mdp", "demonstration"); valeur("#acces-mdp2", "demonstration");
+  $("#form-acces").requestSubmit(); await quand(() => $("#err-acces").textContent.includes("différent"), 60000);
+  verif("Accès chef : différent du mot de passe habituel", !state.data.meta.acces);
+  valeur("#acces-mdp", "chef-du-peloton-test"); valeur("#acces-mdp2", "chef-du-peloton-test");
+  $("#form-acces").requestSubmit(); await quand(() => state.data.meta.acces, 60000);
+  verif("Accès chef défini", state.data.meta.acces.length === 1 && $("#acces-list").textContent.includes("accès défini") && state.dirty);
+  $("#dlg-acces").close(); $("#dlg-champs").close();
+  const pc = []; const fauxPc = () => ({ getFile: async () => ({ text: async () => pc.at(-1) || "" }), createWritable: async () => ({ write: async c => pc.push(c), close: async () => {} }) });
+  state.handle = fauxPc(); state.lastIv = null; await save(); await quand(() => !state.dirty, 60000);
+  verif("Fichier au format 3", JSON.parse(pc.at(-1)).version === 3 && Object.keys(JSON.parse(pc.at(-1)).parts).length === 1);
+  lock();
+  pending = { text: pc.at(-1), handle: fauxPc(), name: "pc.json", date: Date.now() };
+  $("#pw-open").value = "chef-du-peloton-test"; $("#form-open").requestSubmit(); await quand(() => state.data && $("#lock").hidden, 60000);
+  state.data.meta.verrouMinutes = 0;
+  const miens = state.data.personnes;
+  verif("Chef : seulement son peloton", state.role && miens.length > 0 && miens.length < total && miens.every(p => p.v.escadron === pChef.escadron && p.v.peloton === pChef.peloton)
+    && !$("#role-badge").hidden && $("#btn-import").hidden && $("#btn-champs").hidden, miens.length + " / " + total);
+  openPerson(miens[0].id);
+  verif("Chef : escadron et peloton non modifiables", document.querySelector('#p-body [data-f="peloton"]').readOnly || document.querySelector('#p-body [data-f="peloton"]').disabled);
+  document.querySelector('#p-body [data-f="gant"]').value = "42"; $("#form-person").requestSubmit();
+  const avantChef = JSON.parse(pc.at(-1));
+  await save(); await quand(() => !state.dirty, 60000);
+  const apresChef = JSON.parse(pc.at(-1));
+  verif("Chef : enregistre seulement sa partie", pc.length === 2 && apresChef.data === avantChef.data && apresChef.parts[state.role.id].data !== avantChef.parts[state.role.id].data);
+  clic("#btn-champs"); clic("#btn-import");
+  verif("Chef : réglages et imports refusés", !$("#dlg-champs").open && !$("#dlg-import")?.open);
+  await verrouillerSession();
+  $("#pw-session").value = "demonstration"; $("#form-session").requestSubmit(); await quand(() => $("#err-session").textContent.includes("incorrect"), 60000);
+  verif("Session du chef : le mot de passe habituel ne la change pas de rôle", !state.data);
+  $("#pw-session").value = "chef-du-peloton-test"; $("#form-session").requestSubmit(); await quand(() => state.data, 60000);
+  verif("Session du chef : reprise avec son mot de passe", state.role && state.data.personnes.length === miens.length);
+  lock();
+  pending = { text: pc.at(-1), handle: null, name: "pc.json", date: Date.now() };
+  $("#pw-open").value = "demonstration"; $("#form-open").requestSubmit(); await quand(() => state.data && $("#lock").hidden, 60000);
+  verif("Administrateur : tout le fichier, avec la modification du chef", !state.role && state.data.personnes.length === total
+    && state.data.personnes.find(p => p.id === miens[0].id).v.gant === "42" && $("#role-badge").hidden && !$("#btn-champs").hidden);
+  const accesChef = "Chef " + pChef.peloton + " · " + pChef.escadron;
+  clic("#btn-journal"); valeur("#journal-acces", accesChef);
+  const lignes = [...document.querySelectorAll("#journal-list .journal-row")];
+  verif("Journal : modifications signées par l'accès du chef, filtre « Accès »", lignes.length > 0 && lignes.every(l => l.textContent.includes(accesChef))
+    && lignes.some(l => l.textContent.includes("Gants")) && state.data.journal.some(j => j.acces === "Administrateur" && j.quoi.startsWith("Accès chef de peloton défini")), lignes.length);
+  $("#dlg-journal").close();
 
   verif("Aucune erreur JavaScript", erreurs.length === 0, erreurs.join(" | "));
   verif("Fin du scénario", true);

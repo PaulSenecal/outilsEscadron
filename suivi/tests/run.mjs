@@ -17,7 +17,7 @@ const L = vm.runInContext(`({ state, emptyData, normalize, donneesDemo, encryptD
   permisEtat, defaultReglesPermis, seanceChangements, echeances, diffFiche, journaliser, JOURNAL_MAX, statFormation, statutTaux,
   statusOf, reoBlocs, groupesPeloton, defaultChamps, SCHEMA, fusionner, ITER, forceMotDePasse, controleQualite, historiquePersonne,
   seuilAlerte, isoLocal, today, lireCartec, planCartec, appliquerCartec, escadronPropose, reoBlocs, lireUIR, planUIR, appliquerUIR,
-  duree, aEcheance, clesNeuves, creerSecours, toB64 })`, ctx);
+  duree, aEcheance, clesNeuves, creerSecours, toB64, creerAcces, decouper, assembler, empreinte })`, ctx);
 
 let ok = 0, ko = 0;
 /* Fichier au format 1 (ancien) : données chiffrées directement par la clé dérivée du mot de passe */
@@ -195,17 +195,17 @@ await test("Fusion : ajouts des deux côtés, case vidée, même modification = 
 await test("Fusion : suppression d'un côté, modification de l'autre = conflit", () => {
   const A = demo(), id = A.personnes[5].id;
   let B = copie(A), C = copie(A);
-  B.personnes = B.personnes.filter(p => p.id !== id); C.personnes.find(p => p.id === id).v.gant = "10";
+  B.personnes = B.personnes.filter(p => p.id !== id); C.personnes.find(p => p.id === id).v.gant = "99";
   let f = L.fusionner(A, B, C);
   egal(f.conflits.length, 1, "supprimée par l'autre, modifiée par moi");
   vrai(f.data.personnes.some(p => p.id === id), "gardée par défaut");
   f.conflits[0].choisirAutre(f.data); vrai(!f.data.personnes.some(p => p.id === id), "supprimée au choix");
   B = copie(A); C = copie(A);
-  C.personnes = C.personnes.filter(p => p.id !== id); B.personnes.find(p => p.id === id).v.gant = "10";
+  C.personnes = C.personnes.filter(p => p.id !== id); B.personnes.find(p => p.id === id).v.gant = "99";
   f = L.fusionner(A, B, C);
   egal(f.conflits.length, 1, "supprimée par moi, modifiée par l'autre");
   vrai(!f.data.personnes.some(p => p.id === id), "supprimée par défaut (mon choix)");
-  f.conflits[0].choisirAutre(f.data); egal(f.data.personnes.find(p => p.id === id).v.gant, "10", "sa version restaurée");
+  f.conflits[0].choisirAutre(f.data); egal(f.data.personnes.find(p => p.id === id).v.gant, "99", "sa version restaurée");
   B = copie(A); C = copie(A); B.personnes = B.personnes.filter(p => p.id !== id);
   f = L.fusionner(A, B, C);
   egal([f.conflits.length, f.data.personnes.some(p => p.id === id)], [0, false], "supprimée par l'autre, non modifiée par moi");
@@ -432,6 +432,77 @@ await test("Schéma 4 : nouveaux champs ajoutés aux anciens fichiers, fin de co
   const fc = n.champs.find(c => c.id === "fincontrat");
   egal([fc.limite, fc.alerte, n.champs.find(c => c.id === "nsecu").sensible], [true, 90, true]);
   egal(L.normalize(n).champs.length, n.champs.length, "idempotent");
+});
+
+await test("Schéma 5 : tailles casque et frag ajoutées dans Habillement", () => {
+  const d = L.emptyData("v4");
+  d.champs = d.champs.filter(c => !["casque", "frag"].includes(c.id)); d.meta.schema = 4;
+  const n = L.normalize(d), ids = n.champs.map(c => c.id);
+  egal(ids.slice(ids.indexOf("chaussure"), ids.indexOf("chaussure") + 3), ["chaussure", "casque", "frag"], "après le dernier champ Habillement");
+  vrai(n.champs.find(c => c.id === "frag").stats, "statistiques des tailles");
+  egal(L.normalize(n).champs.length, n.champs.length, "idempotent");
+});
+
+await test("Accès chef de peloton : il ne déchiffre que son peloton, l'administrateur relit tout", async () => {
+  const d = demo(), tri = P => P.map(p => p.id).sort();
+  Object.assign(L.state, await L.clesNeuves("mot-de-passe-habituel", 1000), { role: null, modele: null });
+  const [e1, p1] = [d.personnes[0].v.escadron, d.personnes[0].v.peloton];
+  const autre = d.personnes.find(p => p.v.peloton !== p1 || p.v.escadron !== e1);
+  await L.creerAcces(d.meta, e1, p1, "chef-du-peloton-1");
+  await L.creerAcces(d.meta, autre.v.escadron, autre.v.peloton, "chef-de-l-autre-peloton");
+  const a1 = d.meta.acces[0], miens = d.personnes.filter(p => p.v.escadron === e1 && p.v.peloton === p1);
+  d.listes.push({ id: "l1", nom: "Liste admin", lignes: [], champs: [], etat: {} });
+  const fichier = await L.encryptData("2026-01-01T00:00:00.000Z"), o = JSON.parse(fichier);
+  egal(o.version, 3, "format 3 avec des parties"); egal(Object.keys(o.parts).length, 2);
+  vrai(!fichier.includes(a1.cle), "clé du peloton absente en clair");
+  // Administrateur : tout est rassemblé
+  const adm = await L.decryptFile(fichier, "mot-de-passe-habituel");
+  egal(tri(adm.data.personnes), tri(d.personnes), "toutes les personnes"); vrai(!adm.role, "pas de rôle");
+  // Chef : son peloton seulement, sans clés ni réglages sensibles
+  const r = await L.decryptFile(fichier, "chef-du-peloton-1");
+  egal([r.via, r.role.peloton, r.role.escadron], ["chef", p1, e1]);
+  egal(tri(r.data.personnes), tri(miens), "seulement son peloton");
+  vrai(!r.data.meta.acces && !r.data.meta.accesKdf && !r.data.meta.secours, "meta sans clés");
+  vrai(!r.data.listes.some(l => l.id === "l1"), "listes de l'administrateur invisibles");
+  vrai(r.data.champs.length === d.champs.length, "réglages des champs copiés");
+  let refuse = false; try { await L.decryptFile(fichier, "chef-du-peloton-1", { chef: false }); } catch { refuse = true; }
+  vrai(refuse, "chef refusé quand l'accès chef n'est pas permis");
+  // Le chef modifie une fiche et enregistre : seule sa partie change
+  const sauve = { ...L.state };
+  Object.assign(L.state, { data: L.normalize(r.data), key: r.key, kek: null, role: r.role, modele: fichier });
+  L.state.data.personnes[0].v.gant = "99";
+  const parChef = await L.encryptData("2026-02-01T00:00:00.000Z"), o2 = JSON.parse(parChef);
+  egal([o2.iv, o2.data, o2.parts[d.meta.acces[1].id]], [o.iv, o.data, o.parts[d.meta.acces[1].id]], "reste du fichier recopié");
+  vrai(L.empreinte(o2) !== L.empreinte(o), "empreinte changée");
+  Object.assign(L.state, sauve);
+  const adm2 = await L.decryptFile(parChef, "mot-de-passe-habituel");
+  egal(adm2.data.personnes.find(p => p.id === r.data.personnes[0].id).v.gant, "99", "modification du chef lue par l'administrateur");
+  vrai(adm2.data.listes.some(l => l.id === "l1"), "liste de l'administrateur conservée");
+  // Changement du mot de passe du peloton : nouvelle clé, l'ancien ne sert plus
+  L.state.data = L.normalize(adm2.data);
+  await L.creerAcces(L.state.data.meta, e1, p1, "nouveau-mot-de-passe-p1");
+  const apres = await L.encryptData();
+  refuse = false; try { await L.decryptFile(apres, "chef-du-peloton-1"); } catch { refuse = true; }
+  vrai(refuse, "ancien mot de passe du chef refusé");
+  egal(tri((await L.decryptFile(apres, "nouveau-mot-de-passe-p1")).data.personnes), tri(miens));
+  egal(L.state.data.meta.acces.length, 2, "un seul accès par peloton");
+});
+
+await test("Accès chef de peloton : découpage et rassemblement (journal, listes)", () => {
+  const d = L.normalize(L.donneesDemo()), p = d.personnes[0];
+  d.meta.acces = [{ id: "A", escadron: p.v.escadron, peloton: p.v.peloton }];
+  const autre = d.personnes.find(x => x.v.peloton !== p.v.peloton);
+  d.journal = [{ t: "2026-01-01", qui: "x", quoi: "fiche", p: [p.id] }, { t: "2026-01-02", qui: "x", quoi: "deux", p: [p.id, autre.id] },
+    { t: "2026-01-03", qui: "x", quoi: "réglages" }, { t: "2026-01-04", qui: "y", quoi: "liste", part: "A" }];
+  d.listes = [{ id: "l", part: "A", nom: "x", lignes: [] }];
+  const { reste, parts } = L.decouper(d);
+  egal(parts.A.journal.map(j => j.quoi), ["fiche", "liste"], "journal de ses fiches");
+  egal(reste.journal.map(j => j.quoi), ["deux", "réglages"]);
+  vrai(!parts.A.listes[0].part && !reste.listes.length, "liste du peloton, sans étiquette");
+  vrai(!reste.personnes.some(x => x.id === p.id), "fiche retirée du reste");
+  const R = L.assembler(reste, parts);
+  egal(R.personnes.length, d.personnes.length); egal(R.journal.map(j => j.quoi), d.journal.map(j => j.quoi));
+  egal(R.listes[0].part, "A");
 });
 
 await test("Date limite (VMP, fin de contrat), âge et ancienneté", () => {

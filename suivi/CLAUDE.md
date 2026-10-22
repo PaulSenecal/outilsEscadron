@@ -69,14 +69,36 @@ mis à jour sans marquer le fichier comme modifié).
 - La clé dérivée reste en mémoire pendant la session ; « Verrouiller » vide l'état
 - Mot de passe : 10 caractères minimum ; sans mot de passe de secours, aucune récupération possible
 
+### Accès des chefs de peloton (v3.14, format 3)
+- meta.acces : [{ id, escadron, peloton, cle (clé AES brute du peloton, base64), env: { iv, cle }, defini, qui }],
+  meta.accesKdf : sel PBKDF2 commun à toutes les enveloppes des chefs. Fenêtre #dlg-acces (bouton dans « Champs et
+  réglages ») : définir / changer (creerAcces : NOUVELLE clé et nouvel id, l'ancien mot de passe ne lit plus les versions
+  suivantes) ou retirer. Mot de passe refusé s'il est le mot de passe habituel, le secours ou celui d'un autre peloton.
+- encryptData (administrateur) : decouper(data) → reste (bloc principal, clé state.key) + une partie par accès (parts[id],
+  clé du peloton) = personnes et archives du peloton (memeRattachement : escadron + peloton, accents / casse ignorés),
+  listes et journal étiquetés part (ou journal dont toutes les personnes sont du peloton), + communPour : meta limitée à
+  META_COMMUNE (jamais acces, secours, alias), champs, règles de permis, REO filtré sur son peloton / escadron.
+  Version 3 seulement s'il y a des accès, sinon version 2 comme avant.
+- ouvrirFichier : principal, puis enveloppes des chefs (ouvrirAcces, option chef), puis secours. Principal / secours :
+  assemblerFichier rassemble toutes les parties (étiquette part sur listes et journal). Chef : sa partie seulement,
+  role = { id, escadron, peloton }, state.role, state.kek = null.
+- Chef (state.role) : encryptPartie rechiffre sa partie et recopie le reste de state.modele (dernière version lue sur le
+  disque, mise à jour par lireDisque). Escadron / peloton imposés et non modifiables dans la fiche. appliquerRole masque,
+  reserveAdmin refuse : imports Excel / CARTEC / UIR, Champs et réglages, mots de passe, sauvegarde, REO (noms, postes),
+  règles de permis. Accès modifié par l'administrateur (sa partie absente) : message, pas d'écriture.
+- empreinte(o) = iv du bloc principal + iv des parties : remplace l'IV seul pour lastIv (un chef ne change que sa partie).
+- Session verrouillée : le rôle doit rester le même (le mot de passe habituel ne déverrouille pas une session de chef).
+- Limite : le chef a le droit d'écrire le fichier (Drive) ; il peut l'abîmer mais pas lire les autres pelotons.
+
 ### Format du fichier
 { format: "suivi-personnel", version: 2, cleId,
   principal: { kdf: { name: "PBKDF2", hash: "SHA-256", iterations, salt }, iv, cle },
   secours?: { kdf, iv, priv, cle (RSA-OAEP) },
   iv (base64), data (base64, JSON chiffré) }
+Format 3 (accès des chefs) : même chose + acces: { kdf, liste: [{ iv, cle }] } + parts: { [id]: { iv, data } }.
 Ancien format 1 : { format, version: 1, kdf, iv, data } (relu seulement).
 
-### Modèle de données (une fois déchiffré, schéma 4)
+### Modèle de données (une fois déchiffré, schéma 5)
 - meta : { titre, alerteJours (défaut 30), verrouMinutes (défaut 15, 0 = jamais), enregAuto (défaut vrai), schema, reglesPermisV,
   cree, modifie, demo? (données fictives), secours? (voir Chiffrement) }
 - champs : [{ id, label, groupe, type, validite?, limite?, alerte?, sensible?, calcul?, options?, alias?, fixe? }]
@@ -95,7 +117,7 @@ Ancien format 1 : { format, version: 1, kdf, iv, data } (relu seulement).
     nb enfants, conjoint, enfants 1-5), Personne à prévenir (+ lien), Administratif (carte d'identité militaire,
     diplôme civil), Santé (+ VMP), Permis,
     NRBC (ANP, T3P, atmosphère viciée), Habillement (béret, veste, pantalon, gants,
-    chaussures), Famas, HK, Glock, Autres armes (MAG, Minimi, 12,7, SCAR, MMP, Milan, Eryx), Divers
+    chaussures, casque, frag), Famas, HK, Glock, Autres armes (MAG, Minimi, 12,7, SCAR, MMP, Milan, Eryx), Divers
   - stats : true = répartition des valeurs dans le tableau de situation (tailles NRBC par défaut)
 - personnes : [{ id, v: { [champId]: valeur } }] (valeur vide = clé absente)
 - listes : [{ id, nom, modifie, lignes: [{ brut, id }], champs: [champId], etat }]
@@ -107,7 +129,9 @@ Ancien format 1 : { format, version: 1, kdf, iv, data } (relu seulement).
   absentes sont ajoutées aux fichiers existants, et une règle corrigée (REGLES_CORRIGEES) n'est
   remplacée que si le fichier a encore l'ancienne valeur non modifiée à la main.
 - archives : [{ id, v, archive: { date, motif } }] — personnes parties, exclues de tous les tableaux
-- journal : [{ t (ISO), qui, quoi, p? (ids des personnes concernées) }] — 3000 entrées max, chiffré avec le reste.
+- journal : [{ t (ISO), qui, acces (v3.14 : accesLibelle() = « Administrateur » ou « Chef P1 · 5ESC », déduit du mot de
+  passe, jamais saisi), quoi, p? (ids des personnes concernées) }] — auteur affiché : auteurJournal / quiHtml ; filtre
+  « Accès » dans la fenêtre du journal — 3000 entrées max, chiffré avec le reste.
   modif(label, détails, ids) : passer les ids pour l'historique de la fiche (historiquePersonne : par id, sinon par nom)
 - reo : { noms: { "PELOTON|GOLF": nom affiché }, postes: { "PELOTON|GOLF": nb de postes prévus },
   cartec?: { date, escadrons: { [escadron]: { unite, groupes: { "PEL|GOLF": nom }, vacants: { "PEL|GOLF": [libellés] } } } } }
@@ -119,7 +143,8 @@ Ancien format 1 : { format, version: 1, kdf, iv, data } (relu seulement).
   schéma 2 → 3 (migrerV3, idempotente) : gants / chaussures de NRBC vers Habillement,
   ajout béret, veste, pantalon, Eryx, règles de permis par défaut ; schéma 3 → 4 (migrerV4, idempotente) : champs
   IDENTITE_V4 / CARRIERE_V4 / FAMILLE_V4 / ADMIN_V4 + vmp + pap_lien insérés à leur place, drapeaux limite / sensible /
-  calcul posés sur les champs existants s'ils n'ont jamais été réglés (fin de contrat : limite, alerte 90 j).
+  calcul posés sur les champs existants s'ils n'ont jamais été réglés (fin de contrat : limite, alerte 90 j) ;
+  schéma 4 → 5 (migrerV5, idempotente) : casque et frag ajoutés après le dernier champ Habillement.
 
 ### Règles d'import (fichier Excel de l'escadron, ex. CDCTest.xlsx)
 - .xlsx lu directement (zip + XML, DecompressionStream), ou CSV (UTF-8 ou Windows-1252)
@@ -279,7 +304,7 @@ Statuts : expiré (bad), à prévoir si moins de seuilAlerte(f) jours (warn),
   Filtre escadron + peloton (« Tous » = un tableau par peloton, une page par peloton à
   l'impression), export CSV avec colonnes d'état.
 - Page « Habillement » : même présentation que NRBC (béret, veste, pantalon, gants,
-  chaussures + récap des tailles par peloton). CATI : Eryx ajouté en anti-char.
+  chaussures, casque, frag + récap des tailles par peloton). CATI : Eryx ajouté en anti-char.
 - Page « Permis » (SYNTHESES.permis, crochets colonnes / cellule / xcell / total / filtre) :
   cartes par permis (titulaires / éligibles / à vérifier, cliquables) + filtre « Afficher ».
   Présentation « Par peloton » par défaut (comme CATI) ou « Liste complète » (tableau unique,
