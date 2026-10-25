@@ -90,6 +90,21 @@ const valeur = (sel, v) => { const e = document.querySelector(sel); e.value = v;
   clic("#btn-archives"); document.querySelector("#archives-list [data-restaurer]").click();
   verif("Restauration", state.data.personnes.length === nb && state.data.archives.length === 1); $("#dlg-archives").close();
 
+  // Fiche : un Bravo met à jour le dernier tir, le ToC non
+  const pt = state.data.personnes[0]; openPerson(pt.id);
+  const saisir = (k, v) => { const i = document.querySelector('#p-body [data-f="' + k + '"]'); i.value = v; i.dispatchEvent(new Event("input", { bubbles: true })); };
+  saisir("hk_tir", "2020-01-01"); saisir("hk_toc", "2030-01-01");
+  const tirApresToc = document.querySelector('#p-body [data-f="hk_tir"]').value;
+  saisir("hk_b", "2030-02-01"); $("#form-person").requestSubmit();
+  verif("Fiche : Bravo → dernier tir, ToC sans effet", tirApresToc === "2020-01-01" && pt.v.hk_tir === "2030-02-01" && pt.v.hk_toc === "2030-01-01", tirApresToc + " / " + pt.v.hk_tir);
+  annuler();
+
+  // Statistiques : FGE
+  setView("stats"); stEsc = ""; renderStats();
+  verif("Statistiques : tableau FGE", $("#stats").textContent.includes("FGE") && document.querySelectorAll('#stats tr[data-fiche]').length > 0);
+  document.querySelector('#stats tr[data-fiche]').click();
+  verif("FGE : clic = fiche", $("#dlg-person").open); $("#dlg-person").close();
+
   // Journal
   clic("#btn-journal");
   verif("Journal affiché", document.querySelectorAll("#journal-list .journal-row").length >= 4, document.querySelectorAll("#journal-list .journal-row").length);
@@ -355,7 +370,7 @@ const valeur = (sel, v) => { const e = document.querySelector(sel); e.value = v;
   verif("Nouveau mot de passe habituel, secours conservé", state.kek && state.dirty && (await decryptFile(apresSecours, "mot-de-passe-retrouve")).via === "principal"
     && (await decryptFile(apresSecours, "coffre-fort-du-capitaine")).via === "secours" && state.data.journal.at(-1).quoi.includes("secours"));
 
-  // Accès chef de peloton : défini par l'administrateur, le chef ne voit et ne modifie que son peloton
+  // Accès chef de peloton : défini par l'administrateur, le chef ne voit que son peloton, en lecture seule
   state.dirty = false; lock();
   // Démo préparée d'un bloc, verrouillage automatique coupé avant que les données n'existent (sinon il peut se
   // déclencher pendant le chiffrement, Chrome accélérant le temps virtuel). Peu d'itérations PBKDF2 : chaque dérivation
@@ -386,12 +401,17 @@ const valeur = (sel, v) => { const e = document.querySelector(sel); e.value = v;
   verif("Chef : seulement son peloton", state.role && miens.length > 0 && miens.length < total && miens.every(p => p.v.escadron === pChef.escadron && p.v.peloton === pChef.peloton)
     && !$("#role-badge").hidden && $("#btn-import").hidden && $("#btn-champs").hidden, miens.length + " / " + total);
   openPerson(miens[0].id);
-  verif("Chef : escadron et peloton non modifiables", document.querySelector('#p-body [data-f="peloton"]').readOnly || document.querySelector('#p-body [data-f="peloton"]').disabled);
-  document.querySelector('#p-body [data-f="gant"]').value = "42"; $("#form-person").requestSubmit();
-  const avantChef = JSON.parse(pc.at(-1));
-  await save(); await quand(() => !state.dirty, 60000);
-  const apresChef = JSON.parse(pc.at(-1));
-  verif("Chef : enregistre seulement sa partie", pc.length === 2 && apresChef.data === avantChef.data && apresChef.parts[state.role.id].data !== avantChef.parts[state.role.id].data);
+  const champFiche = k => document.querySelector('#p-body [data-f="' + k + '"]'), visible = q => getComputedStyle($(q)).display !== "none";
+  const fige = k => champFiche(k).readOnly || champFiche(k).disabled;
+  verif("Chef : fiche en lecture seule", fige("peloton") && fige("gant") && fige("hk_b") && !visible("#p-valider") && !visible("#btn-del") && !visible("#btn-archiver"));
+  const gantAvant = miens[0].v.gant;
+  champFiche("gant").value = "42"; $("#form-person").requestSubmit();
+  $("#dlg-person").close();
+  await save();
+  verif("Chef : aucune modification ni enregistrement", miens[0].v.gant === gantAvant && !state.dirty && pc.length === 1
+    && !visible("#btn-add") && !visible("#btn-seance") && !visible("#btn-save"));
+  clic("#btn-seance"); openPerson(null);
+  verif("Chef : séance et nouvelle fiche refusées", !$("#dlg-seance").open && !$("#dlg-person").open);
   clic("#btn-champs"); clic("#btn-import");
   verif("Chef : réglages et imports refusés", !$("#dlg-champs").open && !$("#dlg-import")?.open);
   await verrouillerSession();
@@ -402,13 +422,13 @@ const valeur = (sel, v) => { const e = document.querySelector(sel); e.value = v;
   lock();
   pending = { text: pc.at(-1), handle: null, name: "pc.json", date: Date.now() };
   $("#pw-open").value = "demonstration"; $("#form-open").requestSubmit(); await quand(() => state.data && $("#lock").hidden, 60000);
-  verif("Administrateur : tout le fichier, avec la modification du chef", !state.role && state.data.personnes.length === total
-    && state.data.personnes.find(p => p.id === miens[0].id).v.gant === "42" && $("#role-badge").hidden && !$("#btn-champs").hidden);
-  const accesChef = "Chef " + pChef.peloton + " · " + pChef.escadron;
-  clic("#btn-journal"); valeur("#journal-acces", accesChef);
+  verif("Administrateur : tout le fichier, sans modification du chef", !state.role && state.data.personnes.length === total
+    && state.data.personnes.find(p => p.id === miens[0].id).v.gant === gantAvant && $("#role-badge").hidden && !$("#btn-champs").hidden
+    && !document.body.classList.contains("lecture-seule") && visible("#btn-add"));
+  clic("#btn-journal"); valeur("#journal-acces", "Administrateur");
   const lignes = [...document.querySelectorAll("#journal-list .journal-row")];
-  verif("Journal : modifications signées par l'accès du chef, filtre « Accès »", lignes.length > 0 && lignes.every(l => l.textContent.includes(accesChef))
-    && lignes.some(l => l.textContent.includes("Gants")) && state.data.journal.some(j => j.acces === "Administrateur" && j.quoi.startsWith("Accès chef de peloton défini")), lignes.length);
+  verif("Journal : filtre « Accès »", lignes.length > 0 && lignes.every(l => l.textContent.includes("Administrateur"))
+    && state.data.journal.some(j => j.acces === "Administrateur" && j.quoi.startsWith("Accès chef de peloton défini")), lignes.length);
   $("#dlg-journal").close();
 
   verif("Aucune erreur JavaScript", erreurs.length === 0, erreurs.join(" | "));

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <!-- Politique de sécurité : aucune requête réseau (sauf Google Fonts), seul le script de ce fichier peut s'exécuter
      (empreinte sha256 : après toute modification du script, lancer « node tests/csp.mjs » pour la mettre à jour). -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-k3aqn9LbsmlLmCBNH6uPaGvtxQJIztq++uKOMDRCmgw='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-b3nR/XCO3XsC+UfD+rSJCDilu+ncPuNvLikjfc8ikC4='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
 <title>Suivi du personnel</title>
 <meta name="theme-color" content="#0B1629">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%2313233F'/%3E%3Cpath d='M32 9l18 7v13c0 12-8 21-18 26-10-5-18-14-18-26V16z' fill='none' stroke='%23C9A227' stroke-width='4'/%3E%3Ccircle cx='32' cy='27' r='6' fill='%23C9A227'/%3E%3Cpath d='M21 44c2-7 6-10 11-10s9 3 11 10' fill='%23C9A227'/%3E%3C/svg%3E">
@@ -127,6 +127,7 @@ a{color:var(--navy)}
 .lock-demo{padding:0 28px 24px;margin-top:-8px;text-align:center}
 .lock-demo .btn{width:100%;justify-content:center;border-style:dashed}
 .session-msg{margin:0;padding:10px 12px;background:var(--warn-bg);border-radius:6px;font-size:14px}
+.lecture-seule :is(#btn-add, #btn-seance, #btn-save, #btn-undo, #ls-save, #ls-del, #btn-del, #btn-archiver, #p-valider, [data-clic="#btn-add"], [data-clic="#btn-seance"], [data-clic="#btn-import"], [data-act="add"], [data-act="import"], [data-restaurer], [data-purger]){display:none!important}
 .demo-badge{background:var(--gold);color:var(--navy-2);font-weight:700;padding:1px 8px;border-radius:999px;font-size:12px}
 .acces-row{display:flex;flex-wrap:wrap;gap:4px 14px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
 .acces-row .etat{color:var(--muted);font-size:14px;flex:1}
@@ -185,6 +186,7 @@ a{color:var(--navy)}
 .qa .btn{display:block;padding:14px 16px;font-size:15px;font-weight:600;white-space:normal;text-align:left;line-height:1.25}
 .qa .btn small{display:block;font-weight:400;font-size:12px;color:var(--muted);margin-top:3px}
 .qa .btn-gold small{color:var(--navy)}
+.st-tbl tr.lien{cursor:pointer} .st-tbl tr.lien:hover td{background:rgba(201,162,39,.12)}
 .kpi.lien{cursor:pointer} .kpi.lien:hover{box-shadow:0 0 0 2px var(--navy) inset}
 #accueil-situation{margin-top:22px}
 
@@ -813,7 +815,7 @@ details summary{cursor:pointer;font-weight:600;color:var(--navy)}
       <button type="button" class="btn btn-danger left" id="btn-del">Supprimer</button>
       <button type="button" class="btn" id="btn-archiver" title="La personne quitte l'unité : sa fiche est conservée dans les archives">Archiver</button>
       <button type="button" class="btn" data-close>Annuler</button>
-      <button type="submit" class="btn btn-gold">Valider</button>
+      <button type="submit" class="btn btn-gold" id="p-valider">Valider</button>
     </div>
   </form>
 </dialog>
@@ -958,7 +960,7 @@ details summary{cursor:pointer;font-weight:600;color:var(--navy)}
 <dialog id="dlg-acces" class="wide">
   <form id="form-acces" autocomplete="off">
     <div class="dlg-head"><h2>Accès des chefs de peloton</h2>
-      <p>Chaque chef de peloton ouvre le même fichier avec son propre mot de passe : il voit et modifie seulement les fiches de son peloton. Son peloton est chiffré à part : avec son mot de passe, les autres pelotons restent illisibles.</p></div>
+      <p>Chaque chef de peloton ouvre le même fichier avec son propre mot de passe : il voit seulement les fiches de son peloton, en lecture seule (aucune modification, aucun enregistrement). Les chefs de groupe utilisent l'accès de leur peloton. Son peloton est chiffré à part : avec son mot de passe, les autres pelotons restent illisibles.</p></div>
     <div class="dlg-body">
       <div id="acces-list"></div>
       <p class="subhead">Définir ou changer un mot de passe</p>
@@ -966,7 +968,7 @@ details summary{cursor:pointer;font-weight:600;color:var(--navy)}
       <label class="fld"><span>Mot de passe du chef de peloton (10 caractères minimum)</span><input type="password" id="acces-mdp" autocomplete="new-password"></label>
       <div class="force" id="force-acces" aria-live="polite"><div class="force-barre"><i></i></div><span class="force-label"></span><p class="force-conseil"></p></div>
       <label class="fld"><span>Confirmer le mot de passe</span><input type="password" id="acces-mdp2" autocomplete="new-password"></label>
-      <p class="hint">Changer le mot de passe d'un peloton crée une nouvelle clé : l'ancien mot de passe n'ouvre plus les versions suivantes (à faire quand un chef s'en va). Le chef de peloton ne peut pas changer l'escadron ni le peloton d'une fiche ; les imports (Excel, CARTEC, UIR), les champs et réglages et les mots de passe restent réservés au mot de passe habituel.</p>
+      <p class="hint">Changer le mot de passe d'un peloton crée une nouvelle clé : l'ancien mot de passe n'ouvre plus les versions suivantes (à faire quand un chef s'en va). Toutes les modifications (fiches, séances, listes, imports, champs et réglages, mots de passe) restent réservées au mot de passe habituel.</p>
       <p class="lock-error" id="err-acces" role="alert"></p>
     </div>
     <div class="dlg-foot">
@@ -1106,10 +1108,14 @@ const enc = new TextEncoder(), dec = new TextDecoder();
 const FORMAT = "suivi-personnel";
 const ITER = 600000;          // PBKDF2 (OWASP 2023). Un fichier plus ancien est relu avec ses itérations et mis à niveau au prochain enregistrement
 const SCHEMA = 5;
-const VERSION = "3.14";
+const VERSION = "3.15";
 /* Historique affiché par le bouton « Nouveautés » : à chaque évolution, incrémenter VERSION
    et ajouter une entrée EN TÊTE de cette liste. */
 const NOUVEAUTES = [
+  { v: "3.15", date: "25/10/2026", items: [
+    "Statistiques : nouveau tableau « FGE — un an de service » : les 1CL et CHA qui ont au moins un an de service (calculé depuis la date d'entrée en service) sont éligibles, les autres avec la date à laquelle ils le seront. Aussi dans l'export Excel.",
+    "Accès des chefs de peloton en lecture seule : ils consultent et exportent leur peloton, mais ne peuvent plus rien modifier ni enregistrer. Les chefs de groupe utilisent l'accès de leur peloton.",
+    "Tirs : un Bravo, un Charlie ou un Delta (GPB, tir NRBC…) met à jour le « Dernier tir » de l'arme, dans la fiche comme dans « Saisir une séance ». Le ToC ne met rien à jour."] },
   { v: "3.14", date: "22/10/2026", items: [
     "Habillement : tailles de casque et de gilet frag, dans la fiche, la page Habillement (avec le récapitulatif par peloton) et les statistiques.",
     "Accès des chefs de peloton (Champs et réglages) : chaque chef de peloton reçoit son propre mot de passe. Il ouvre le même fichier, mais ne voit et ne modifie que les fiches de son peloton ; les autres pelotons sont chiffrés à part et lui restent illisibles.",
@@ -2574,16 +2580,60 @@ function fusionner(A, B, C) {
 }
 
 /* ---------- Séance (tir, secourisme…) saisie pour plusieurs personnes ---------- */
-/* Changements à appliquer. Une date plus récente déjà saisie est conservée, sauf si « forcer ». */
-function seanceChangements(personnes, champs, date, forcer) {
-  const out = [];
-  personnes.forEach(p => champs.forEach(f => {
-    const avant = p.v[f.id] || "";
-    if (avant === date) return;
-    const garde = !forcer && /^\d{4}-\d{2}-\d{2}$/.test(avant) && avant > date;
-    out.push({ p, f, avant, apres: garde ? avant : date, garde });
-  }));
+/* Changements à appliquer. Une date plus récente déjà saisie est conservée, sauf si « forcer ».
+   tous = tous les champs du fichier : le « Dernier tir » d'une arme suit ses tirs (dernierTirDe), ajouté avec auto: true. */
+function seanceChangements(personnes, champs, date, forcer, tous = champs) {
+  const out = [], choisis = new Set(champs.map(f => f.id));
+  personnes.forEach(p => {
+    const ch = [];
+    champs.forEach(f => {
+      const avant = p.v[f.id] || "";
+      if (avant === date) return;
+      const garde = !forcer && /^\d{4}-\d{2}-\d{2}$/.test(avant) && avant > date;
+      ch.push({ p, f, avant, apres: garde ? avant : date, garde });
+    });
+    const vus = new Set();
+    ch.filter(c => !c.garde).forEach(c => {
+      const dt = dernierTirDe(tous, c.f), avant = dt && (p.v[dt.id] || "");
+      if (!dt || choisis.has(dt.id) || vus.has(dt.id) || !(c.apres > avant)) return;
+      vus.add(dt.id); ch.push({ p, f: dt, avant, apres: c.apres, garde: false, auto: true });
+    });
+    out.push(...ch);
+  });
   return out;
+}
+
+/* ---------- Dernier tir d'une arme ---------- */
+/* Un tir Bravo, Charlie ou Delta (GPB, tir NRBC… : toute autre date du groupe de l'arme) met à jour le « Dernier tir »
+   de l'arme (champ …_tir du même groupe) s'il est plus récent. Le ToC ne met rien à jour. */
+const estDernierTir = f => /_tir$/.test(f.id);
+const estToc = f => /_toc$/.test(f.id) || norm(f.label) === "toc";
+function dernierTirDe(champs, f) {
+  if (f.type !== "date" || estDernierTir(f) || estToc(f)) return null;
+  return champs.find(c => c.groupe === f.groupe && c.type === "date" && estDernierTir(c)) || null;
+}
+/* Fiche : chaque « Dernier tir » ramené au plus récent de ses tirs (v modifié et renvoyé) */
+function majDernierTir(v, champs) {
+  champs.forEach(f => {
+    const dt = dernierTirDe(champs, f), d = v[f.id];
+    if (dt && /^\d{4}-\d{2}-\d{2}$/.test(d || "") && d > (v[dt.id] || "")) v[dt.id] = d;
+  });
+  return v;
+}
+
+/* ---------- FGE ---------- */
+/* Stage ouvert aux 1CL et CHA qui ont au moins un an de service (calculé depuis « Entrée en service ») */
+const GRADES_FGE = ["1CL", "CHA"];
+function statFGE(P) {
+  const r = { eligibles: [], bientot: [], sansDate: [] };
+  P.filter(p => GRADES_FGE.includes(String(p.v.grade || "").trim().toUpperCase())).forEach(p => {
+    const e = p.v.entree || "";
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(e)) return r.sansDate.push({ p });
+    const le = addMonths(e, 12);
+    (le <= today() ? r.eligibles : r.bientot).push({ p, le });
+  });
+  r.eligibles.sort((a, b) => a.le - b.le); r.bientot.sort((a, b) => a.le - b.le);
+  return r;
 }
 
 /* ---------- Échéances (page « À faire ») ---------- */
@@ -2609,6 +2659,7 @@ const PRENOMS_DEMO = ["Lucas", "Hugo", "Louis", "Léa", "Emma", "Chloé", "Gabri
 const isoLocal = t => `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`;
 function donneesDemo(titre = "Unité de démonstration") {
   const r = prng(20261007), pick = a => a[Math.floor(r() * a.length)], proba = x => r() < x;
+  const r2 = prng(20261025);   // entrée en service : tirage à part, pour ne pas changer le reste de la démo
   const d = emptyData(titre); d.meta.demo = true;
   const ilYa = mois => { const t = today(); t.setDate(t.getDate() - Math.floor(mois * 30.4)); return isoLocal(t); };
   const vus = new Set();
@@ -2631,6 +2682,7 @@ function donneesDemo(titre = "Unité de démonstration") {
     if (civil) { permis("p4", 0.4); permis("vt4", 0.3); permis("masstech", 0.3); permis("pl", 0.12); permis("vbl", 0.08); }
     if (v.pl) { permis("superpl", 0.25); permis("tc", 0.15); }
     if (proba(0.01)) v.masstech = "?";
+    if (r2() < 0.9) v.entree = ilYa(["CHA", "2CL", "1CL"].includes(grade) ? 3 + r2() * 30 : 24 + r2() * 200);
     return { id: uid(), v: clean(v) };
   };
   const SPE = ["CAVALIER BLINDE PILOTE 1A", "CAVALIER BLINDE TIREUR DE PRECISION 1B", "CAVALIER BLINDE TIREUR MISSILE 1A",
@@ -2918,7 +2970,7 @@ $("#form-open").addEventListener("submit", async e => {
     $("#pw-open").value = ""; err.textContent = ""; pending = null; showPicked();
     showApp();
     if (r.via === "secours") ouvrirMdp(true);
-    if (r.role) toast(`Accès chef de peloton : ${r.role.peloton} (${r.role.escadron}).`);
+    if (r.role) toast(`Accès chef de peloton : ${r.role.peloton} (${r.role.escadron}), en lecture seule.`);
   } catch (x) { err.textContent = x.message; }
 });
 
@@ -2957,15 +3009,22 @@ function showApp() {
   $("#lock").hidden = true; $("#app").hidden = false;
   appliquerRole(); resetListe(); setView("accueil");
 }
-/* Chef de peloton : les actions qui concernent tout le fichier sont masquées (et refusées par reserveAdmin) */
+/* Chef de peloton : lecture seule de son peloton. Les actions qui concernent tout le fichier sont masquées (et refusées
+   par reserveAdmin), celles qui modifient les données aussi (classe lecture-seule, refusées par lectureSeule) */
 function appliquerRole() {
   const r = state.role;
+  document.body.classList.toggle("lecture-seule", !!r);
   ["#btn-import", "#btn-cartec", "#btn-uir", "#btn-champs", '.sb-bas [data-clic="#btn-mdp"]', "#reo-reglages"].forEach(q => document.querySelectorAll(q).forEach(e => { e.hidden = !!r; }));
-  $("#role-badge").hidden = !r; $("#role-badge").textContent = r ? `Chef de peloton · ${r.peloton} · ${r.escadron}` : "";
+  $("#role-badge").hidden = !r; $("#role-badge").textContent = r ? `Chef de peloton · ${r.peloton} · ${r.escadron} · lecture seule` : "";
+}
+function lectureSeule() {
+  if (!state.role) return false;
+  toast("Accès en lecture seule : seul le mot de passe habituel du fichier permet de modifier ou d'enregistrer.");
+  return true;
 }
 function reserveAdmin() {
   if (!state.role) return false;
-  toast("Réservé au mot de passe habituel du fichier : votre accès de chef de peloton ne concerne que votre peloton.");
+  toast("Réservé au mot de passe habituel du fichier : votre accès de chef de peloton est en lecture seule.");
   return true;
 }
 function setView(v) {
@@ -3122,6 +3181,7 @@ function majUndo() {
   b.disabled = !u; b.title = u ? `Annuler : ${u.label} (Ctrl+Z)` : "Rien à annuler";
 }
 function annuler() {
+  if (state.role) return;
   const u = undo.pop(); if (!u || !state.data) return;
   document.querySelectorAll("dialog[open]").forEach(d => d.close());
   state.data = JSON.parse(u.snap);
@@ -3310,7 +3370,7 @@ function markSaved(stamp, msg = "Fichier enregistré") {
   clearTimeout(autoTimer);
   renderHeader(); if (msg) toast(msg);
 }
-function markDirty() { state.dirty = true; renderHeader(); planifierAuto(); }
+function markDirty() { if (state.role) return; state.dirty = true; renderHeader(); planifierAuto(); }
 
 /* ---------- Enregistrement automatique ---------- */
 /* Seulement pour un fichier ouvert via File System Access (Chrome / Edge) : réécrit le fichier d'origine
@@ -3457,6 +3517,7 @@ async function verifierConflit(disque) {
 let enregEnCours = false;
 async function save(auto = false) {
   if (!state.data || enregEnCours) return;
+  if (state.role) { if (!auto) lectureSeule(); return; }
   enregEnCours = true;
   try { await enregistrer(auto === true); } finally { enregEnCours = false; }
 }
@@ -3737,7 +3798,7 @@ $("#tbl").addEventListener("click", e => {
   const act = e.target.closest("[data-act]");
   if (act) {
     if (act.dataset.act === "add") openPerson(null);
-    if (act.dataset.act === "import") $("#imp-input").click();
+    if (act.dataset.act === "import" && !reserveAdmin()) $("#imp-input").click();
     if (act.dataset.act === "reset") { state.filtre = freshFiltre(); $("#f-q").value = ""; renderFilters(); renderBoard(); renderTable(); }
     return;
   }
@@ -3850,6 +3911,7 @@ function choisirOnglet(o) {
   $("#p-body").scrollTop = 0;
 }
 function openPerson(id, preset = {}) {
+  if (!id && lectureSeule()) return;
   editingId = id;
   const v = id ? state.data.personnes.find(x => x.id === id).v : { ...preset };
   $("#dlg-person-title").textContent = id ? `${v.grade ? v.grade + " " : ""}${(v.nom || "").toUpperCase()} ${v.prenom || ""}`.trim() : "Nouvelle personne";
@@ -3866,11 +3928,10 @@ function openPerson(id, preset = {}) {
     `<fieldset class="fs"><legend>${esc(g)}</legend><div class="fgrid">${fs.map(f => inputHtml(f, v[f.id] || "", v)).join("")}</div></fieldset>`).join("")}${
     o.id === "personnel" && id ? historiqueHtml(state.data.personnes.find(x => x.id === id)) : ""}</div>`).join("") +
     C.filter(f => f.type === "liste").map(f => `<datalist id="dl-${esc(f.id)}">${valeurs(f.id).map(o => `<option value="${esc(o)}">`).join("")}</datalist>`).join("");
-  if (state.role) ["escadron", "peloton"].forEach(k => {
-    const i = $(`#p-body [data-f="${k}"]`); if (!i) return;
-    i.value = state.role[k]; i.title = "Fixé par votre accès de chef de peloton";
-    if (i.tagName === "SELECT") i.disabled = true; else i.readOnly = true;
+  if (state.role) $("#p-body").querySelectorAll("input, select, textarea").forEach(i => {   // lecture seule
+    if (i.tagName === "SELECT" || i.type === "checkbox" || i.type === "radio") i.disabled = true; else i.readOnly = true;
   });
+  $('#form-person [data-close]').textContent = state.role ? "Fermer" : "Annuler";
   choisirOnglet(ficheOnglet); majAlertesFiche();
   $("#btn-del").hidden = !id; $("#btn-archiver").hidden = !id;
   $("#dlg-person").showModal();
@@ -3894,12 +3955,24 @@ $("#p-body").addEventListener("input", e => {
     i.insertAdjacentHTML("beforebegin", calcLectureHtml(c, duree(t.value)));
     i.type = "hidden"; i.removeAttribute("data-calc-de");
   });
-  if (!f || !aEcheance(f)) return;
+  if (!f) return;
+  if (estDernierTir(f)) t.dataset.base = t.value;   // saisi à la main : point de départ du calcul
+  const dt = dernierTirDe(state.data.champs, f), it = dt && $(`#p-body input[data-f="${CSS.escape(dt.id)}"]`);
+  if (it) {   // Bravo, Charlie, Delta : le dernier tir de l'arme suit (jamais le ToC)
+    const tirs = state.data.champs.filter(c => dernierTirDe(state.data.champs, c) === dt)
+      .map(c => $(`#p-body input[data-f="${CSS.escape(c.id)}"]`)?.value || "");
+    const v = [it.dataset.base ?? it.defaultValue, ...tirs].filter(x => /^\d{4}-\d{2}-\d{2}$/.test(x)).sort().pop() || "";
+    if (v !== it.value) { it.value = v; majStatutFiche(it, dt); }
+  }
+  if (aEcheance(f)) majStatutFiche(t, f);
+});
+function majStatutFiche(t, f) {
+  if (!aEcheance(f)) return;
   const st = statutFiche(f, t.value);
   t.className = "in-" + st.k;
   t.parentElement.querySelector("[data-statut]").outerHTML = st.html;
   majAlertesFiche();
-});
+}
 $("#p-body").addEventListener("change", e => {
   if (!e.target.matches("[data-pmode]")) return;
   const d = e.target.nextElementSibling;
@@ -3910,7 +3983,8 @@ $("#btn-add").addEventListener("click", () => openPerson(null));
 
 $("#form-person").addEventListener("submit", e => {
   e.preventDefault();
-  const v = lireFiche();
+  if (lectureSeule()) return;
+  const v = majDernierTir(lireFiche(), state.data.champs);
   if (!v.nom) { choisirOnglet("essentiel"); $('#p-body [data-f="nom"]').focus(); return; }
   if (editingId) {
     const p = state.data.personnes.find(x => x.id === editingId), diff = diffFiche(state.data.champs, p.v, v);
@@ -3920,6 +3994,7 @@ $("#form-person").addEventListener("submit", e => {
   markDirty(); render();
 });
 $("#btn-del").addEventListener("click", () => {
+  if (lectureSeule()) return;
   const p = state.data.personnes.find(x => x.id === editingId);
   if (!p || !confirm(`Supprimer définitivement la fiche de ${p.v.nom} ${p.v.prenom || ""} ?\n\nPour une personne qui quitte l'unité, préférez « Archiver » : sa fiche est conservée.`)) return;
   modif(`Suppression de ${nomPersonne(p.v)}`, [], [p.id]);
@@ -3980,13 +4055,13 @@ function sePersonnes() {
 }
 function seChangements() {
   const C = seChampsDispo().filter(f => se.champs.has(f.id)), date = $("#se-date").value;
-  return { C, date, ch: date && C.length ? seanceChangements(sePersonnes(), C, date, $("#se-forcer").checked) : [] };
+  return { C, date, ch: date && C.length ? seanceChangements(sePersonnes(), C, date, $("#se-forcer").checked, state.data.champs) : [] };
 }
 function seResume() {
-  const P = sePersonnes(), { C, date, ch } = seChangements(), maj = ch.filter(c => !c.garde).length, gardes = ch.filter(c => c.garde).length;
+  const P = sePersonnes(), { C, date, ch } = seChangements(), maj = ch.filter(c => !c.garde).length, gardes = ch.filter(c => c.garde).length, auto = ch.filter(c => c.auto).length;
   $("#se-resume").textContent = !C.length ? "Cochez au moins une ligne dans « Ce qui a été fait »."
     : !P.length ? "Ajoutez les présents puis cliquez sur « Rechercher ces personnes »."
-    : `${P.length} personne${P.length > 1 ? "s" : ""} · ${maj} date${maj > 1 ? "s" : ""} à enregistrer au ${date ? fmtIso(date) : "?"}${gardes ? ` · ${gardes} date(s) plus récente(s) conservée(s)` : ""}.`;
+    : `${P.length} personne${P.length > 1 ? "s" : ""} · ${maj} date${maj > 1 ? "s" : ""} à enregistrer au ${date ? fmtIso(date) : "?"}${auto ? ` (dont ${auto} « Dernier tir » mis à jour)` : ""}${gardes ? ` · ${gardes} date(s) plus récente(s) conservée(s)` : ""}.`;
   $("#se-ok").disabled = !maj;
 }
 function seRenderMatch() {
@@ -4003,6 +4078,7 @@ function seRenderMatch() {
   seResume();
 }
 $("#btn-seance").addEventListener("click", () => {
+  if (lectureSeule()) return;
   se.lignes = [];
   [...se.champs].forEach(id => { if (!champById(id)) se.champs.delete(id); });
   $("#se-date").value = isoLocal(today()); $("#se-texte").value = ""; $("#se-forcer").checked = false;
@@ -4049,6 +4125,7 @@ $("#se-file").addEventListener("change", async e => {
 });
 $("#form-seance").addEventListener("submit", e => {
   e.preventDefault();
+  if (lectureSeule()) return;
   const { C, date, ch } = seChangements(), P = sePersonnes(), maj = ch.filter(c => !c.garde);
   if (!maj.length) return;
   modif(`Séance du ${fmtIso(date)} : ${C.map(f => `${f.groupe} ${f.label}`).join(", ")}`, P.map(p => nomPersonne(p.v)), [...new Set(maj.map(c => c.p.id))]);
@@ -4132,6 +4209,7 @@ $("#td-export").addEventListener("click", () => {
 
 /* ---------- Archives ---------- */
 $("#btn-archiver").addEventListener("click", () => {
+  if (lectureSeule()) return;
   const p = state.data.personnes.find(x => x.id === editingId); if (!p) return;
   const motif = prompt(`Archiver ${nomPersonne(p.v)} ?\nMotif (facultatif) : fin de contrat, mutation…`, "");
   if (motif === null) return;
@@ -4156,7 +4234,7 @@ $("#btn-archives").addEventListener("click", () => { renderArchives(); $("#dlg-a
 $("#archives-list").addEventListener("click", e => {
   const r = e.target.closest("[data-restaurer]"), d = e.target.closest("[data-purger]");
   const id = (r || d)?.dataset.restaurer || (r || d)?.dataset.purger; if (!id) return;
-  const p = state.data.archives.find(x => x.id === id); if (!p) return;
+  const p = state.data.archives.find(x => x.id === id); if (!p || lectureSeule()) return;
   if (r) {
     modif(`Restauration de ${nomPersonne(p.v)}`, [], [id]);
     state.data.archives = state.data.archives.filter(x => x.id !== id);
@@ -4618,6 +4696,7 @@ $("#ls-saved").addEventListener("change", e => {
   renderListe();
 });
 $("#ls-save").addEventListener("click", () => {
+  if (lectureSeule()) return;
   const nom = $("#ls-nom").value.trim() || `Liste du ${new Date().toLocaleDateString("fr-FR")}`;
   $("#ls-nom").value = nom;
   const rec = { id: ls.id || uid(), nom, modifie: new Date().toISOString(),
@@ -4630,6 +4709,7 @@ $("#ls-save").addEventListener("click", () => {
   toast("Liste ajoutée au fichier. Pensez à enregistrer le fichier.");
 });
 $("#ls-del").addEventListener("click", () => {
+  if (lectureSeule()) return;
   const l = state.data.listes.find(x => x.id === ls.id);
   if (!l || !confirm(`Supprimer la liste « ${l.nom} » du fichier ?`)) return;
   modif(`Liste « ${l.nom} » supprimée`);
@@ -5129,8 +5209,21 @@ function renderStats() {
   }).join("");
   const blocTailles = tailles ? `<section class="st-card"><h2>Tailles</h2><p class="hint">Nombre de personnes par taille, pour préparer les commandes.</p><div class="cols">${tailles}</div></section>` : "";
 
-  $("#stats").innerHTML = kpis + armement + grille + permis + blocTailles;
+  // FGE : 1CL et CHA, un an de service
+  const G = statFGE(P), nG = G.eligibles.length + G.bientot.length + G.sansDate.length;
+  const ligneFGE = ({ p, le }, etat) => `<tr class="lien" data-fiche="${esc(p.id)}"><td>${esc(nomPersonne(p.v))}</td><td>${esc([p.v.escadron, p.v.peloton].filter(Boolean).join(" · "))}</td>
+    <td>${p.v.entree ? fmtIso(p.v.entree) : "—"}</td><td>${esc(duree(p.v.entree) || "—")}</td><td class="t-${etat}">${
+    etat === "ok" ? "Éligible" : etat === "warn" ? `Le ${le.toLocaleDateString("fr-FR")}` : "Entrée en service à renseigner"}</td></tr>`;
+  const fge = nG ? `<section class="st-card"><h2>FGE — un an de service</h2><p class="hint">Stage réservé aux 1CL et CHA ayant au moins un an de service, calculé depuis la date d'entrée en service. Cliquez sur une ligne pour ouvrir la fiche.</p>
+    <div class="kpis"><div class="kpi k-ok"><div class="k">Éligibles</div><div class="v">${G.eligibles.length}</div><div class="s">1CL / CHA avec un an de service ou plus</div></div>
+    <div class="kpi k-warn"><div class="k">Moins d'un an</div><div class="v">${G.bientot.length}</div><div class="s">éligibles plus tard</div></div>
+    <div class="kpi"><div class="k">Sans date d'entrée</div><div class="v">${G.sansDate.length}</div><div class="s">calcul impossible</div></div></div>
+    <div class="st-scroll"><table class="st-tbl"><thead><tr><th>Personne</th><th>Esc. / Pel.</th><th>Entrée en service</th><th>Ancienneté</th><th>FGE</th></tr></thead><tbody>${
+      G.eligibles.map(x => ligneFGE(x, "ok")).join("")}${G.bientot.map(x => ligneFGE(x, "warn")).join("")}${G.sansDate.map(x => ligneFGE(x, "none")).join("")}</tbody></table></div></section>` : "";
+
+  $("#stats").innerHTML = kpis + armement + grille + fge + permis + blocTailles;
 }
+$("#stats").addEventListener("click", e => { const t = e.target.closest("[data-fiche]"); if (t) openPerson(t.dataset.fiche); });
 $("#st-esc").addEventListener("change", e => { stEsc = e.target.value; stPel = ""; renderStats(); });
 $("#st-pel").addEventListener("change", e => { stPel = e.target.value; renderStats(); });
 $("#st-print").addEventListener("click", () => window.print());
@@ -5161,6 +5254,15 @@ $("#st-export").addEventListener("click", () => {
     section("TAUX DE VALIDITÉ PAR PELOTON");
     X_.ajout(["Peloton", "Effectif", ...F.map(x => x.label)].map(t => X(t, "entete2")), 30);
     [...L, { label: "Total", P }].forEach(l => X_.ajout([X(l.label, "nom"), X(l.P.length, "ctr"), ...F.map(x => { const s = statFormation(l.P, x.f); return X(pct(s.tauxV), sts[statutTaux(s.tauxV)[0]]); })]));
+  }
+  const G = statFGE(P), FG = [...G.eligibles.map(x => [x, "Éligible", "okT"]), ...G.bientot.map(x => [x, "Le " + x.le.toLocaleDateString("fr-FR"), "warnT"]),
+    ...G.sansDate.map(x => [x, "Entrée en service à renseigner", "noneT"])];
+  if (FG.length) {
+    section("FGE — 1CL ET CHA, UN AN DE SERVICE");
+    X_.ajout(["Personne", "Esc. / Pel.", "Entrée en service", "Ancienneté", "FGE"].map(t => X(t, "entete2")), 22);
+    FG.forEach(([{ p }, etat, st], i) => { const z = i % 2;
+      X_.ajout([X(nomPersonne(p.v), Zs("nom", z)), X([p.v.escadron, p.v.peloton].filter(Boolean).join(" · "), Zs("ctr", z)),
+        X(p.v.entree ? fmtIso(p.v.entree) : "", Zs("ctr", z)), X(duree(p.v.entree), Zs("ctr", z)), X(etat, st)]); });
   }
   section("PERMIS");
   X_.ajout(["Permis", "Titulaires", "Éligibles", "Ni l'un ni l'autre"].map(t => X(t, "entete2")), 22);

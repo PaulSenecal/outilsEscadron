@@ -82,13 +82,18 @@ mis à jour sans marquer le fichier comme modifié).
 - ouvrirFichier : principal, puis enveloppes des chefs (ouvrirAcces, option chef), puis secours. Principal / secours :
   assemblerFichier rassemble toutes les parties (étiquette part sur listes et journal). Chef : sa partie seulement,
   role = { id, escadron, peloton }, state.role, state.kek = null.
-- Chef (state.role) : encryptPartie rechiffre sa partie et recopie le reste de state.modele (dernière version lue sur le
+- Chef (state.role) EN LECTURE SEULE (v3.15) : classe body.lecture-seule (masque ajout, séance, Enregistrer, Annuler, Valider /
+  Supprimer / Archiver de la fiche, listes, restaurer / supprimer des archives), lectureSeule() refuse dans chaque action qui
+  modifie ; markDirty, save et annuler ne font rien ; fiche : tous les champs readOnly / disabled. Les chefs de groupe utilisent
+  l'accès de leur peloton. Toute nouvelle action qui modifie les données doit commencer par `if (lectureSeule()) return;`.
+- Chef : encryptPartie rechiffre sa partie (plus utilisé par l'interface depuis la lecture seule, gardé et testé) et recopie le reste de state.modele (dernière version lue sur le
   disque, mise à jour par lireDisque). Escadron / peloton imposés et non modifiables dans la fiche. appliquerRole masque,
   reserveAdmin refuse : imports Excel / CARTEC / UIR, Champs et réglages, mots de passe, sauvegarde, REO (noms, postes),
   règles de permis. Accès modifié par l'administrateur (sa partie absente) : message, pas d'écriture.
 - empreinte(o) = iv du bloc principal + iv des parties : remplace l'IV seul pour lastIv (un chef ne change que sa partie).
 - Session verrouillée : le rôle doit rester le même (le mot de passe habituel ne déverrouille pas une session de chef).
-- Limite : le chef a le droit d'écrire le fichier (Drive) ; il peut l'abîmer mais pas lire les autres pelotons.
+- Limite : la lecture seule est appliquée par l'outil ; sur Drive, le chef qui a le droit d'écrire le fichier peut encore
+  l'abîmer (mais pas lire les autres pelotons) : lui partager le fichier en « Lecteur ».
 
 ### Format du fichier
 { format: "suivi-personnel", version: 2, cleId,
@@ -258,6 +263,10 @@ Statuts : expiré (bad), à prévoir si moins de seuilAlerte(f) jours (warn),
 - Saisir une séance (page Personnel) : date + cases des formations faites + liste des présents
   (collée, fichier ou liste enregistrée, rapprochement des noms) ; seanceChangements garde une
   date plus récente déjà saisie sauf « Remplacer aussi » ; une seule entrée d'annulation
+- Dernier tir (v3.15, dernierTirDe / majDernierTir) : toute date du groupe d'une arme (Bravo, Charlie, Delta = GPB, tir
+  NRBC… y compris un champ ajouté à la main) met à jour le champ …_tir du même groupe s'il est plus récent ; jamais le ToC
+  (id …_toc ou libellé « ToC »). Séance : seanceChangements(…, tous) ajoute la ligne (auto: true) ; fiche : en direct
+  pendant la saisie (data-base = valeur saisie à la main) et à la validation.
 - Page « À faire » : echeances() — expirés + à renouveler selon les seuils réglés (jours = null, par défaut) ou sous 0/30/60/90 jours, filtre
   formation (groupe ou champ), « jamais fait » en option ; par escadron · peloton ;
   « Écrire à ces personnes » (mailto: en Cci, objet + texte ; si lien > 1900 caractères,
@@ -317,7 +326,9 @@ Statuts : expiré (bad), à prévoir si moins de seuilAlerte(f) jours (warn),
   ⚠ Moyen ≥ 50 %, ✗ Critique) ; grille des taux par peloton ; barres permis (titulaires /
   éligibles) ; histogrammes des tailles. Infobulle au survol (#viz-tip), impression / PDF,
   export Excel des tableaux. Graphiques en HTML/CSS (classes .vseg, .colchart), sans bibliothèque.
-  Formations sans aucune date dans le fichier masquées.
+  Formations sans aucune date dans le fichier masquées. Tableau « FGE — un an de service » (statFGE, GRADES_FGE = 1CL, CHA) :
+  éligible si entrée en service + 12 mois ≤ aujourd'hui, sinon date d'éligibilité, ou entrée en service manquante ; clic =
+  fiche ; aussi dans l'export Excel. Démo : entrée en service tirée par un prng à part (r2) pour ne rien changer d'autre.
 - Attention aux noms de classes CSS : « .seg » est déjà pris par le sélecteur de l'écran de
   verrouillage.
 - Colonne verticale (REO, NRBC, CATI) : largeur fixe ; le libellé n'est jamais plus haut

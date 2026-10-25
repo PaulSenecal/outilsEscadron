@@ -17,7 +17,7 @@ const L = vm.runInContext(`({ state, emptyData, normalize, donneesDemo, encryptD
   permisEtat, defaultReglesPermis, seanceChangements, echeances, diffFiche, journaliser, JOURNAL_MAX, statFormation, statutTaux,
   statusOf, reoBlocs, groupesPeloton, defaultChamps, SCHEMA, fusionner, ITER, forceMotDePasse, controleQualite, historiquePersonne,
   seuilAlerte, isoLocal, today, lireCartec, planCartec, appliquerCartec, escadronPropose, reoBlocs, lireUIR, planUIR, appliquerUIR,
-  duree, aEcheance, clesNeuves, creerSecours, toB64, creerAcces, decouper, assembler, empreinte })`, ctx);
+  duree, aEcheance, clesNeuves, creerSecours, toB64, creerAcces, decouper, assembler, empreinte, dernierTirDe, majDernierTir, statFGE, addMonths })`, ctx);
 
 let ok = 0, ko = 0;
 /* Fichier au format 1 (ancien) : données chiffrées directement par la clé dérivée du mot de passe */
@@ -134,6 +134,33 @@ await test("Séance : dates enregistrées, date plus récente conservée", () =>
   const P = [{ v: {} }, { v: { famas_b: "2024-01-01" } }, { v: { famas_b: "2026-12-01" } }];
   egal(L.seanceChangements(P, [f], "2026-10-01", false).map(c => [c.apres, c.garde]), [["2026-10-01", false], ["2026-10-01", false], ["2026-12-01", true]]);
   egal(L.seanceChangements(P, [f], "2026-10-01", true).filter(c => !c.garde).length, 3, "forcer");
+});
+
+await test("Dernier tir : Bravo, Charlie et Delta le mettent à jour, jamais le ToC", () => {
+  const C = L.defaultChamps(), ch = id => C.find(c => c.id === id);
+  egal(["famas_b", "famas_c", "hk_b", "hk_gpb", "glock_c"].map(id => L.dernierTirDe(C, ch(id))?.id), ["famas_tir", "famas_tir", "hk_tir", "hk_tir", "glock_tir"]);
+  vrai(!L.dernierTirDe(C, ch("hk_toc")) && !L.dernierTirDe(C, ch("hk_tir")) && !L.dernierTirDe(C, ch("mag")), "ToC, dernier tir lui-même et autres armes : rien");
+  // Un Delta ajouté à la main (tir NRBC) compte aussi
+  const delta = { id: "famas_nrbc", label: "Tir NRBC", groupe: "Famas", type: "date", validite: 12 };
+  egal(L.dernierTirDe([...C, delta], delta)?.id, "famas_tir");
+  egal(L.majDernierTir({ hk_tir: "2025-01-01", hk_toc: "2026-09-01", hk_b: "2026-03-01", famas_c: "2026-02-01" }, C),
+    { hk_tir: "2026-03-01", hk_toc: "2026-09-01", hk_b: "2026-03-01", famas_c: "2026-02-01", famas_tir: "2026-02-01" });
+  egal(L.majDernierTir({ hk_tir: "2026-10-01", hk_b: "2026-03-01" }, C).hk_tir, "2026-10-01", "dernier tir plus récent conservé");
+  // Séance
+  const P = [{ v: { hk_tir: "2025-01-01" } }, { v: { hk_tir: "2026-12-01" } }];
+  const s1 = L.seanceChangements(P, [ch("hk_b")], "2026-10-01", false, C);
+  egal(s1.map(c => [c.f.id, c.apres, !!c.auto]), [["hk_b", "2026-10-01", false], ["hk_tir", "2026-10-01", true], ["hk_b", "2026-10-01", false]]);
+  egal(L.seanceChangements(P, [ch("hk_toc")], "2026-10-01", false, C).map(c => c.f.id), ["hk_toc", "hk_toc"], "ToC : dernier tir inchangé");
+  egal(L.seanceChangements(P, [ch("hk_b"), ch("hk_c")], "2026-10-01", false, C).filter(c => c.auto).length, 1, "un seul dernier tir par personne");
+});
+
+await test("FGE : 1CL et CHA avec un an de service", () => {
+  const ilYa = mois => L.isoLocal(L.addMonths(L.isoLocal(L.today()), -mois));
+  const P = [["1CL", ilYa(13)], ["CHA", ilYa(12)], ["1CL", ilYa(6)], ["cha", ""], ["BRI", ilYa(30)], ["2CL", ilYa(30)]]
+    .map(([grade, entree], i) => ({ id: "p" + i, v: { grade, ...(entree ? { entree } : {}) } }));
+  const r = L.statFGE(P);
+  egal([r.eligibles.map(x => x.p.id), r.bientot.map(x => x.p.id), r.sansDate.map(x => x.p.id)], [["p0", "p1"], ["p2"], ["p3"]]);
+  egal(L.isoLocal(r.bientot[0].le), ilYa(-6), "date d'éligibilité = entrée + 12 mois");
 });
 
 await test("Échéances, statistiques et statut", () => {
