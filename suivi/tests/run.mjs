@@ -17,7 +17,7 @@ const L = vm.runInContext(`({ state, emptyData, normalize, donneesDemo, encryptD
   permisEtat, defaultReglesPermis, seanceChangements, echeances, diffFiche, journaliser, JOURNAL_MAX, statFormation, statutTaux,
   statusOf, reoBlocs, groupesPeloton, defaultChamps, SCHEMA, fusionner, ITER, forceMotDePasse, controleQualite, historiquePersonne,
   seuilAlerte, isoLocal, today, lireCartec, planCartec, appliquerCartec, escadronPropose, reoBlocs, lireUIR, planUIR, appliquerUIR,
-  duree, aEcheance, clesNeuves, creerSecours, toB64, creerAcces, decouper, assembler, empreinte, dernierTirDe, majDernierTir, statFGE, addMonths })`, ctx);
+  duree, aEcheance, clesNeuves, creerSecours, toB64, creerAcces, decouper, assembler, empreinte, dernierTirDe, majDernierTir, statFGE, addMonths, lireNouveaux, creerNouveaux })`, ctx);
 
 let ok = 0, ko = 0;
 /* Fichier au format 1 (ancien) : données chiffrées directement par la clé dérivée du mot de passe */
@@ -103,6 +103,33 @@ await test("Rapprochement des noms (ordre libre, accents, en-tête ignoré, homo
   const lignes = L.lignesDepuisTexte("Grade\tNom\tPrénom\nMDL BONNEL Xavier\n1CL d'amore jose\nBonnel\nInconnu Paul");
   egal(lignes.length, 4, "en-tête ignoré");
   egal(lignes.map(l => L.rapprocher(l, P).etat), ["ok", "ok", "ambigu", "absent"]);
+});
+
+await test("Créer plusieurs fiches : lecture d'une liste de formation", () => {
+  const d = L.emptyData("x");
+  d.personnes.push({ id: "e1", v: { nom: "MARTIN", prenom: "Paul", matricule: "11 111 11 111" } }, { id: "e2", v: { nom: "Durand", prenom: "Léa" } });
+  d.archives.push({ id: "a1", v: { nom: "PETIT", prenom: "Zoé" }, archive: { date: "2026-01-01", motif: "x" } });
+  const texte = ` SDT EXEMPLE Gilles (NID : 99 550 40 315) ;
+-          1CL DE LA TOUR Anne-Marie (NID : 99 880 50 332) ;
+-          TESTEUR Jules (NID : 99 550 40 014) ;
+-          SDT AUTRE Paul (NID : 11 111 11 111) ;
+-          durand léa ;
+-          PETIT Zoé ;
+-          SDT EXEMPLE Gilles ;
+-          FICTIF Romain (NID : 99 540 30 029). Parti à l’issue mais a validé le PSC.
+-          SEUL ;`;
+  const r = L.lireNouveaux(texte, d);
+  egal(r.map(l => [l.v.grade, l.v.nom, l.v.prenom, l.v.matricule]), [
+    ["2CL", "EXEMPLE", "Gilles", "99 550 40 315"], ["1CL", "DE LA TOUR", "Anne-Marie", "99 880 50 332"], [undefined, "TESTEUR", "Jules", "99 550 40 014"],
+    ["2CL", "AUTRE", "Paul", "11 111 11 111"], [undefined, "DURAND", "léa", undefined], [undefined, "PETIT", "Zoé", undefined],
+    ["2CL", "EXEMPLE", "Gilles", undefined], [undefined, "FICTIF", "Romain", "99 540 30 029"], [undefined, "SEUL", undefined, undefined]]);
+  egal(r.map(l => l.etat), ["nouveau", "nouveau", "nouveau", "existe", "existe", "archive", "doublon", "nouveau", "incomplet"]);
+  egal([r[3].id, r[4].id, r[5].id], ["e1", "e2", "a1"], "fiche existante (NID, puis nom) et archive retrouvées");
+  egal(r[7].remarque, "Parti à l’issue mais a validé le PSC.");
+  const n = d.personnes.length, crees = L.creerNouveaux(d, r.filter(l => l.etat === "nouveau"), { escadron: "5ESC", peloton: "" }, ["n1"]);
+  egal(d.personnes.length, n + 4);
+  egal(crees[0].id, "n1", "identifiant donné");
+  egal(fiche(crees[3].v), fiche({ nom: "FICTIF", prenom: "Romain", matricule: "99 540 30 029", escadron: "5ESC", commentaire: "Parti à l’issue mais a validé le PSC." }));
 });
 
 await test("Éligibilité aux permis (règles par défaut)", () => {

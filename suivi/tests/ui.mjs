@@ -82,6 +82,29 @@ const valeur = (sel, v) => { const e = document.querySelector(sel); e.value = v;
   const p0 = state.data.personnes.find(p => p.id === P[0].id);
   verif("Annuler : séance défaite", p0.v.famas_b !== "2026-10-01" || avant !== "2026-10-01", p0.v.famas_b);
 
+  // Créer plusieurs fiches depuis les introuvables d'une séance
+  const nbAvantLot = state.data.personnes.length;
+  clic("#btn-seance");
+  if (!document.querySelector('#se-champs [data-grp="Famas"]').checked) document.querySelector('#se-champs [data-grp="Famas"]').click();
+  valeur("#se-texte", P[0].v.grade + " " + P[0].v.nom + " " + P[0].v.prenom + "\\n- SDT FICTIVUS Testa (NID : 99 000 00 001) ;\\n- ESSAIUS Probo (NID : 99 000 00 002). Remarque fictive.");
+  valeur("#se-date", "2026-10-02"); clic("#se-go");
+  verif("Lot : bouton des introuvables dans la séance", !$("#se-creer-wrap").hidden && $("#se-creer").textContent.includes("2"), $("#se-creer").textContent);
+  clic("#se-creer"); valeur("#lot-escadron", "5ESC");
+  verif("Lot : aperçu", $("#dlg-lot").open && document.querySelectorAll("#lot-apercu input:checked").length === 2 && $("#lot-ok").textContent === "Créer les 2 fiches", $("#lot-resume").textContent);
+  $("#form-lot").requestSubmit();
+  const fictivus = state.data.personnes.find(p => p.v.nom === "FICTIVUS"), essaius = state.data.personnes.find(p => p.v.nom === "ESSAIUS");
+  verif("Lot : fiches créées", state.data.personnes.length === nbAvantLot + 2 && fictivus?.v.grade === "2CL" && fictivus.v.matricule === "99 000 00 001"
+    && fictivus.v.escadron === "5ESC" && essaius?.v.commentaire === "Remarque fictive." && state.data.journal.at(-1).p?.length === 2);
+  verif("Lot : séance mise à jour", $("#dlg-seance").open && document.querySelectorAll("#se-match .badge.b-ok").length === 3 && $("#se-creer-wrap").hidden);
+  $("#form-seance").requestSubmit();
+  verif("Lot : séance enregistrée pour les nouveaux", fictivus.v.famas_b === "2026-10-02" && essaius.v.famas_b === "2026-10-02");
+  annuler(); annuler();
+  verif("Lot : annulation", state.data.personnes.length === nbAvantLot);
+  setView("perso"); clic("#btn-lot");
+  valeur("#lot-texte", P[0].v.nom + " " + P[0].v.prenom);
+  verif("Lot : personne déjà dans le suivi non cochée", $("#lot-ok").disabled && $("#lot-apercu").textContent.includes("Déjà dans le suivi"));
+  $("#dlg-lot").close();
+
   // Fiche : couleurs et archivage
   openPerson(state.data.personnes[0].id);
   verif("Fiche : statut des dates", document.querySelectorAll("#p-body .fstat").length > 5);
@@ -416,8 +439,8 @@ const valeur = (sel, v) => { const e = document.querySelector(sel); e.value = v;
   await save();
   verif("Chef : aucune modification ni enregistrement", miens[0].v.gant === gantAvant && !state.dirty && pc.length === 1
     && !visible("#btn-add") && !visible("#btn-seance") && !visible("#btn-save"));
-  clic("#btn-seance"); openPerson(null);
-  verif("Chef : séance et nouvelle fiche refusées", !$("#dlg-seance").open && !$("#dlg-person").open);
+  clic("#btn-seance"); openPerson(null); clic("#btn-lot");
+  verif("Chef : séance et nouvelle fiche refusées", !$("#dlg-seance").open && !$("#dlg-person").open && !$("#dlg-lot").open && !visible("#btn-lot"));
   clic("#btn-champs"); clic("#btn-import");
   verif("Chef : réglages et imports refusés", !$("#dlg-champs").open && !$("#dlg-import")?.open);
   await verrouillerSession();

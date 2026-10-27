@@ -280,6 +280,10 @@ Statuts : expiré (bad), à prévoir si moins de seuilAlerte(f) jours (warn),
 - Saisir une séance (page Personnel) : date + cases des formations faites + liste des présents
   (collée, fichier ou liste enregistrée, rapprochement des noms) ; seanceChangements garde une
   date plus récente déjà saisie sauf « Remplacer aussi » ; une seule entrée d'annulation
+- Créer plusieurs fiches (v3.18, Personnel → Actions, #dlg-lot ; bouton #se-creer dans la séance pour les introuvables) —
+  logique pure : lireNouveaux(texte, data) lit grade (GRADES_SYNONYMES : SDT → 2CL), nom en majuscules, prénom, NID → matricule,
+  remarque après le NID → commentaire ; états nouveau / existe (même NID puis nom + prénom) / archive / doublon / incomplet,
+  seuls les nouveaux cochés. creerNouveaux(data, lignes, commun, ids) : escadron / peloton communs, un seul modif().
 - Dernier tir (v3.15, dernierTirDe / majDernierTir) : toute date du groupe d'une arme (Bravo, Charlie, Delta frag = famas_d / hk_gpb,
   Delta ANP = famas_danp / hk_danp, y compris un champ ajouté à la main) met à jour le champ …_tir du même groupe s'il est plus récent ; jamais le ToC
   (id …_toc ou libellé « ToC »). Séance : seanceChangements(…, tous) ajoute la ligne (auto: true) ; fiche : en direct

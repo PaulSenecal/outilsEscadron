@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <!-- Politique de sécurité : aucune requête réseau (sauf Google Fonts), seul le script de ce fichier peut s'exécuter
      (empreinte sha256 : après toute modification du script, lancer « node tests/csp.mjs » pour la mettre à jour). -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-PNo2qCz1UZxUPP7E5xw7bqoE26tQBVQ5NEVxYTbaZ3U='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Ori/rRg2uEHg27DdYwiUCNi0gBIZRp6rHqc222yyFrI='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
 <title>Suivi du personnel</title>
 <meta name="theme-color" content="#0B1629">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%2313233F'/%3E%3Cpath d='M32 9l18 7v13c0 12-8 21-18 26-10-5-18-14-18-26V16z' fill='none' stroke='%23C9A227' stroke-width='4'/%3E%3Ccircle cx='32' cy='27' r='6' fill='%23C9A227'/%3E%3Cpath d='M21 44c2-7 6-10 11-10s9 3 11 10' fill='%23C9A227'/%3E%3C/svg%3E">
@@ -127,7 +127,7 @@ a{color:var(--navy)}
 .lock-demo{padding:0 28px 24px;margin-top:-8px;text-align:center}
 .lock-demo .btn{width:100%;justify-content:center;border-style:dashed}
 .session-msg{margin:0;padding:10px 12px;background:var(--warn-bg);border-radius:6px;font-size:14px}
-.lecture-seule :is(#btn-add, #btn-seance, #btn-save, #btn-undo, #ls-save, #ls-del, #btn-del, #btn-archiver, #p-valider, [data-clic="#btn-add"], [data-clic="#btn-seance"], [data-clic="#btn-import"], [data-act="add"], [data-act="import"], [data-restaurer], [data-purger]){display:none!important}
+.lecture-seule :is(#btn-add, #btn-seance, #btn-save, #btn-undo, #ls-save, #ls-del, #btn-del, #btn-archiver, #p-valider, [data-clic="#btn-add"], [data-clic="#btn-seance"], #btn-lot, #se-creer-wrap, [data-clic="#btn-import"], [data-act="add"], [data-act="import"], [data-restaurer], [data-purger]){display:none!important}
 .demo-badge{background:var(--gold);color:var(--navy-2);font-weight:700;padding:1px 8px;border-radius:999px;font-size:12px}
 .acces-row{display:flex;flex-wrap:wrap;gap:4px 14px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
 .acces-row .etat{color:var(--muted);font-size:14px;flex:1}
@@ -631,6 +631,8 @@ details summary{cursor:pointer;font-weight:600;color:var(--navy)}
       <div class="dd">
         <button type="button" class="btn dd-btn" aria-haspopup="menu" aria-expanded="false">Actions ▾</button>
         <div class="dd-menu" role="menu" hidden>
+          <button type="button" role="menuitem" id="btn-lot">Créer plusieurs fiches (liste collée)…</button>
+          <hr>
           <button type="button" role="menuitem" id="btn-mail-affiches">Écrire aux personnes affichées</button>
           <button type="button" role="menuitem" id="btn-copier-affiches">Copier leurs adresses mail</button>
         </div>
@@ -837,12 +839,34 @@ details summary{cursor:pointer;font-weight:600;color:var(--navy)}
       <div class="toolbar" style="margin:0"><button type="button" class="btn" id="se-go">Rechercher ces personnes</button>
         <button type="button" class="btn" id="se-file-btn">Charger un fichier (Excel ou CSV)…</button><input type="file" id="se-file" accept=".xlsx,.csv,text/csv" hidden></div>
       <div id="se-match"></div>
+      <div class="toolbar" style="margin:0" id="se-creer-wrap" hidden><button type="button" class="btn" id="se-creer">Créer les fiches des introuvables…</button></div>
       <label class="check"><input type="checkbox" id="se-forcer"> Remplacer aussi les dates plus récentes déjà saisies</label>
       <p class="hint" id="se-resume"></p>
     </div>
     <div class="dlg-foot">
       <button type="button" class="btn" data-close>Annuler</button>
       <button type="submit" class="btn btn-gold" id="se-ok" disabled>Enregistrer la séance</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- ============ Créer plusieurs fiches ============ -->
+<dialog id="dlg-lot" class="wide">
+  <form id="form-lot" autocomplete="off">
+    <div class="dlg-head"><h2>Créer plusieurs fiches</h2><p>Pour les stagiaires d'une formation, les arrivants… : collez la liste, une personne par ligne. Grade, nom (en majuscules), prénom et NID sont reconnus ; le reste de la fiche se complète plus tard.</p></div>
+    <div class="dlg-body">
+      <label class="fld"><span>Une personne par ligne, ex. « SDT DUPONT Jean (NID : 12 345 67 890) »</span><textarea id="lot-texte" rows="6"></textarea></label>
+      <div class="fgrid">
+        <label class="fld"><span>Escadron (pour tous)</span><input id="lot-escadron" list="dl-lot-esc" placeholder="Facultatif"></label>
+        <label class="fld"><span>Peloton (pour tous)</span><input id="lot-peloton" list="dl-lot-pel" placeholder="Facultatif"></label>
+      </div>
+      <datalist id="dl-lot-esc"></datalist><datalist id="dl-lot-pel"></datalist>
+      <div id="lot-apercu"></div>
+      <p class="hint" id="lot-resume"></p>
+    </div>
+    <div class="dlg-foot">
+      <button type="button" class="btn" data-close>Annuler</button>
+      <button type="submit" class="btn btn-gold" id="lot-ok" disabled>Créer les fiches</button>
     </div>
   </form>
 </dialog>
@@ -1108,10 +1132,13 @@ const enc = new TextEncoder(), dec = new TextDecoder();
 const FORMAT = "suivi-personnel";
 const ITER = 600000;          // PBKDF2 (OWASP 2023). Un fichier plus ancien est relu avec ses itérations et mis à niveau au prochain enregistrement
 const SCHEMA = 6;
-const VERSION = "3.17";
+const VERSION = "3.18";
 /* Historique affiché par le bouton « Nouveautés » : à chaque évolution, incrémenter VERSION
    et ajouter une entrée EN TÊTE de cette liste. */
 const NOUVEAUTES = [
+  { v: "3.18", date: "27/10/2026", items: [
+    "Créer plusieurs fiches d'un coup (page Personnel, menu « Actions ») : collez la liste d'une formation, une personne par ligne. Grade, nom, prénom et NID (rangé dans « Matricule ») sont reconnus, la remarque éventuelle va dans le commentaire ; escadron et peloton communs en option. Les personnes déjà dans le suivi (même NID ou même nom) ne sont pas recréées.",
+    "Saisir une séance : bouton « Créer les fiches des introuvables », la séance est ensuite enregistrée aussi pour eux."] },
   { v: "3.17", date: "27/10/2026", items: [
     "Tirs : module Delta pour le Famas et le HK, en deux cases : « Delta frag » (avec gilet) et « Delta ANP » (avec masque à gaz). Dans la fiche, la page CATI et « Saisir une séance » ; ils mettent à jour le « Dernier tir » de l'arme.",
     "HK : l'ancien champ « GPB » s'appelle maintenant « Delta frag », les dates déjà saisies sont gardées."] },
@@ -1981,6 +2008,58 @@ function rapprocher(brut, P) {
   if (c.length === 1) return { etat: "probable", cands: [c[0].id], choix: c[0].id };
   if (c.length > 1) return { etat: "ambigu", cands: c.map(p => p.id), choix: "" };
   return { etat: "absent", cands: [], choix: "" };
+}
+
+/* ---------- Créer plusieurs fiches d'un coup (liste d'une formation, d'un message…) ---------- */
+/* « - SDT JUNG Gilles (NID : 96 550 40 315) ; » → { grade, nom, prenom, matricule } + remarque (texte après le NID) */
+const GRADES_SYNONYMES = { SDT: "2CL", SOL: "2CL" };   // soldat = soldat de 2e classe
+const motMaj = m => /\p{L}/u.test(m) && m === m.toUpperCase() && m.replace(/[^\p{L}]/gu, "").length > 1;
+const capitaliser = s => s.toLowerCase().replace(/(^|[\s'’-])(\p{L})/gu, (_, a, b) => a + b.toUpperCase());
+function lireLigneNouveau(ligne) {
+  let t = ligne.replace(/^\s*(?:[-–—•*·]+|\d{1,3}[.)])\s*/, "").trim(), matricule = "", remarque = "";
+  const m = /\(?\s*(?:NID|matricule|n°\s*id)\s*:?\s*([\d][\d\s.]{5,}\d)\s*\)?/i.exec(t);
+  if (m) { matricule = m[1].replace(/[\s.]+/g, " ").trim(); remarque = t.slice(m.index + m[0].length); t = t.slice(0, m.index); }
+  remarque = remarque.replace(/^[\s).;,:]+/, "").trim();
+  const mots = t.replace(/[;,.\t]+/g, " ").split(/\s+/).filter(Boolean);
+  let grade = "";
+  if (mots.length > 1) {
+    const g = mots[0].toUpperCase(), gs = GRADES_SYNONYMES[g] || g;
+    if (GRADES.includes(gs)) { grade = gs; mots.shift(); }
+  }
+  // Nom en majuscules (où qu'il soit dans la ligne), prénom = le reste ; sinon le premier mot est le nom
+  let nom = mots.filter(motMaj), prenom = mots.filter(x => !motMaj(x));
+  if (!nom.length || !prenom.length) { nom = mots.slice(0, 1); prenom = mots.slice(1); }
+  const v = {};
+  if (grade) v.grade = grade;
+  if (nom.length) v.nom = nom.join(" ").toUpperCase();
+  if (prenom.length) { const p = prenom.join(" "); v.prenom = p === p.toUpperCase() ? capitaliser(p) : p; }
+  if (matricule) v.matricule = matricule;
+  return { brut: ligne.trim(), v, remarque };
+}
+const chiffres = s => String(s ?? "").replace(/\D/g, "");
+/* Lignes lues + état : nouveau, existe (fiche trouvée : même NID ou même nom + prénom), archive, doublon, incomplet */
+function lireNouveaux(texte, data) {
+  const vus = new Set(), parNid = new Map(), parNom = new Map(), arch = new Map();
+  data.personnes.forEach(p => { if (chiffres(p.v.matricule)) parNid.set(chiffres(p.v.matricule), p); parNom.set(personKey(p.v), p); });
+  data.archives.forEach(p => arch.set(personKey(p.v), p));
+  return texte.split(/\r?\n/).filter(l => /\p{L}/u.test(l)).map(lireLigneNouveau).filter(l => l.v.nom && !(MOTS_ENTETE.has(norm(l.v.nom)) && !l.v.matricule))
+    .map(l => {
+      const k = personKey(l.v), nid = chiffres(l.v.matricule), p = (nid && parNid.get(nid)) || parNom.get(k);
+      const etat = !l.v.prenom ? "incomplet" : p ? "existe" : vus.has(k) || (nid && vus.has(nid)) ? "doublon" : arch.has(k) ? "archive" : "nouveau";
+      vus.add(k); if (nid) vus.add(nid);
+      return { ...l, etat, id: p?.id || arch.get(k)?.id || "" };
+    });
+}
+/* Crée les fiches retenues ; commun = valeurs données à tous (escadron, peloton…), ids = identifiants à donner (sinon tirés). */
+function creerNouveaux(data, lignes, commun = {}, nouveauxIds = []) {
+  const ids = new Set(data.champs.map(c => c.id)), crees = [];
+  for (const [i, l] of lignes.entries()) {
+    const v = {};
+    Object.entries({ ...commun, ...l.v }).forEach(([k, x]) => { if (x && ids.has(k)) v[k] = x; });
+    if (l.remarque && ids.has("commentaire")) v.commentaire = l.remarque;
+    const p = { id: nouveauxIds[i] || uid(), v }; data.personnes.push(p); crees.push(p);
+  }
+  return crees;
 }
 
 /* ---------- REO : structure escadron → peloton → golf ---------- */
@@ -4097,6 +4176,56 @@ function casesChamps(C, choisis) {
     fs.map(f => `<label class="check"><input type="checkbox" data-id="${esc(f.id)}" ${choisis.has(f.id) ? "checked" : ""}> ${esc(f.label)}</label>`).join("")}</fieldset>`).join("");
 }
 
+/* ---------- Créer plusieurs fiches ---------- */
+const lot = { lignes: [], coches: new Set(), apres: null };
+const LOT_ETATS = { nouveau: ["b-ok", "Nouvelle fiche"], existe: ["b-none", "Déjà dans le suivi"], archive: ["b-warn", "Dans les archives"],
+  doublon: ["b-none", "En double"], incomplet: ["b-warn", "Prénom manquant"] };
+function ouvrirLot(texte = "", apres = null) {
+  if (lectureSeule()) return;
+  lot.apres = apres;
+  $("#lot-texte").value = texte;
+  $("#dl-lot-esc").innerHTML = valeurs("escadron").map(v => `<option value="${esc(v)}">`).join("");
+  $("#dl-lot-pel").innerHTML = valeurs("peloton").map(v => `<option value="${esc(v)}">`).join("");
+  lotLire();
+  $("#dlg-lot").showModal();
+}
+function lotLire() {
+  lot.lignes = lireNouveaux($("#lot-texte").value, state.data);
+  lot.coches = new Set(lot.lignes.map((l, i) => l.etat === "nouveau" ? i : -1).filter(i => i >= 0));
+  lotRender();
+}
+function lotRender() {
+  const byId = new Map([...state.data.personnes, ...state.data.archives].map(p => [p.id, p]));
+  $("#lot-apercu").innerHTML = !lot.lignes.length ? "" : `<table class="ls-tbl imp-tbl"><thead><tr><th></th><th>Grade</th><th>Nom</th><th>Prénom</th><th>NID</th><th>Remarque (en commentaire)</th><th>État</th></tr></thead><tbody>${
+    lot.lignes.map((l, i) => { const [cls, txt] = LOT_ETATS[l.etat], p = byId.get(l.id);
+      return `<tr><td><input type="checkbox" data-i="${i}" ${lot.coches.has(i) ? "checked" : ""} aria-label="Créer la fiche de la ligne ${i + 1}"></td>
+        <td>${esc(l.v.grade || "")}</td><td>${esc(l.v.nom || "")}</td><td>${esc(l.v.prenom || "")}</td><td>${esc(l.v.matricule || "")}</td>
+        <td class="hint">${esc(l.remarque)}</td><td><span class="badge ${cls}" ${p ? `title="${esc(personLabel(p))}"` : ""}>${txt}</span></td></tr>`; }).join("")}</tbody></table>`;
+  const n = lot.coches.size;
+  $("#lot-resume").textContent = !lot.lignes.length ? "Collez la liste : l'aperçu se met à jour." : `${n} fiche${n > 1 ? "s" : ""} à créer sur ${lot.lignes.length} ligne${lot.lignes.length > 1 ? "s" : ""}.`;
+  $("#lot-ok").disabled = !n;
+  $("#lot-ok").textContent = n > 1 ? `Créer les ${n} fiches` : "Créer la fiche";
+}
+$("#btn-lot").addEventListener("click", () => ouvrirLot());
+$("#lot-texte").addEventListener("input", lotLire);
+$("#lot-apercu").addEventListener("change", e => {
+  const i = +e.target.dataset.i; if (isNaN(i)) return;
+  e.target.checked ? lot.coches.add(i) : lot.coches.delete(i); lotRender();
+});
+$("#form-lot").addEventListener("submit", e => {
+  e.preventDefault();
+  if (lectureSeule()) return;
+  const L = lot.lignes.filter((l, i) => lot.coches.has(i)); if (!L.length) return;
+  const commun = { escadron: $("#lot-escadron").value.trim(), peloton: $("#lot-peloton").value.trim() };
+  const ids = L.map(() => uid());
+  modif(`Ajout de ${L.length} personne${L.length > 1 ? "s" : ""}`, L.map(l => nomPersonne(l.v)), ids);
+  creerNouveaux(state.data, L, commun, ids);
+  $("#dlg-lot").close();
+  toast(`${L.length} fiche${L.length > 1 ? "s créées" : " créée"}.`);
+  markDirty(); render();
+  if (lot.apres) lot.apres();
+});
+
 /* ---------- Saisir une séance ---------- */
 const se = { lignes: [], champs: new Set() };
 const seChampsDispo = () => state.data.champs.filter(c => c.type === "date" && c.validite || ($("#se-tout").checked || se.champs.has(c.id)) && (c.type === "date" || c.type === "permis"));
@@ -4122,6 +4251,9 @@ function seResume() {
   $("#se-ok").disabled = !maj;
 }
 function seRenderMatch() {
+  const absents = se.lignes.filter(l => l.etat === "absent").length;
+  $("#se-creer-wrap").hidden = !absents;
+  $("#se-creer").textContent = `Créer ${absents > 1 ? `les ${absents} fiches des introuvables` : "la fiche de l'introuvable"}…`;
   if (!se.lignes.length) { $("#se-match").innerHTML = ""; return seResume(); }
   const byId = new Map(state.data.personnes.map(p => [p.id, p])), tous = optionsPersonnel(), vus = new Set();
   $("#se-match").innerHTML = `<table class="ls-tbl imp-tbl"><thead><tr><th>#</th><th>Ligne</th><th>Personne du fichier</th><th>État</th></tr></thead><tbody>${
@@ -4150,6 +4282,10 @@ $("#se-champs").addEventListener("change", e => {
   seRenderChamps(); seResume();
 });
 $("#se-date").addEventListener("input", seResume);
+$("#se-creer").addEventListener("click", () => ouvrirLot(se.lignes.filter(l => l.etat === "absent").map(l => l.brut).join("\n"), () => {
+  se.lignes.forEach(l => { if (l.etat === "absent") Object.assign(l, rapprocher(l.brut, state.data.personnes)); });
+  seRenderMatch();
+}));
 $("#se-tout").addEventListener("change", seRenderChamps);
 $("#se-forcer").addEventListener("change", seResume);
 $("#se-match").addEventListener("change", e => {
