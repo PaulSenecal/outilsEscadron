@@ -138,7 +138,8 @@ await test("Séance : dates enregistrées, date plus récente conservée", () =>
 
 await test("Dernier tir : Bravo, Charlie et Delta le mettent à jour, jamais le ToC", () => {
   const C = L.defaultChamps(), ch = id => C.find(c => c.id === id);
-  egal(["famas_b", "famas_c", "hk_b", "hk_gpb", "glock_c"].map(id => L.dernierTirDe(C, ch(id))?.id), ["famas_tir", "famas_tir", "hk_tir", "hk_tir", "glock_tir"]);
+  egal(["famas_b", "famas_c", "famas_d", "famas_danp", "hk_b", "hk_gpb", "hk_danp", "glock_c"].map(id => L.dernierTirDe(C, ch(id))?.id),
+    ["famas_tir", "famas_tir", "famas_tir", "famas_tir", "hk_tir", "hk_tir", "hk_tir", "glock_tir"]);
   vrai(!L.dernierTirDe(C, ch("hk_toc")) && !L.dernierTirDe(C, ch("hk_tir")) && !L.dernierTirDe(C, ch("mag")), "ToC, dernier tir lui-même et autres armes : rien");
   // Un Delta ajouté à la main (tir NRBC) compte aussi
   const delta = { id: "famas_nrbc", label: "Tir NRBC", groupe: "Famas", type: "date", validite: 12 };
@@ -468,6 +469,20 @@ await test("Schéma 5 : tailles casque et frag ajoutées dans Habillement", () =
   egal(ids.slice(ids.indexOf("chaussure"), ids.indexOf("chaussure") + 3), ["chaussure", "casque", "frag"], "après le dernier champ Habillement");
   vrai(n.champs.find(c => c.id === "frag").stats, "statistiques des tailles");
   egal(L.normalize(n).champs.length, n.champs.length, "idempotent");
+});
+
+await test("Schéma 6 : Delta frag et Delta ANP au Famas et au HK, GPB du HK renommé Delta frag", () => {
+  const d = L.emptyData("v5");
+  d.champs = d.champs.filter(c => !["famas_d", "famas_danp", "hk_danp"].includes(c.id)); d.champs.find(c => c.id === "hk_gpb").label = "GPB";
+  d.meta.schema = 5; d.personnes = [{ id: "a", v: { hk_gpb: "2026-05-23" } }];
+  const n = L.normalize(d), ids = n.champs.map(c => c.id);
+  egal(ids.slice(ids.indexOf("famas_c"), ids.indexOf("famas_c") + 3), ["famas_c", "famas_d", "famas_danp"], "après le dernier champ Famas");
+  egal(ids.slice(ids.indexOf("hk_gpb"), ids.indexOf("hk_gpb") + 2), ["hk_gpb", "hk_danp"], "après le dernier champ HK");
+  egal([n.champs.find(c => c.id === "hk_gpb").label, n.personnes[0].v.hk_gpb], ["Delta frag", "2026-05-23"], "dates gardées");
+  egal(L.normalize(n).champs.length, n.champs.length, "idempotent");
+  const e = L.emptyData("v5"); e.champs = e.champs.filter(c => c.id !== "famas_danp");
+  e.champs.push({ id: "perso", label: "Delta ANP", groupe: "Famas", type: "date" }); e.meta.schema = 5;
+  vrai(!L.normalize(e).champs.some(c => c.id === "famas_danp"), "Delta ANP déjà ajouté à la main : rien en plus");
 });
 
 await test("Accès chef de peloton : il ne déchiffre que son peloton, l'administrateur relit tout", async () => {

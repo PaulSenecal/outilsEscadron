@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <!-- Politique de sécurité : aucune requête réseau (sauf Google Fonts), seul le script de ce fichier peut s'exécuter
      (empreinte sha256 : après toute modification du script, lancer « node tests/csp.mjs » pour la mettre à jour). -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-A/PfuzqOokbrcDoprbVqPctBVuwGeRtm34qdz+0MZQg='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-PNo2qCz1UZxUPP7E5xw7bqoE26tQBVQ5NEVxYTbaZ3U='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
 <title>Suivi du personnel</title>
 <meta name="theme-color" content="#0B1629">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%2313233F'/%3E%3Cpath d='M32 9l18 7v13c0 12-8 21-18 26-10-5-18-14-18-26V16z' fill='none' stroke='%23C9A227' stroke-width='4'/%3E%3Ccircle cx='32' cy='27' r='6' fill='%23C9A227'/%3E%3Cpath d='M21 44c2-7 6-10 11-10s9 3 11 10' fill='%23C9A227'/%3E%3C/svg%3E">
@@ -1107,18 +1107,21 @@ const $ = s => document.querySelector(s);
 const enc = new TextEncoder(), dec = new TextDecoder();
 const FORMAT = "suivi-personnel";
 const ITER = 600000;          // PBKDF2 (OWASP 2023). Un fichier plus ancien est relu avec ses itérations et mis à niveau au prochain enregistrement
-const SCHEMA = 5;
-const VERSION = "3.16";
+const SCHEMA = 6;
+const VERSION = "3.17";
 /* Historique affiché par le bouton « Nouveautés » : à chaque évolution, incrémenter VERSION
    et ajouter une entrée EN TÊTE de cette liste. */
 const NOUVEAUTES = [
+  { v: "3.17", date: "27/10/2026", items: [
+    "Tirs : module Delta pour le Famas et le HK, en deux cases : « Delta frag » (avec gilet) et « Delta ANP » (avec masque à gaz). Dans la fiche, la page CATI et « Saisir une séance » ; ils mettent à jour le « Dernier tir » de l'arme.",
+    "HK : l'ancien champ « GPB » s'appelle maintenant « Delta frag », les dates déjà saisies sont gardées."] },
   { v: "3.16", date: "27/10/2026", items: [
     "Accès capitaine (Champs et réglages, « Accès capitaine et chefs ») : un mot de passe à part qui ouvre tout le fichier, tous les pelotons, en lecture seule (consultation et exports, aucune modification ni enregistrement).",
     "Le fichier doit être enregistré une fois avec cette version pour que le mot de passe du capitaine l'ouvre : rechargez la page sur les autres ordinateurs."] },
   { v: "3.15", date: "25/10/2026", items: [
     "Statistiques : nouveau tableau « FGE — un an de service » : les 1CL et CHA qui ont au moins un an de service (calculé depuis la date d'entrée en service) sont éligibles, les autres avec la date à laquelle ils le seront. Aussi dans l'export Excel.",
     "Accès des chefs de peloton en lecture seule : ils consultent et exportent leur peloton, mais ne peuvent plus rien modifier ni enregistrer. Les chefs de groupe utilisent l'accès de leur peloton.",
-    "Tirs : un Bravo, un Charlie ou un Delta (GPB, tir NRBC…) met à jour le « Dernier tir » de l'arme, dans la fiche comme dans « Saisir une séance ». Le ToC ne met rien à jour."] },
+    "Tirs : un Bravo, un Charlie ou un Delta (frag ou ANP) met à jour le « Dernier tir » de l'arme, dans la fiche comme dans « Saisir une séance ». Le ToC ne met rien à jour."] },
   { v: "3.14", date: "22/10/2026", items: [
     "Habillement : tailles de casque et de gilet frag, dans la fiche, la page Habillement (avec le récapitulatif par peloton) et les statistiques.",
     "Accès des chefs de peloton (Champs et réglages) : chaque chef de peloton reçoit son propre mot de passe. Il ouvre le même fichier, mais ne voit et ne modifie que les fiches de son peloton ; les autres pelotons sont chiffrés à part et lui restent illisibles.",
@@ -1284,8 +1287,10 @@ function defaultChamps() {
     c("chaussure", "Chaussures", "Habillement", "texte", { stats: true }),
     c("casque", "Casque", "Habillement", "texte", { stats: true }),
     c("frag", "Frag", "Habillement", "texte", { stats: true }),
-    ...tirs("Famas", "famas"),
-    ...tirs("HK", "hk"), c("hk_toc", "ToC", "HK", "date", an), c("hk_gpb", "GPB", "HK", "date", an),
+    ...tirs("Famas", "famas"), c("famas_d", "Delta frag", "Famas", "date", an), c("famas_danp", "Delta ANP", "Famas", "date", an),
+    // Delta frag du HK : id hk_gpb gardé (ancien champ « GPB »)
+    ...tirs("HK", "hk"), c("hk_toc", "ToC", "HK", "date", an), c("hk_gpb", "Delta frag", "HK", "date", an),
+    c("hk_danp", "Delta ANP", "HK", "date", an),
     ...tirs("Glock", "glock"),
     c("mag", "MAG", AA, "date", an), c("minimi", "Minimi", AA, "date", an), c("m127", "12,7", AA, "date", an),
     c("scar", "SCAR", AA, "date", an), c("mmp", "MMP", AA, "date", an), c("milan", "Milan", AA, "date", an),
@@ -1314,6 +1319,8 @@ const IMPORT_MAP = {
   "eryx|dernier tir": "eryx", "*|eryx": "eryx",
   "*|atmosphere viciee": "atmo", "*|gazage": "atmo",
   "mag|dernier tir": "mag", "minimi|dernier tir": "minimi", "12.7|dernier tir": "m127", "12,7|dernier tir": "m127",
+  "famas|delta frag": "famas_d", "famas|delta anp": "famas_danp",
+  "hk|delta frag": "hk_gpb", "hk|delta": "hk_gpb", "hk|gpb": "hk_gpb", "hk|delta anp": "hk_danp",
   "scar|dernier tir": "scar", "mmp|dernier tir": "mmp", "milan|dernier tir": "milan",
   "*|commentaire": "commentaire", "*|contactable": "contactable"
 };
@@ -1645,6 +1652,18 @@ function migrerV5(C) {
     C.splice(i < 0 ? C.length : i + 1, 0, { ...D.find(c => c.id === id) });
   });
 }
+/* Schéma 6 : module Delta au Famas et au HK, « Delta frag » (avec gilet) et « Delta ANP » (avec masque à gaz). Le champ
+   « GPB » du HK devient « Delta frag » (même id, dates gardées) ; les autres sont ajoutés après le dernier champ du groupe,
+   sauf si un champ du même libellé y existe déjà (ajouté à la main). */
+function migrerV6(C) {
+  const D = defaultChamps(), gpb = C.find(c => c.id === "hk_gpb");
+  if (gpb && ["gpb", "delta"].includes(norm(gpb.label))) gpb.label = "Delta frag";
+  ["famas_d", "famas_danp", "hk_gpb", "hk_danp"].map(id => D.find(c => c.id === id))
+    .filter(f => !C.some(c => c.id === f.id || (c.groupe === f.groupe && norm(c.label) === norm(f.label)))).forEach(f => {
+      const i = C.map(c => c.groupe).lastIndexOf(f.groupe);
+      C.splice(i < 0 ? C.length : i + 1, 0, { ...f });
+    });
+}
 /* Éligibilité aux permis : pour chaque permis, les permis dont il suffit d'avoir l'un pour pouvoir le passer */
 function defaultReglesPermis() {
   return { vt4: ["civil"], p4: ["civil"], masstech: ["civil", "vt4"], vbl: ["civil"], pl: ["civil"],
@@ -1668,6 +1687,7 @@ function normalize(d) {
   if ((d.meta.schema || 2) < 3) migrerV3(d.champs);
   if ((d.meta.schema || 2) < 4) migrerV4(d.champs);
   if ((d.meta.schema || 2) < 5) migrerV5(d.champs);
+  if ((d.meta.schema || 2) < 6) migrerV6(d.champs);
   // Ancienneté de grade calculée depuis la date de grade (le calcul n'est plus affiché sous la date elle-même)
   const anc = d.champs.find(c => c.id === "anciennete"), dg = d.champs.find(c => c.id === "dategrade");
   if (anc && anc.calculDe === undefined) { anc.calculDe = "dategrade"; if (anc.label === "Ancienneté grade") anc.label = "Ancienneté de grade"; if (dg?.calcul === "anciennete") delete dg.calcul; }
@@ -2333,7 +2353,8 @@ const SYNTHESES = {
     groupes: [{ titre: "", cols: [["beret", "Béret"], ["veste", "Veste"], ["pantalon", "Pantalon"], ["gant", "Gants"], ["chaussure", "Chaussures"], ["casque", "Casque"], ["frag", "Frag"]] }] },
   cati: { titre: "CATI", aide: "Dates de tir valables 12 mois : rouge = expirée, orange = expire bientôt, vert = à jour. Totaux = à jour / renseignés. Cliquez sur une ligne pour ouvrir la fiche.",
     groupes: [
-    { titre: "Fusil d'assaut", cols: [["famas_tir", "Famas dernier tir"], ["famas_b", "Famas Bravo"], ["famas_c", "Famas Charlie"], ["hk_tir", "HK dernier tir"]] },
+    { titre: "Fusil d'assaut", cols: [["famas_tir", "Famas dernier tir"], ["famas_b", "Famas Bravo"], ["famas_c", "Famas Charlie"], ["famas_d", "Famas Delta frag"], ["famas_danp", "Famas Delta ANP"],
+      ["hk_tir", "HK dernier tir"], ["hk_gpb", "HK Delta frag"], ["hk_danp", "HK Delta ANP"]] },
     { titre: "PA", cols: [["glock_tir", "Glock dernier tir"]] },
     { titre: "Collectif", cols: [["mag", "MAG 58"], ["minimi", "Minimi"], ["m127", "M2HB"], ["scar", "SCAR H"]] },
     { titre: "Anti-char", cols: [["mmp", "Akeron MP"], ["milan", "Milan MK3"], ["eryx", "Eryx"]] }] }
@@ -2619,7 +2640,7 @@ function seanceChangements(personnes, champs, date, forcer, tous = champs) {
 }
 
 /* ---------- Dernier tir d'une arme ---------- */
-/* Un tir Bravo, Charlie ou Delta (GPB, tir NRBC… : toute autre date du groupe de l'arme) met à jour le « Dernier tir »
+/* Un tir Bravo, Charlie ou Delta (GPB ou ANP, tir ajouté à la main… : toute autre date du groupe de l'arme) met à jour le « Dernier tir »
    de l'arme (champ …_tir du même groupe) s'il est plus récent. Le ToC ne met rien à jour. */
 const estDernierTir = f => /_tir$/.test(f.id);
 const estToc = f => /_toc$/.test(f.id) || norm(f.label) === "toc";

@@ -117,7 +117,7 @@ Accès capitaine : + capitaine?: { kdf, iv, priv, cle (RSA-OAEP) } (comme secour
 le bloc d'une session de capitaine verrouillée.
 Ancien format 1 : { format, version: 1, kdf, iv, data } (relu seulement).
 
-### Modèle de données (une fois déchiffré, schéma 5)
+### Modèle de données (une fois déchiffré, schéma 6)
 - meta : { titre, alerteJours (défaut 30), verrouMinutes (défaut 15, 0 = jamais), enregAuto (défaut vrai), schema, reglesPermisV,
   cree, modifie, demo? (données fictives), secours? (voir Chiffrement) }
 - champs : [{ id, label, groupe, type, validite?, limite?, alerte?, sensible?, calcul?, options?, alias?, fixe? }]
@@ -163,7 +163,10 @@ Ancien format 1 : { format, version: 1, kdf, iv, data } (relu seulement).
   ajout béret, veste, pantalon, Eryx, règles de permis par défaut ; schéma 3 → 4 (migrerV4, idempotente) : champs
   IDENTITE_V4 / CARRIERE_V4 / FAMILLE_V4 / ADMIN_V4 + vmp + pap_lien insérés à leur place, drapeaux limite / sensible /
   calcul posés sur les champs existants s'ils n'ont jamais été réglés (fin de contrat : limite, alerte 90 j) ;
-  schéma 4 → 5 (migrerV5, idempotente) : casque et frag ajoutés après le dernier champ Habillement.
+  schéma 4 → 5 (migrerV5, idempotente) : casque et frag ajoutés après le dernier champ Habillement ;
+  schéma 5 → 6 (migrerV6, idempotente) : Delta frag (avec gilet) et Delta ANP (masque à gaz) : famas_d, famas_danp,
+  hk_gpb (ancien « GPB » renommé « Delta frag », id et dates gardés), hk_danp, ajoutés après le dernier champ du groupe ;
+  pas d'ajout si le groupe a déjà un champ du même libellé fait à la main.
 
 ### Règles d'import (fichier Excel de l'escadron, ex. CDCTest.xlsx)
 - .xlsx lu directement (zip + XML, DecompressionStream), ou CSV (UTF-8 ou Windows-1252)
@@ -277,8 +280,8 @@ Statuts : expiré (bad), à prévoir si moins de seuilAlerte(f) jours (warn),
 - Saisir une séance (page Personnel) : date + cases des formations faites + liste des présents
   (collée, fichier ou liste enregistrée, rapprochement des noms) ; seanceChangements garde une
   date plus récente déjà saisie sauf « Remplacer aussi » ; une seule entrée d'annulation
-- Dernier tir (v3.15, dernierTirDe / majDernierTir) : toute date du groupe d'une arme (Bravo, Charlie, Delta = GPB, tir
-  NRBC… y compris un champ ajouté à la main) met à jour le champ …_tir du même groupe s'il est plus récent ; jamais le ToC
+- Dernier tir (v3.15, dernierTirDe / majDernierTir) : toute date du groupe d'une arme (Bravo, Charlie, Delta frag = famas_d / hk_gpb,
+  Delta ANP = famas_danp / hk_danp, y compris un champ ajouté à la main) met à jour le champ …_tir du même groupe s'il est plus récent ; jamais le ToC
   (id …_toc ou libellé « ToC »). Séance : seanceChangements(…, tous) ajoute la ligne (auto: true) ; fiche : en direct
   pendant la saisie (data-base = valeur saisie à la main) et à la validation.
 - Page « À faire » : echeances() — expirés + à renouveler selon les seuils réglés (jours = null, par défaut) ou sous 0/30/60/90 jours, filtre
@@ -322,7 +325,7 @@ Statuts : expiré (bad), à prévoir si moins de seuilAlerte(f) jours (warn),
   en-tête de colonnes répété à chaque golf, ligne de totaux (dates à échéance :
   à jour / renseignés ; autres : renseignés / effectif). Colonnes définies dans SYNTHESES :
   NRBC = tailles ANP, T3P, gants, chaussures + atmosphère viciée (+ récap des tailles) ;
-  CATI = Famas dernier tir / Bravo / Charlie, HK, Glock, MAG 58, Minimi, M2HB (12,7),
+  CATI = Famas dernier tir / Bravo / Charlie / Delta frag / Delta ANP, HK dernier tir / Delta frag / Delta ANP, Glock, MAG 58, Minimi, M2HB (12,7),
   SCAR H, Akeron MP, Milan MK3. Dates en rouge (expirée), orange (bientôt), vert (à jour).
   Filtre escadron + peloton (« Tous » = un tableau par peloton, une page par peloton à
   l'impression), export CSV avec colonnes d'état.
