@@ -95,12 +95,26 @@ mis à jour sans marquer le fichier comme modifié).
 - Limite : la lecture seule est appliquée par l'outil ; sur Drive, le chef qui a le droit d'écrire le fichier peut encore
   l'abîmer (mais pas lire les autres pelotons) : lui partager le fichier en « Lecteur ».
 
+### Accès capitaine (v3.16)
+- meta.capitaine : même forme que meta.secours (creerSecours : paire RSA, clé privée chiffrée par son mot de passe) ;
+  encryptData écrit l'enveloppe capitaine { kdf, iv, priv, cle } via enveloppeRsa, recalculée à chaque enregistrement :
+  elle suit les changements de clé du fichier. Pas dans META_COMMUNE (les chefs ne la reçoivent pas).
+- ouvrirFichier (option chef) : principal, chefs, capitaine, secours. Capitaine : tout le fichier rassemblé, kek = null,
+  role = { id: "capitaine", capitaine: true } → même lecture seule que les chefs (state.role), libellé « Capitaine ».
+- estChef() = rôle de chef (sa partie seulement) : encryptPartie, lireAvecCle par partie et state.modele ne concernent
+  que lui ; le capitaine relit le fichier entier avec state.lecture (mises à jour en direct).
+- Verrouillage de session du capitaine : encryptData sans state.kek écrit un bloc sans enveloppe principale, rouvert
+  par l'enveloppe capitaine. Fenêtre #dlg-acces : option « capitaine » du select, ligne et data-retirer="capitaine".
+- Mots de passe tous distincts : habituel, secours, capitaine, chefs (estMdpCapitaine).
+
 ### Format du fichier
 { format: "suivi-personnel", version: 2, cleId,
   principal: { kdf: { name: "PBKDF2", hash: "SHA-256", iterations, salt }, iv, cle },
   secours?: { kdf, iv, priv, cle (RSA-OAEP) },
   iv (base64), data (base64, JSON chiffré) }
 Format 3 (accès des chefs) : même chose + acces: { kdf, liste: [{ iv, cle }] } + parts: { [id]: { iv, data } }.
+Accès capitaine : + capitaine?: { kdf, iv, priv, cle (RSA-OAEP) } (comme secours) ; principal absent seulement dans
+le bloc d'une session de capitaine verrouillée.
 Ancien format 1 : { format, version: 1, kdf, iv, data } (relu seulement).
 
 ### Modèle de données (une fois déchiffré, schéma 5)

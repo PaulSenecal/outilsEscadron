@@ -389,6 +389,12 @@ const valeur = (sel, v) => { const e = document.querySelector(sel); e.value = v;
   valeur("#acces-mdp", "chef-du-peloton-test"); valeur("#acces-mdp2", "chef-du-peloton-test");
   $("#form-acces").requestSubmit(); await quand(() => state.data.meta.acces, 60000);
   verif("Accès chef défini", state.data.meta.acces.length === 1 && $("#acces-list").textContent.includes("accès défini") && state.dirty);
+  valeur("#acces-pel", "capitaine"); valeur("#acces-mdp", "chef-du-peloton-test"); valeur("#acces-mdp2", "chef-du-peloton-test");
+  $("#form-acces").requestSubmit(); await quand(() => $("#err-acces").textContent.includes("chef de peloton"), 60000);
+  verif("Accès capitaine : différent de celui d'un chef", !state.data.meta.capitaine);
+  valeur("#acces-mdp", "capitaine-du-test"); valeur("#acces-mdp2", "capitaine-du-test");
+  $("#form-acces").requestSubmit(); await quand(() => state.data.meta.capitaine, 60000);
+  verif("Accès capitaine défini", $("#acces-list .acces-row").textContent.includes("Capitaine") && $("#acces-list .acces-row").textContent.includes("accès défini"));
   $("#dlg-acces").close(); $("#dlg-champs").close();
   const pc = []; const fauxPc = () => ({ getFile: async () => ({ text: async () => pc.at(-1) || "" }), createWritable: async () => ({ write: async c => pc.push(c), close: async () => {} }) });
   state.handle = fauxPc(); state.lastIv = null; await save(); await quand(() => !state.dirty, 60000);
@@ -430,6 +436,21 @@ const valeur = (sel, v) => { const e = document.querySelector(sel); e.value = v;
   verif("Journal : filtre « Accès »", lignes.length > 0 && lignes.every(l => l.textContent.includes("Administrateur"))
     && state.data.journal.some(j => j.acces === "Administrateur" && j.quoi.startsWith("Accès chef de peloton défini")), lignes.length);
   $("#dlg-journal").close();
+  // Capitaine : tout le fichier, en lecture seule
+  lock();
+  pending = { text: pc.at(-1), handle: fauxPc(), name: "pc.json", date: Date.now() };
+  $("#pw-open").value = "capitaine-du-test"; $("#form-open").requestSubmit(); await quand(() => state.data && $("#lock").hidden, 60000);
+  state.data.meta.verrouMinutes = 0;
+  verif("Capitaine : tout le fichier, en lecture seule", state.role?.capitaine && state.data.personnes.length === total && $("#role-badge").textContent.includes("Capitaine")
+    && document.body.classList.contains("lecture-seule") && $("#btn-champs").hidden && !visible("#btn-add") && !visible("#btn-save"));
+  openPerson(state.data.personnes.at(-1).id);
+  verif("Capitaine : fiche en lecture seule", fige("gant") && !visible("#p-valider"));
+  $("#dlg-person").close();
+  const nAvant = pc.length; await save();
+  verif("Capitaine : aucun enregistrement", pc.length === nAvant && !state.dirty);
+  await verrouillerSession();
+  $("#pw-session").value = "capitaine-du-test"; $("#form-session").requestSubmit(); await quand(() => state.data, 60000);
+  verif("Session du capitaine : reprise avec son mot de passe", state.role?.capitaine && state.data.personnes.length === total);
 
   verif("Aucune erreur JavaScript", erreurs.length === 0, erreurs.join(" | "));
   verif("Fin du scénario", true);

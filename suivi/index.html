@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <!-- Politique de sécurité : aucune requête réseau (sauf Google Fonts), seul le script de ce fichier peut s'exécuter
      (empreinte sha256 : après toute modification du script, lancer « node tests/csp.mjs » pour la mettre à jour). -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-b3nR/XCO3XsC+UfD+rSJCDilu+ncPuNvLikjfc8ikC4='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-A/PfuzqOokbrcDoprbVqPctBVuwGeRtm34qdz+0MZQg='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
 <title>Suivi du personnel</title>
 <meta name="theme-color" content="#0B1629">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%2313233F'/%3E%3Cpath d='M32 9l18 7v13c0 12-8 21-18 26-10-5-18-14-18-26V16z' fill='none' stroke='%23C9A227' stroke-width='4'/%3E%3Ccircle cx='32' cy='27' r='6' fill='%23C9A227'/%3E%3Cpath d='M21 44c2-7 6-10 11-10s9 3 11 10' fill='%23C9A227'/%3E%3C/svg%3E">
@@ -959,16 +959,16 @@ details summary{cursor:pointer;font-weight:600;color:var(--navy)}
 <!-- ============ Accès des chefs de peloton ============ -->
 <dialog id="dlg-acces" class="wide">
   <form id="form-acces" autocomplete="off">
-    <div class="dlg-head"><h2>Accès des chefs de peloton</h2>
-      <p>Chaque chef de peloton ouvre le même fichier avec son propre mot de passe : il voit seulement les fiches de son peloton, en lecture seule (aucune modification, aucun enregistrement). Les chefs de groupe utilisent l'accès de leur peloton. Son peloton est chiffré à part : avec son mot de passe, les autres pelotons restent illisibles.</p></div>
+    <div class="dlg-head"><h2>Accès capitaine et chefs de peloton</h2>
+      <p>Le capitaine ouvre le même fichier avec son propre mot de passe : il voit tout le fichier, en lecture seule. Chaque chef de peloton ouvre le même fichier avec son propre mot de passe : il voit seulement les fiches de son peloton, en lecture seule (aucune modification, aucun enregistrement). Les chefs de groupe utilisent l'accès de leur peloton. Son peloton est chiffré à part : avec son mot de passe, les autres pelotons restent illisibles.</p></div>
     <div class="dlg-body">
       <div id="acces-list"></div>
       <p class="subhead">Définir ou changer un mot de passe</p>
-      <label class="fld"><span>Peloton</span><select id="acces-pel"></select></label>
-      <label class="fld"><span>Mot de passe du chef de peloton (10 caractères minimum)</span><input type="password" id="acces-mdp" autocomplete="new-password"></label>
+      <label class="fld"><span>Accès</span><select id="acces-pel"></select></label>
+      <label class="fld"><span>Mot de passe (10 caractères minimum)</span><input type="password" id="acces-mdp" autocomplete="new-password"></label>
       <div class="force" id="force-acces" aria-live="polite"><div class="force-barre"><i></i></div><span class="force-label"></span><p class="force-conseil"></p></div>
       <label class="fld"><span>Confirmer le mot de passe</span><input type="password" id="acces-mdp2" autocomplete="new-password"></label>
-      <p class="hint">Changer le mot de passe d'un peloton crée une nouvelle clé : l'ancien mot de passe n'ouvre plus les versions suivantes (à faire quand un chef s'en va). Toutes les modifications (fiches, séances, listes, imports, champs et réglages, mots de passe) restent réservées au mot de passe habituel.</p>
+      <p class="hint">Changer le mot de passe du capitaine ou d'un peloton crée une nouvelle clé : l'ancien mot de passe n'ouvre plus les versions suivantes (à faire quand un chef s'en va). Toutes les modifications (fiches, séances, listes, imports, champs et réglages, mots de passe) restent réservées au mot de passe habituel.</p>
       <p class="lock-error" id="err-acces" role="alert"></p>
     </div>
     <div class="dlg-foot">
@@ -1015,7 +1015,7 @@ details summary{cursor:pointer;font-weight:600;color:var(--navy)}
         <label class="fld"><span>Alerte « à prévoir » (jours avant expiration)</span><input id="s-alerte" type="number" min="1" max="365"></label>
         <label class="fld"><span>Verrouillage automatique après (minutes, 0 = jamais)</span><input id="s-verrou" type="number" min="0" max="240"></label>
         <label class="check" style="align-self:end" title="Chrome / Edge, fichier ouvert depuis l'ordinateur ou le dossier Google Drive : le fichier d'origine est réécrit quelques secondes après chaque modification"><input type="checkbox" id="s-auto"> Enregistrement automatique</label>
-        <div class="fld"><span>Sécurité</span><div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn" id="btn-mdp">Changer le mot de passe…</button><button type="button" class="btn" id="btn-secours">Mot de passe de secours…</button><button type="button" class="btn" id="btn-acces">Accès chefs de peloton…</button></div></div>
+        <div class="fld"><span>Sécurité</span><div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn" id="btn-mdp">Changer le mot de passe…</button><button type="button" class="btn" id="btn-secours">Mot de passe de secours…</button><button type="button" class="btn" id="btn-acces">Accès capitaine et chefs…</button></div></div>
         <div class="fld" title="Copie chiffrée (même mot de passe) de l'état actuel, modifications non enregistrées comprises, à garder ailleurs. Le fichier de suivi n'est pas modifié."><span>Sauvegarde</span><button type="button" class="btn" id="btn-sauvegarde">Enregistrer une copie de sauvegarde…</button></div>
       </div>
       <p class="subhead">Champs des fiches</p>
@@ -1108,10 +1108,13 @@ const enc = new TextEncoder(), dec = new TextDecoder();
 const FORMAT = "suivi-personnel";
 const ITER = 600000;          // PBKDF2 (OWASP 2023). Un fichier plus ancien est relu avec ses itérations et mis à niveau au prochain enregistrement
 const SCHEMA = 5;
-const VERSION = "3.15";
+const VERSION = "3.16";
 /* Historique affiché par le bouton « Nouveautés » : à chaque évolution, incrémenter VERSION
    et ajouter une entrée EN TÊTE de cette liste. */
 const NOUVEAUTES = [
+  { v: "3.16", date: "27/10/2026", items: [
+    "Accès capitaine (Champs et réglages, « Accès capitaine et chefs ») : un mot de passe à part qui ouvre tout le fichier, tous les pelotons, en lecture seule (consultation et exports, aucune modification ni enregistrement).",
+    "Le fichier doit être enregistré une fois avec cette version pour que le mot de passe du capitaine l'ouvre : rechargez la page sur les autres ordinateurs."] },
   { v: "3.15", date: "25/10/2026", items: [
     "Statistiques : nouveau tableau « FGE — un an de service » : les 1CL et CHA qui ont au moins un an de service (calculé depuis la date d'entrée en service) sont éligibles, les autres avec la date à laquelle ils le seront. Aussi dans l'export Excel.",
     "Accès des chefs de peloton en lecture seule : ils consultent et exportent leur peloton, mais ne peuvent plus rien modifier ni enregistrer. Les chefs de groupe utilisent l'accès de leur peloton.",
@@ -1426,9 +1429,11 @@ async function ouvrirSecours(S, pw) {
   const pkcs8 = await crypto.subtle.decrypt({ name: "AES-GCM", iv: fromB64(S.iv) }, kek, fromB64(S.priv));
   return crypto.subtle.importKey("pkcs8", pkcs8, RSA, false, ["decrypt"]);
 }
+/* Chef de peloton (sa partie seulement), par opposition au capitaine qui lit tout le fichier */
+const estChef = () => !!state.role && !state.role.capitaine;
 async function encryptData(stamp = new Date().toISOString()) {
-  if (state.role) return encryptPartie(stamp);
-  if (!state.kek) throw new Error("choisissez d'abord un nouveau mot de passe");
+  if (estChef()) return encryptPartie(stamp);
+  if (!state.kek && !state.role) throw new Error("choisissez d'abord un nouveau mot de passe");
   const data = { ...state.data, meta: { ...state.data.meta, modifie: stamp } };
   const { reste, parts } = decouper(data);
   const bloc = await chiffrerBloc(state.key, JSON.stringify(reste));
@@ -1436,12 +1441,17 @@ async function encryptData(stamp = new Date().toISOString()) {
   for (const a of data.meta.acces || []) P[a.id] = await chiffrerBloc(await importerCle(fromB64(a.cle)), JSON.stringify(parts[a.id]));
   const acces = data.meta.acces?.length ? { acces: { kdf: data.meta.accesKdf, liste: melanger(data.meta.acces.map(a => a.env)) }, parts: P } : {};
   const raw = await crypto.subtle.exportKey("raw", state.key), ivp = aleatoire(12);
-  const principal = { kdf: KDF(state.iter, toB64(state.salt)), iv: toB64(ivp), cle: toB64(await crypto.subtle.encrypt({ name: "AES-GCM", iv: ivp }, state.kek, raw)) };
-  // Enveloppe de secours recalculée à chaque fois depuis meta.secours (chiffré avec les données : non falsifiable)
-  const S = state.data.meta.secours;
-  const secours = S && { kdf: S.kdf, iv: S.iv, priv: S.priv,
-    cle: toB64(await crypto.subtle.encrypt(RSA, await crypto.subtle.importKey("spki", fromB64(S.pub), RSA, false, ["encrypt"]), raw)) };
-  return JSON.stringify({ format: FORMAT, version: acces.parts ? 3 : 2, cleId: state.cleId, principal, ...(secours ? { secours } : {}), ...bloc, ...acces });
+  // Pas d'enveloppe principale sans state.kek : verrouillage d'une session du capitaine (rouverte par son enveloppe)
+  const principal = state.kek && { kdf: KDF(state.iter, toB64(state.salt)), iv: toB64(ivp), cle: toB64(await crypto.subtle.encrypt({ name: "AES-GCM", iv: ivp }, state.kek, raw)) };
+  // Enveloppes du secours et du capitaine recalculées à chaque fois depuis meta (chiffré avec les données : non falsifiable)
+  const secours = await enveloppeRsa(state.data.meta.secours, raw), capitaine = await enveloppeRsa(state.data.meta.capitaine, raw);
+  return JSON.stringify({ format: FORMAT, version: acces.parts ? 3 : 2, cleId: state.cleId, ...(principal ? { principal } : {}), ...(secours ? { secours } : {}),
+    ...(capitaine ? { capitaine } : {}), ...bloc, ...acces });
+}
+/* Enveloppe RSA de la clé de données (secours, capitaine) : { kdf, iv, priv, cle }, ou null */
+async function enveloppeRsa(S, raw) {
+  return S ? { kdf: S.kdf, iv: S.iv, priv: S.priv,
+    cle: toB64(await crypto.subtle.encrypt(RSA, await crypto.subtle.importKey("spki", fromB64(S.pub), RSA, false, ["encrypt"]), raw)) } : null;
 }
 /* Chiffre un texte (AES-GCM, IV neuf) et vérifie qu'il se relit à l'identique avant de le rendre */
 async function chiffrerBloc(key, texte) {
@@ -1543,7 +1553,8 @@ async function encryptPartie(stamp) {
    Renvoie { data, key, cleId, kek, salt, iter, via: "principal" | "secours" | "chef", ancien?, role?, lecture: { id, key } } :
    pas de key / kek pour un fichier au format 1 (ancien), pas de kek s'il est ouvert avec le secours. Mot de passe d'un
    chef de peloton (si chef, par défaut) : data = sa partie seulement, role = { id, escadron, peloton }, key = clé de
-   sa partie. Avec le mot de passe habituel ou le secours, les parties des pelotons sont rassemblées (assemblerFichier). */
+   sa partie. Mot de passe du capitaine (si chef) : tout le fichier, role = { id: "capitaine", capitaine: true }, kek = null.
+   Avec le mot de passe habituel, le secours ou celui du capitaine, les parties des pelotons sont rassemblées (assemblerFichier). */
 async function ouvrirFichier(o, pw, { secours = true, chef = true } = {}) {
   const lire = async key => {
     try { return JSON.parse(dec.decode(await crypto.subtle.decrypt({ name: "AES-GCM", iv: fromB64(o.iv) }, key, fromB64(o.data)))); }
@@ -1553,9 +1564,9 @@ async function ouvrirFichier(o, pw, { secours = true, chef = true } = {}) {
     const salt = fromB64(o.kdf.salt), key = await deriveKey(pw, salt, o.kdf.iterations, true);
     return { data: await lire(key), ancien: true, via: "principal", salt, iter: o.kdf.iterations, lecture: { id: idFichier(o), key } };
   }
-  const P = o.principal, salt = fromB64(P.kdf.salt), iter = P.kdf.iterations;
-  let key = null, kek = null, via = "principal";
-  try {
+  const P = o.principal, salt = P && fromB64(P.kdf.salt), iter = P?.kdf.iterations;
+  let key = null, kek = null, via = "principal", role = null;
+  if (P) try {
     kek = await deriveKey(pw, salt, iter);
     key = await importerCle(await crypto.subtle.decrypt({ name: "AES-GCM", iv: fromB64(P.iv) }, kek, fromB64(P.cle)));
   } catch { kek = null; }
@@ -1569,12 +1580,16 @@ async function ouvrirFichier(o, pw, { secours = true, chef = true } = {}) {
       return { data, key: k, cleId: o.cleId, kek: null, via: "chef", role: { id: x.id, escadron: x.escadron, peloton: x.peloton }, lecture: { id: "part:" + x.id, key: k } };
     }
   }
+  if (!key && chef && o.capitaine) {
+    try { key = await importerCle(await crypto.subtle.decrypt(RSA, await ouvrirSecours(o.capitaine, pw), fromB64(o.capitaine.cle))); via = "capitaine"; role = { id: "capitaine", capitaine: true }; }
+    catch { /* mot de passe faux */ }
+  }
   if (!key && secours && o.secours) {
     try { key = await importerCle(await crypto.subtle.decrypt(RSA, await ouvrirSecours(o.secours, pw), fromB64(o.secours.cle))); via = "secours"; }
     catch { /* mot de passe faux */ }
   }
   if (!key) throw new Error("Mot de passe incorrect, ou fichier endommagé.");
-  return { data: await assemblerFichier(o, await lire(key)), key, cleId: o.cleId, kek, salt, iter, via, lecture: { id: o.cleId, key } };
+  return { data: await assemblerFichier(o, await lire(key)), key, cleId: o.cleId, kek, salt, iter, via, ...(role ? { role } : {}), lecture: { id: o.cleId, key } };
 }
 async function decryptFile(text, pw, opts) {
   let o;
@@ -2400,7 +2415,7 @@ const pct = t => t === null ? "—" : Math.round(t * 100) + " %";
 /* ---------- Journal des modifications ---------- */
 const JOURNAL_MAX = 3000;
 /* Accès utilisé (déduit du mot de passe qui a ouvert le fichier, pas saisi) : inscrit dans chaque entrée du journal */
-const accesLibelle = () => state.role ? `Chef ${state.role.peloton} · ${state.role.escadron}` : "Administrateur";
+const accesLibelle = () => state.role?.capitaine ? "Capitaine" : state.role ? `Chef ${state.role.peloton} · ${state.role.escadron}` : "Administrateur";
 /* Auteur affiché d'une entrée : nom saisi (facultatif) et accès */
 const auteurJournal = j => [j.qui, j.acces].filter(Boolean).join(" · ");
 function journaliser(d, qui, quoi, ids) {
@@ -2905,11 +2920,11 @@ async function estMdpHabituel(pw) {
     return true;
   } catch { return false; }
 }
-async function estMdpSecours(pw) {
-  const S = state.data?.meta.secours;
+async function estMdpSecours(pw, S = state.data?.meta.secours) {
   if (!S) return false;
   try { await ouvrirSecours(S, pw); return true; } catch { return false; }
 }
+const estMdpCapitaine = pw => estMdpSecours(pw, state.data?.meta.capitaine);
 
 /* Jauge de solidité sous un champ mot de passe */
 function jaugeMdp(input, sortie) {
@@ -2962,7 +2977,7 @@ $("#form-open").addEventListener("submit", async e => {
   err.textContent = "Déchiffrement…";
   try {
     const r = await decryptFile(pending.text, pw);
-    Object.assign(state, { data: normalize(r.data), mdpChange: false, autoSuspendu: "", role: r.role || null, modele: r.role ? pending.text : null,
+    Object.assign(state, { data: normalize(r.data), mdpChange: false, autoSuspendu: "", role: r.role || null, modele: r.role && !r.role.capitaine ? pending.text : null,
       handle: pending.handle, fileName: pending.name, dirty: false, auteur: $("#qui").value.trim(), lastIv: empreinte(JSON.parse(pending.text)) });
     if (r.role) Object.assign(state, { key: r.key, cleId: r.cleId, kek: null, salt: null, lecture: r.lecture });
     else await preparerCles(pw, r);
@@ -2970,7 +2985,7 @@ $("#form-open").addEventListener("submit", async e => {
     $("#pw-open").value = ""; err.textContent = ""; pending = null; showPicked();
     showApp();
     if (r.via === "secours") ouvrirMdp(true);
-    if (r.role) toast(`Accès chef de peloton : ${r.role.peloton} (${r.role.escadron}), en lecture seule.`);
+    if (r.role) toast(r.role.capitaine ? "Accès capitaine : tout le fichier, en lecture seule." : `Accès chef de peloton : ${r.role.peloton} (${r.role.escadron}), en lecture seule.`);
   } catch (x) { err.textContent = x.message; }
 });
 
@@ -3009,13 +3024,13 @@ function showApp() {
   $("#lock").hidden = true; $("#app").hidden = false;
   appliquerRole(); resetListe(); setView("accueil");
 }
-/* Chef de peloton : lecture seule de son peloton. Les actions qui concernent tout le fichier sont masquées (et refusées
+/* Chef de peloton : lecture seule de son peloton ; capitaine : lecture seule de tout le fichier. Les actions qui concernent tout le fichier sont masquées (et refusées
    par reserveAdmin), celles qui modifient les données aussi (classe lecture-seule, refusées par lectureSeule) */
 function appliquerRole() {
   const r = state.role;
   document.body.classList.toggle("lecture-seule", !!r);
   ["#btn-import", "#btn-cartec", "#btn-uir", "#btn-champs", '.sb-bas [data-clic="#btn-mdp"]', "#reo-reglages"].forEach(q => document.querySelectorAll(q).forEach(e => { e.hidden = !!r; }));
-  $("#role-badge").hidden = !r; $("#role-badge").textContent = r ? `Chef de peloton · ${r.peloton} · ${r.escadron} · lecture seule` : "";
+  $("#role-badge").hidden = !r; $("#role-badge").textContent = !r ? "" : r.capitaine ? "Capitaine · tout le fichier · lecture seule" : `Chef de peloton · ${r.peloton} · ${r.escadron} · lecture seule`;
 }
 function lectureSeule() {
   if (!state.role) return false;
@@ -3024,7 +3039,7 @@ function lectureSeule() {
 }
 function reserveAdmin() {
   if (!state.role) return false;
-  toast("Réservé au mot de passe habituel du fichier : votre accès de chef de peloton est en lecture seule.");
+  toast(`Réservé au mot de passe habituel du fichier : votre accès ${state.role.capitaine ? "de capitaine" : "de chef de peloton"} est en lecture seule.`);
   return true;
 }
 function setView(v) {
@@ -3237,6 +3252,7 @@ $("#form-mdp").addEventListener("submit", async e => {
   err.textContent = "Vérification…";
   if (!obligatoire && !(await estMdpHabituel($("#mdp-ancien").value))) return (err.textContent = "Mot de passe actuel incorrect.");
   if (await estMdpSecours(nv)) return (err.textContent = "Le mot de passe habituel doit être différent du mot de passe de secours.");
+  if (await estMdpCapitaine(nv)) return (err.textContent = "Le mot de passe habituel doit être différent de celui du capitaine.");
   const c = await clesNeuves(nv);
   Object.assign(state, c, { mdpChange: true });
   journaliser(state.data, state.auteur, obligatoire ? "Ouverture avec le mot de passe de secours : nouveau mot de passe choisi" : "Changement du mot de passe du fichier");
@@ -3268,6 +3284,7 @@ $("#form-secours").addEventListener("submit", async e => {
   err.textContent = "Vérification…";
   if (!(await secoursActuelOk())) return;
   if (await estMdpHabituel(nv)) return (err.textContent = "Le mot de passe de secours doit être différent du mot de passe habituel.");
+  if (await estMdpCapitaine(nv)) return (err.textContent = "Le mot de passe de secours doit être différent de celui du capitaine.");
   err.textContent = "Préparation…";
   const avait = !!state.data.meta.secours;
   state.data.meta.secours = await creerSecours(nv, state.auteur || "");
@@ -3296,13 +3313,15 @@ function renderAcces() {
   P.forEach(p => { if (p.v.escadron && p.v.peloton) vus.set(norm(p.v.escadron) + "|" + norm(p.v.peloton), [p.v.escadron, p.v.peloton]); });
   A.forEach(a => { const k = norm(a.escadron) + "|" + norm(a.peloton); if (!vus.has(k)) vus.set(k, [a.escadron, a.peloton]); });
   accesChoix = [...vus.values()].sort((a, b) => a[0].localeCompare(b[0], "fr", { numeric: true }) || ordrePeloton(a[1]) - ordrePeloton(b[1]) || a[1].localeCompare(b[1]));
-  $("#acces-list").innerHTML = accesChoix.map(([e, pel]) => {
+  const C = state.data.meta.capitaine;
+  $("#acces-list").innerHTML = `<div class="acces-row"><strong>Capitaine · tout le fichier</strong><span class="etat">${P.length} fiche${P.length > 1 ? "s" : ""} · ${C ? `accès défini le ${esc(fmtStamp(C.defini))}${C.qui ? " par " + esc(C.qui) : ""}` : "pas d'accès"}</span>${
+    C ? `<button type="button" class="btn btn-danger" data-retirer="capitaine">Retirer l'accès</button>` : ""}</div>` + (accesChoix.map(([e, pel]) => {
     const a = A.find(x => memeRattachement({ escadron: e, peloton: pel }, x)), n = P.filter(p => memeRattachement(p.v, { escadron: e, peloton: pel })).length;
     return `<div class="acces-row"><strong>${esc(e)} · ${esc(pel)}</strong><span class="etat">${n} fiche${n > 1 ? "s" : ""} · ${a ? `accès défini le ${esc(fmtStamp(a.defini))}${a.qui ? " par " + esc(a.qui) : ""}` : "pas d'accès"}</span>${
       a ? `<button type="button" class="btn btn-danger" data-retirer="${esc(a.id)}">Retirer l'accès</button>` : ""}</div>`;
-  }).join("") || `<p class="hint">Aucun peloton renseigné dans les fiches (escadron et peloton).</p>`;
+  }).join("") || `<p class="hint">Aucun peloton renseigné dans les fiches (escadron et peloton).</p>`);
   const sel = $("#acces-pel").value;
-  $("#acces-pel").innerHTML = options(accesChoix.map(([e, pel], i) => [String(i), `${e} · ${pel}`]), sel);
+  $("#acces-pel").innerHTML = options([["capitaine", "Capitaine · tout le fichier"], ...accesChoix.map(([e, pel], i) => [String(i), `Chef · ${e} · ${pel}`])], sel);
 }
 $("#btn-acces").addEventListener("click", () => {
   if (reserveAdmin()) return;
@@ -3311,16 +3330,25 @@ $("#btn-acces").addEventListener("click", () => {
 });
 $("#form-acces").addEventListener("submit", async e => {
   e.preventDefault();
-  const err = $("#err-acces"), pw = $("#acces-mdp").value, choix = accesChoix[+$("#acces-pel").value];
-  if (!choix) return (err.textContent = "Choisissez un peloton.");
+  const err = $("#err-acces"), pw = $("#acces-mdp").value, cap = $("#acces-pel").value === "capitaine", choix = cap ? null : accesChoix[+$("#acces-pel").value];
+  if (!cap && !choix) return (err.textContent = "Choisissez un accès.");
   if (pw.length < 10) return (err.textContent = "Le mot de passe doit faire au moins 10 caractères.");
   if (pw !== $("#acces-mdp2").value) return (err.textContent = "Les deux mots de passe ne correspondent pas.");
   if (forceMotDePasse(pw).score < 2 && !confirm("Ce mot de passe est faible : il pourrait être deviné si le fichier tombait entre de mauvaises mains. L'utiliser quand même ?")) return;
   err.textContent = "Vérification…";
-  const [escadron, peloton] = choix, M = state.data.meta, existant = (M.acces || []).find(a => memeRattachement({ escadron, peloton }, a));
+  const [escadron, peloton] = choix || [], M = state.data.meta, existant = !cap && (M.acces || []).find(a => memeRattachement({ escadron, peloton }, a));
   if (await estMdpHabituel(pw) || await estMdpSecours(pw)) return (err.textContent = "Ce mot de passe doit être différent du mot de passe habituel et du mot de passe de secours.");
-  if (M.accesKdf && await ouvrirAcces({ kdf: M.accesKdf, liste: (M.acces || []).map(a => a.env) }, pw, existant?.env)) return (err.textContent = "Ce mot de passe est déjà celui d'un autre peloton.");
+  if (M.accesKdf && await ouvrirAcces({ kdf: M.accesKdf, liste: (M.acces || []).map(a => a.env) }, pw, existant?.env)) return (err.textContent = "Ce mot de passe est déjà celui d'un chef de peloton.");
+  if (!cap && await estMdpCapitaine(pw)) return (err.textContent = "Ce mot de passe est déjà celui du capitaine.");
   err.textContent = "Préparation…";
+  if (cap) {   // même mécanisme que le secours : paire RSA, l'enveloppe suit les changements de clé du fichier
+    const avant = !!M.capitaine;
+    M.capitaine = await creerSecours(pw, state.auteur || "");
+    journaliser(state.data, state.auteur, `Accès capitaine ${avant ? "changé" : "défini"}`);
+    $("#acces-mdp").value = $("#acces-mdp2").value = ""; err.textContent = ""; jaugeMdp("#acces-mdp", "#force-acces");
+    markDirty(); renderAcces();
+    return toast("Mot de passe du capitaine enregistré. Enregistrez le fichier pour l'appliquer.");
+  }
   await creerAcces(M, escadron, peloton, pw, state.auteur || "");
   journaliser(state.data, state.auteur, `Accès chef de peloton ${existant ? "changé" : "défini"} : ${peloton} (${escadron})`);
   $("#acces-mdp").value = $("#acces-mdp2").value = ""; err.textContent = ""; jaugeMdp("#acces-mdp", "#force-acces");
@@ -3329,7 +3357,14 @@ $("#form-acces").addEventListener("submit", async e => {
 });
 $("#acces-list").addEventListener("click", e => {
   const b = e.target.closest("[data-retirer]"); if (!b) return;
-  const M = state.data.meta, a = (M.acces || []).find(x => x.id === b.dataset.retirer); if (!a) return;
+  const M = state.data.meta;
+  if (b.dataset.retirer === "capitaine") {
+    if (!confirm("Retirer l'accès du capitaine ? Son mot de passe n'ouvrira plus le fichier après le prochain enregistrement.")) return;
+    delete M.capitaine;
+    journaliser(state.data, state.auteur, "Accès capitaine retiré");
+    return (markDirty(), renderAcces());
+  }
+  const a = (M.acces || []).find(x => x.id === b.dataset.retirer); if (!a) return;
   if (!confirm(`Retirer l'accès du chef de peloton ${a.peloton} (${a.escadron}) ? Son mot de passe n'ouvrira plus le fichier après le prochain enregistrement.`)) return;
   M.acces = M.acces.filter(x => x !== a);
   if (!M.acces.length) { delete M.acces; delete M.accesKdf; }
@@ -3433,7 +3468,7 @@ function suspendreAuto(raison) { state.autoSuspendu = raison; renderHeader(); to
 /* Données du fichier lu, si elles se déchiffrent avec la clé connue (chef de peloton : sa partie seulement) */
 async function lireAvecCle(o) {
   try {
-    if (state.role) return o.parts?.[state.role.id] ? normalize(await dechiffrerBloc(o.parts[state.role.id], state.key)) : null;
+    if (estChef()) return o.parts?.[state.role.id] ? normalize(await dechiffrerBloc(o.parts[state.role.id], state.key)) : null;
     const L = state.lecture;
     if (!L || idFichier(o) !== L.id) return null;
     return normalize(await assemblerFichier(o, await dechiffrerBloc(o, L.key)));
@@ -3443,7 +3478,7 @@ async function lireDisque(auto = false) {
   let texte, o;
   try { texte = await (await state.handle.getFile()).text(); o = JSON.parse(texte); } catch { return { change: false }; }
   if (!o || !o.iv || !state.lastIv || empreinte(o) === state.lastIv) return { change: false };
-  if (state.role) state.modele = texte;   // le reste du fichier sera recopié depuis cette version
+  if (estChef()) state.modele = texte;   // le reste du fichier sera recopié depuis cette version
   let data = await lireAvecCle(o);
   if (!data && !auto && !state.role && (o.principal || o.kdf)) data = await demanderCleDisque(o);
   const der = data?.journal?.at(-1);
@@ -3452,6 +3487,7 @@ async function lireDisque(auto = false) {
   const autre = [...(data?.journal || [])].reverse().find(j => auteurJournal(j) !== moi && (j.qui || (j.acces && j.acces !== accesLibelle())));
   const qui = auteurJournal(autre || der || {});
   const info = data ? `Une autre version a été enregistrée le ${data.meta?.modifie ? fmtStamp(data.meta.modifie) : "?"}${qui ? ` par ${qui}` : ""}${der ? ` (dernière modification : « ${der.quoi.slice(0, 120)} »)` : ""}.`
+    : state.role?.capitaine ? "L'administrateur a changé la clé du fichier : fermez-le puis rouvrez-le avec votre mot de passe pour voir les dernières modifications."
     : state.role ? "Votre accès de chef de peloton a été modifié par l'administrateur : verrouillez puis rouvrez le fichier avec le nouveau mot de passe."
     : "Une autre version du fichier a été enregistrée depuis que vous l'avez ouvert (avec un autre mot de passe : impossible de la lire pour fusionner).";
   return { change: true, data, qui, info, iv: empreinte(o) };

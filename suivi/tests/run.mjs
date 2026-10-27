@@ -515,6 +515,40 @@ await test("Accès chef de peloton : il ne déchiffre que son peloton, l'adminis
   egal(L.state.data.meta.acces.length, 2, "un seul accès par peloton");
 });
 
+await test("Accès capitaine : tout le fichier en lecture, suit les changements de clé, session verrouillée", async () => {
+  const d = demo(), tri = P => P.map(p => p.id).sort();
+  Object.assign(L.state, await L.clesNeuves("mot-de-passe-habituel", 1000), { role: null, modele: null });
+  await L.creerAcces(d.meta, d.personnes[0].v.escadron, d.personnes[0].v.peloton, "chef-du-peloton-1");
+  d.meta.capitaine = await L.creerSecours("mot-de-passe-capitaine");
+  d.listes.push({ id: "l1", nom: "Liste admin", lignes: [], champs: [], etat: {} });
+  L.state.data = d;
+  const fichier = await L.encryptData("2026-01-01T00:00:00.000Z");
+  const r = await L.decryptFile(fichier, "mot-de-passe-capitaine");
+  egal([r.via, r.role.capitaine, r.kek], ["capitaine", true, null]);
+  egal(tri(r.data.personnes), tri(d.personnes), "tous les pelotons");
+  vrai(r.data.listes.some(l => l.id === "l1"), "listes de l'administrateur visibles");
+  const chef = await L.decryptFile(fichier, "chef-du-peloton-1");
+  vrai(!chef.data.meta.capitaine, "enveloppe du capitaine absente de la partie d'un chef");
+  // Nouveau mot de passe habituel = nouvelle clé : le capitaine ouvre toujours
+  Object.assign(L.state, await L.clesNeuves("autre-mot-de-passe", 1000));
+  const apres = await L.encryptData();
+  egal(tri((await L.decryptFile(apres, "mot-de-passe-capitaine")).data.personnes), tri(d.personnes), "après changement de clé");
+  // Session du capitaine verrouillée : bloc sans enveloppe principale, rouvert par son mot de passe
+  const sauve = { ...L.state };
+  Object.assign(L.state, { data: L.normalize(r.data), key: r.key, cleId: r.cleId, kek: null, role: r.role, modele: null });
+  const session = await L.encryptData(), os = JSON.parse(session);
+  vrai(!os.principal, "pas d'enveloppe principale");
+  const rs = await L.decryptFile(session, "mot-de-passe-capitaine", { secours: false });
+  egal([rs.role.id, tri(rs.data.personnes)], ["capitaine", tri(d.personnes)]);
+  let refuse = false; try { await L.decryptFile(session, "mot-de-passe-habituel"); } catch { refuse = true; }
+  vrai(refuse, "le mot de passe habituel n'ouvre pas la session du capitaine");
+  Object.assign(L.state, sauve);
+  // Accès retiré : son mot de passe n'ouvre plus les versions suivantes
+  delete L.state.data.meta.capitaine;
+  refuse = false; try { await L.decryptFile(await L.encryptData(), "mot-de-passe-capitaine"); } catch { refuse = true; }
+  vrai(refuse, "accès retiré");
+});
+
 await test("Accès chef de peloton : découpage et rassemblement (journal, listes)", () => {
   const d = L.normalize(L.donneesDemo()), p = d.personnes[0];
   d.meta.acces = [{ id: "A", escadron: p.v.escadron, peloton: p.v.peloton }];
