@@ -17,7 +17,7 @@ const L = vm.runInContext(`({ state, emptyData, normalize, donneesDemo, encryptD
   permisEtat, defaultReglesPermis, seanceChangements, echeances, diffFiche, journaliser, JOURNAL_MAX, statFormation, statutTaux,
   statusOf, reoBlocs, groupesPeloton, defaultChamps, SCHEMA, fusionner, ITER, forceMotDePasse, controleQualite, historiquePersonne,
   seuilAlerte, isoLocal, today, lireCartec, planCartec, appliquerCartec, escadronPropose, reoBlocs, lireUIR, planUIR, appliquerUIR,
-  duree, aEcheance, clesNeuves, creerSecours, toB64, creerAcces, decouper, assembler, empreinte, dernierTirDe, majDernierTir, statFGE, addMonths, lireNouveaux, creerNouveaux, releve, avecReleve, cumulReleve, tauxReleve, RELEVES_MAX })`, ctx);
+  duree, aEcheance, clesNeuves, creerSecours, toB64, creerAcces, decouper, assembler, empreinte, dernierTirDe, majDernierTir, statFGE, addMonths, lireNouveaux, creerNouveaux, releve, avecReleve, cumulReleve, tauxReleve, RELEVES_MAX, reparerTel, telsReparables, parseCell, lireUIR })`, ctx);
 
 let ok = 0, ko = 0;
 /* Fichier au format 1 (ancien) : données chiffrées directement par la clé dérivée du mot de passe */
@@ -728,6 +728,18 @@ await test("Relevés mensuels : comptes, cumul, fusion, partie d'un chef", () =>
   egal(Object.keys(L.assembler(reste, parts).releves[0].g).length, 2, "rassemblé : relevé complet, sans doublon");
   egal(L.normalize(L.emptyData("x")).releves, []);
   egal(L.donneesDemo().releves.length, 12, "démo : douze mois reconstitués");
+});
+
+await test("Téléphones : 0 perdu par Excel, +33, numéros étrangers", () => {
+  egal(["612345678", "6 12 34 56 78", "+33 (0)6 12 34 56 78", "0033 06 12 34 56 78", "33612345678", "145678901"].map(L.reparerTel),
+    Array(5).fill("06 12 34 56 78").concat("01 45 67 89 01"));
+  egal(["06.12.34.56.78", "+33612345678", "+44 20 7946 0958", "12345", "", "612 34"].map(L.reparerTel), ["06.12.34.56.78", "+33612345678", "+44 20 7946 0958", "12345", "", "612 34"], "valide, étranger ou irréparable : inchangé");
+  const d = L.emptyData("t"); L.state.data = d;
+  d.personnes = [{ id: "a", v: { nom: "A", tel: "612345678", pap_tel: "06 00 00 00 00" } }]; d.archives = [{ id: "b", v: { conj_tel: "+33 (0)7 11 11 11 11" }, archive: {} }];
+  egal(L.telsReparables(d).map(x => [x.p.id, x.f.id, x.apres]), [["a", "tel", "06 12 34 56 78"], ["b", "conj_tel", "07 11 11 11 11"]]);
+  vrai(L.controleQualite(d).some(x => x.type === "tel" && x.detail.includes("(réparable)")), "qualité : réparation proposée");
+  const f = d.champs.find(c => c.id === "tel");
+  egal([L.parseCell(f, 612345678).v, L.parseCell(f, "0612345678").v], ["06 12 34 56 78", "0612345678"], "import Excel : nombre réparé, numéro valide gardé tel quel");
 });
 
 console.log(`\n${ok} réussi(s), ${ko} échoué(s)`);

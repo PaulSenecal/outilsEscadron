@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <!-- Politique de sécurité : aucune requête réseau (sauf Google Fonts), seul le script de ce fichier peut s'exécuter
      (empreinte sha256 : après toute modification du script, lancer « node tests/csp.mjs » pour la mettre à jour). -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-lOG0IBnkke2JPorMslv4PZTXFPKKRaCJ29WMAUII+0E='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-dGOdodJsJCpcwZ2pR2CXZy3s9zv6v8NCziiNDADuPa0='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
 <title>Suivi du personnel</title>
 <meta name="theme-color" content="#0B1629">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%2313233F'/%3E%3Cpath d='M32 9l18 7v13c0 12-8 21-18 26-10-5-18-14-18-26V16z' fill='none' stroke='%23C9A227' stroke-width='4'/%3E%3Ccircle cx='32' cy='27' r='6' fill='%23C9A227'/%3E%3Cpath d='M21 44c2-7 6-10 11-10s9 3 11 10' fill='%23C9A227'/%3E%3C/svg%3E">
@@ -779,6 +779,7 @@ details summary{cursor:pointer;font-weight:600;color:var(--navy)}
         <label class="fld"><span>Escadron</span><select id="qu-esc"></select></label>
         <label class="fld"><span>Problème</span><select id="qu-type"></select></label>
         <div class="spacer"></div>
+        <button type="button" class="btn btn-gold" id="qu-tels" hidden></button>
         <div class="dd">
           <button type="button" class="btn dd-btn" aria-haspopup="menu" aria-expanded="false">Exporter ▾</button>
           <div class="dd-menu" role="menu" hidden>
@@ -1142,10 +1143,13 @@ const enc = new TextEncoder(), dec = new TextDecoder();
 const FORMAT = "suivi-personnel";
 const ITER = 600000;          // PBKDF2 (OWASP 2023). Un fichier plus ancien est relu avec ses itérations et mis à niveau au prochain enregistrement
 const SCHEMA = 6;
-const VERSION = "3.20";
+const VERSION = "3.21";
 /* Historique affiché par le bouton « Nouveautés » : à chaque évolution, incrémenter VERSION
    et ajouter une entrée EN TÊTE de cette liste. */
 const NOUVEAUTES = [
+  { v: "3.21", date: "29/10/2026", items: [
+    "Téléphones : le 0 du début perdu par Excel (612345678) est remis tout seul, à l'import Excel, au complément depuis le fichier UIR et à la saisie d'une fiche ; un numéro mal écrit en +33 (0)6… ou 33 6… devient 06 12 34 56 78. Les numéros étrangers ne sont pas touchés.",
+    "Qualité des données : bouton « Réparer N numéros de téléphone » pour corriger d'un coup ceux déjà dans le fichier (annulable)."] },
   { v: "3.20", date: "29/10/2026", items: [
     "Statistiques : nouvelle carte « Évolution du taux de validité ». Un relevé est gardé chaque mois dans le fichier chiffré (quelques Ko), automatiquement à l'enregistrement ; courbe et tableau mois par mois, formation par formation, pour l'escadron et le peloton choisis. Aussi dans l'export Excel.",
     "La courbe démarre ce mois-ci : un point s'ajoute chaque mois. Les chefs de peloton ne voient que l'évolution de leur peloton."] },
@@ -1829,7 +1833,7 @@ function parseCell(f, raw) {
       if (["oui", "vrai", "true", "1", "o"].includes(n)) return { v: "oui" };
       if (["non", "faux", "false", "0", "n"].includes(n)) return { v: "non" };
       return { err: true };
-    case "tel": return { v: typeof raw === "number" && String(raw).length === 9 ? "0" + raw : s };
+    case "tel": return { v: reparerTel(typeof raw === "number" ? String(raw) : s) };
     case "liste": {
       if (f.alias && f.alias[n]) return { v: f.alias[n] };
       const o = (f.options || []).find(x => norm(x) === n);
@@ -2356,6 +2360,7 @@ function lireUIR(grid, champs) {
     let t = cellText(raw);
     if (/^(neant|nc|n\/a|-+|\?)$/i.test(t)) return "";
     if (f.id === "grade") return t.toUpperCase();
+    if (f.type === "tel") return reparerTel(t);
     if (f.id === "sitfam") return SITFAM[norm(t).replace(/[^a-z]/g, "")] || t;
     return t;
   };
@@ -2377,7 +2382,7 @@ function lireUIR(grid, champs) {
 /* Valeurs équivalentes (pas un vrai changement) : même date, mêmes chiffres pour un téléphone, même texte aux accents
    et à la casse près */
 function memeValeur(f, a, b) {
-  if (f.type === "tel") return a.replace(/\D/g, "").replace(/^33/, "0") === b.replace(/\D/g, "").replace(/^33/, "0");
+  if (f.type === "tel") { const c = x => reparerTel(x).replace(/\D/g, "").replace(/^33/, "0"); return c(a) === c(b); }
   return norm(a) === norm(b);
 }
 /* Plan : seules les fiches des escadrons choisis sont complétées (aucune création).
@@ -2631,6 +2636,22 @@ function forceMotDePasse(pw) {
 const QUALITE_TYPES = { doublon: "Doublon probable", mail: "Mail mal formé", tel: "Téléphone mal formé", futur: "Date dans le futur",
   ancienne: "Date improbable", rattachement: "Sans escadron ou peloton", identite: "Identité incomplète", grade: "Grade non reconnu" };
 const telValide = t => { const c = t.replace(/[\s.\-()\/]/g, ""); return /^0[1-9]\d{8}$/.test(c) || /^(\+|00)33[1-9]\d{8}$/.test(c) || /^(\+|00)(?!33)\d{8,14}$/.test(c); };
+/* Numéro français mal saisi réparé : 0 de tête perdu par Excel (612345678), +33 / 0033 / 33 devant, +33 0… ;
+   rendu « 06 12 34 56 78 ». Numéro déjà valide, étranger ou irréparable : rendu tel quel. */
+function reparerTel(t) {
+  const s = String(t ?? "").trim();
+  if (!s || telValide(s)) return s;
+  let c = s.replace(/[\s.\-()\/]/g, "");
+  if (/^(\+|00)33/.test(c)) c = c.replace(/^(\+|00)33/, ""); else if (/^33\d{9}$/.test(c)) c = c.slice(2); else if (/^(\+|00)/.test(c)) return s;
+  if (!/^0?[1-9]\d{8}$/.test(c)) return s;
+  return ("0" + c.slice(-9)).replace(/(\d{2})(?=\d)/g, "$1 ");
+}
+/* Numéros réparables du fichier (fiches et archives) : [{ p, f, avant, apres }] */
+function telsReparables(d) {
+  const T = d.champs.filter(f => f.type === "tel"), out = [];
+  [...d.personnes, ...d.archives].forEach(p => T.forEach(f => { const avant = p.v[f.id], apres = avant && reparerTel(avant); if (apres && apres !== avant) out.push({ p, f, avant, apres }); }));
+  return out;
+}
 const mailValide = m => /^[^\s@,;<>]+@[^\s@,;<>]+\.[a-z]{2,}$/i.test(m.trim());
 function controleQualite(d) {
   const out = [], P = d.personnes, C = d.champs, auj = isoLocal(today());
@@ -2657,7 +2678,7 @@ function controleQualite(d) {
     if (!v.escadron || !v.peloton) out.push({ type: "rattachement", p, detail: [!v.escadron && "escadron", !v.peloton && "peloton"].filter(Boolean).join(" et ") + " non renseigné(s)" });
     if (v.grade && !GRADES.includes(v.grade)) out.push({ type: "grade", p, detail: `« ${v.grade} » ne fait pas partie de la liste des grades (tri par grade imprécis)` });
     champsMail.forEach(f => { const m = v[f.id]; if (m && !mailValide(m)) out.push({ type: "mail", p, f, detail: `${f.label} : « ${m} »` }); });
-    champsTel.forEach(f => { const t = v[f.id]; if (t && !telValide(t)) out.push({ type: "tel", p, f, detail: `${f.label} : « ${t} »` }); });
+    champsTel.forEach(f => { const t = v[f.id]; if (t && !telValide(t)) out.push({ type: "tel", p, f, detail: `${f.label} : « ${t} »${reparerTel(t) !== t ? ` → ${reparerTel(t)} (réparable)` : ""}` }); });
     champsDate.forEach(f => {
       const x = v[f.id]; if (!/^\d{4}-\d{2}-\d{2}$/.test(x || "")) return;
       if (x > auj && !/\b(fin|prochaine?|echeance|expiration|limite)\b/.test(norm(f.label))) out.push({ type: "futur", p, f, detail: `${f.groupe} › ${f.label} : ${fmtIso(x)}` });
@@ -4087,7 +4108,7 @@ function lireFiche() {
     if (el.hasAttribute("data-permis")) {
       const m = el.querySelector("[data-pmode]").value;
       x = m === "date" ? el.querySelector('input[type="date"]').value : m;
-    } else x = el.value.trim();
+    } else x = el.type === "tel" ? reparerTel(el.value) : el.value.trim();
     if (x) v[el.dataset.f] = x;
   });
   return v;
@@ -5318,7 +5339,19 @@ function renderQualite() {
     R.map(x => `<tr data-id="${esc(x.p.id)}" tabindex="0"><td class="nowrap">${esc(QUALITE_TYPES[x.type])}</td><td>${esc(nomPersonne(x.p.v) || "(sans nom)")}</td>
       <td class="nowrap">${esc([x.p.v.escadron, x.p.v.peloton].filter(Boolean).join(" · "))}</td><td>${esc(x.detail)}</td></tr>`).join("")}</tbody></table>`
     : `<div class="empty"><p>Aucun point à vérifier${quEsc ? " pour cet escadron" : ""}. 👍</p></div>`;
+  const nT = state.role ? 0 : telsReparables(state.data).length;
+  $("#qu-tels").hidden = !nT; $("#qu-tels").textContent = `Réparer ${nT} numéro${nT > 1 ? "s" : ""} de téléphone`;
+  $("#qu-tels").title = "Remet le 0 perdu par Excel (612345678 → 06 12 34 56 78) et corrige les +33 mal écrits ; les numéros étrangers ne sont pas touchés";
 }
+$("#qu-tels").addEventListener("click", () => {
+  if (lectureSeule()) return;
+  const R = telsReparables(state.data);
+  if (!R.length) return;
+  modif(`${R.length} numéro${R.length > 1 ? "s" : ""} de téléphone réparé${R.length > 1 ? "s" : ""} (0 de tête, +33 mal écrit)`, [], [...new Set(R.map(x => x.p.id))]);
+  R.forEach(x => { x.p.v[x.f.id] = x.apres; });
+  markDirty(); renderQualite();
+  toast(`${R.length} numéro${R.length > 1 ? "s" : ""} réparé${R.length > 1 ? "s" : ""}.`);
+});
 $("#qu-esc").addEventListener("change", e => { quEsc = e.target.value; renderQualite(); });
 $("#qu-type").addEventListener("change", e => { quType = e.target.value; renderQualite(); });
 $("#qu-resume").addEventListener("click", e => { const b = e.target.closest("[data-qu]"); if (!b) return; quType = quType === b.dataset.qu ? "" : b.dataset.qu; renderQualite(); });

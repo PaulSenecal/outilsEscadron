@@ -256,6 +256,11 @@ const valeur = (sel, v) => { const e = document.querySelector(sel); e.value = v;
   verif("Qualité : un clic ouvre la fiche", $("#dlg-person").open);
   document.querySelector('#p-body [data-f="mail"]').value = "corrige@example.org"; $("#form-person").requestSubmit();
   verif("Qualité : corrigé, plus signalé", ![...document.querySelectorAll("#qualite tbody tr")].some(tr => tr.textContent.includes("pas-une-adresse")));
+  state.data.personnes[1].v.tel = "612345678"; state.data.personnes[2].v.tel = "+33 (0)7 11 22 33 44"; renderQualite();
+  verif("Qualité : bouton « Réparer 2 numéros »", !$("#qu-tels").hidden && $("#qu-tels").textContent.includes("2 numéros"), $("#qu-tels").textContent);
+  $("#qu-tels").click();
+  verif("Qualité : numéros réparés, bouton masqué, annulable", state.data.personnes[1].v.tel === "06 12 34 56 78" && state.data.personnes[2].v.tel === "07 11 22 33 44"
+    && $("#qu-tels").hidden && $("#btn-undo").title.includes("téléphone"), state.data.personnes[1].v.tel);
 
   // Historique de la fiche
   openPerson(state.data.personnes[0].id);

@@ -258,6 +258,10 @@ Statuts : expiré (bad), à prévoir si moins de seuilAlerte(f) jours (warn),
 - Page « Qualité des données » (controleQualite, logique pure) : doublons probables (nom + prénom, prénom
   préfixe, même mail), mail / téléphone mal formés, date dans le futur (sauf libellés « fin », « échéance »…),
   date avant 1950, sans escadron / peloton, nom ou prénom manquant, grade hors GRADES. Clic = fiche ; export Excel.
+- Téléphones (v3.21) : reparerTel(t) (logique pure) remet le 0 perdu par Excel (9 chiffres), corrige +33 (0)6… / 0033 0… / 33 6…
+  → « 06 12 34 56 78 » ; numéro déjà valide (telValide, +33612345678 compris), étranger ou irréparable : inchangé. Appliqué par
+  parseCell (import Excel / CSV), lireUIR et lireFiche ; memeValeur compare après réparation. Qualité : détail « → … (réparable) »
+  et bouton #qu-tels « Réparer N numéros » (telsReparables : fiches + archives, un seul modif(), journal sans les valeurs).
 - Fiche : section repliable « Historique » (entrées du journal de la personne).
 - Écran de verrouillage : nom de l'utilisateur (facultatif, pour le journal, gardé en mémoire
   seulement), ouvrir un fichier existant, en créer un nouveau, ou « Essayer avec des données
