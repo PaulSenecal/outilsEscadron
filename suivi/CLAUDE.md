@@ -148,6 +148,13 @@ Ancien format 1 : { format, version: 1, kdf, iv, data } (relu seulement).
   absentes sont ajoutées aux fichiers existants, et une règle corrigée (REGLES_CORRIGEES) n'est
   remplacée que si le fichier a encore l'ancienne valeur non modifiée à la main.
 - archives : [{ id, v, archive: { date, motif } }] — personnes parties, exclues de tous les tableaux
+- releves (v3.20) : [{ m: "AAAA-MM", g: { "escadron|peloton": { n: effectif, f: { champId: [à jour, à prévoir, expirés] } } } }]
+  = relevé mensuel des FORMATIONS (jamais fait = n − les trois ; formation que personne du groupe n'a faite : absente).
+  releve(d, ref) / etatAu (logique pure, seuil f.alerte ?? meta.alerteJours ; date postérieure à ref = échéance de la précédente,
+  pour les relevés reconstitués de la démo) ; avecReleve remplace le mois, RELEVES_MAX = 60. encryptData (administrateur,
+  pas de state.role) refait le relevé du mois courant à chaque enregistrement → état de fin de mois. Fusion : union par mois,
+  le mien si les deux côtés ont le même mois. Chefs : communPour ne garde que les groupes de leur peloton ; le reste garde tout
+  (assembler ignore les relevés des parties). ~2 Ko par mois pour 230 personnes.
 - journal : [{ t (ISO), qui, acces (v3.14 : accesLibelle() = « Administrateur » ou « Chef P1 · 5ESC », déduit du mot de
   passe, jamais saisi), quoi, p? (ids des personnes concernées) }] — auteur affiché : auteurJournal / quiHtml ; filtre
   « Accès » dans la fenêtre du journal — 3000 entrées max, chiffré avec le reste.
@@ -350,6 +357,9 @@ Statuts : expiré (bad), à prévoir si moins de seuilAlerte(f) jours (warn),
   Formations sans aucune date dans le fichier masquées. Tableau « FGE — un an de service » (statFGE, GRADES_FGE = 1CL, CHA) :
   éligible si entrée en service + 12 mois ≤ aujourd'hui, sinon date d'éligibilité, ou entrée en service manquante ; clic =
   fiche ; aussi dans l'export Excel. Démo : entrée en service tirée par un prng à part (r2) pour ne rien changer d'autre.
+  Carte « Évolution du taux de validité » (stEvolution : 12 derniers relevés, mois en cours recalculé en direct, cumulReleve
+  sur l'escadron / peloton filtré, tauxReleve) : courbe SVG du taux global (courbeEvolution, seuils 75 / 50 %, classes .ev-*)
+  + tableau formation × mois ; aussi dans l'export Excel. Démo : 12 relevés reconstitués (fin des mois précédents).
 - Attention aux noms de classes CSS : « .seg » est déjà pris par le sélecteur de l'écran de
   verrouillage.
 - Colonne verticale (REO, NRBC, CATI) : largeur fixe ; le libellé n'est jamais plus haut

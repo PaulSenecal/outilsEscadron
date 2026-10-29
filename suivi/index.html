@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <!-- Politique de sécurité : aucune requête réseau (sauf Google Fonts), seul le script de ce fichier peut s'exécuter
      (empreinte sha256 : après toute modification du script, lancer « node tests/csp.mjs » pour la mettre à jour). -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-VDVymARBf625WBp1GARkonbOyAESwnhleLc7aJzz3U0='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-lOG0IBnkke2JPorMslv4PZTXFPKKRaCJ29WMAUII+0E='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
 <title>Suivi du personnel</title>
 <meta name="theme-color" content="#0B1629">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%2313233F'/%3E%3Cpath d='M32 9l18 7v13c0 12-8 21-18 26-10-5-18-14-18-26V16z' fill='none' stroke='%23C9A227' stroke-width='4'/%3E%3Ccircle cx='32' cy='27' r='6' fill='%23C9A227'/%3E%3Cpath d='M21 44c2-7 6-10 11-10s9 3 11 10' fill='%23C9A227'/%3E%3C/svg%3E">
@@ -393,6 +393,12 @@ legend .check{font-family:var(--cond);font-size:17px;font-weight:600;color:var(-
 .st-tbl .t-warn{background:var(--warn-bg);color:var(--warn);font-weight:600}
 .st-tbl .t-bad{background:var(--bad-bg);color:var(--bad);font-weight:600}
 .st-tbl .t-none{color:#A3ABB8}
+.ev-svg{width:100%;max-width:760px;height:auto;display:block}
+.ev-svg .ev-base{stroke:var(--line)} .ev-svg .ev-seuil{stroke-dasharray:4 4;stroke-width:1}
+.ev-svg .ev-seuil.s-ok{stroke:var(--ok)} .ev-svg .ev-seuil.s-warn{stroke:var(--warn)}
+.ev-svg .ev-ligne{fill:none;stroke:var(--navy);stroke-width:2.5;stroke-linejoin:round}
+.ev-svg .ev-pt{stroke:var(--surface);stroke-width:2;fill:var(--none)} .ev-svg .ev-pt.t-ok{fill:var(--ok)} .ev-svg .ev-pt.t-warn{fill:#D08A12} .ev-svg .ev-pt.t-bad{fill:var(--bad)}
+.ev-svg .ev-ax{font-size:12px;fill:var(--muted);font-family:var(--body)}
 .st-scroll{overflow-x:auto}
 .cols{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:20px}
 .colchart h3{font-family:var(--cond);font-size:18px;font-weight:600;margin:0 0 22px;color:var(--navy)}
@@ -1136,10 +1142,13 @@ const enc = new TextEncoder(), dec = new TextDecoder();
 const FORMAT = "suivi-personnel";
 const ITER = 600000;          // PBKDF2 (OWASP 2023). Un fichier plus ancien est relu avec ses itérations et mis à niveau au prochain enregistrement
 const SCHEMA = 6;
-const VERSION = "3.19";
+const VERSION = "3.20";
 /* Historique affiché par le bouton « Nouveautés » : à chaque évolution, incrémenter VERSION
    et ajouter une entrée EN TÊTE de cette liste. */
 const NOUVEAUTES = [
+  { v: "3.20", date: "29/10/2026", items: [
+    "Statistiques : nouvelle carte « Évolution du taux de validité ». Un relevé est gardé chaque mois dans le fichier chiffré (quelques Ko), automatiquement à l'enregistrement ; courbe et tableau mois par mois, formation par formation, pour l'escadron et le peloton choisis. Aussi dans l'export Excel.",
+    "La courbe démarre ce mois-ci : un point s'ajoute chaque mois. Les chefs de peloton ne voient que l'évolution de leur peloton."] },
   { v: "3.19", date: "28/10/2026", items: [
     "Écran d'ouverture : insigne de l'escadron, et bouton « ← Escadron » (retour à la liste des outils) plus visible."] },
   { v: "3.18", date: "27/10/2026", items: [
@@ -1474,6 +1483,7 @@ const estChef = () => !!state.role && !state.role.capitaine;
 async function encryptData(stamp = new Date().toISOString()) {
   if (estChef()) return encryptPartie(stamp);
   if (!state.kek && !state.role) throw new Error("choisissez d'abord un nouveau mot de passe");
+  if (!state.role) state.data.releves = avecReleve(state.data.releves, releve(state.data));   // relevé du mois (administrateur)
   const data = { ...state.data, meta: { ...state.data.meta, modifie: stamp } };
   const { reste, parts } = decouper(data);
   const bloc = await chiffrerBloc(state.key, JSON.stringify(reste));
@@ -1520,7 +1530,9 @@ function communPour(d, a) {
   const reo = { noms: garde(R.noms), postes: garde(R.postes) };
   const ce = Object.entries(R.cartec?.escadrons || {}).find(([e]) => norm(e) === norm(a.escadron));
   if (ce) reo.cartec = { date: R.cartec.date, escadrons: { [ce[0]]: { unite: ce[1].unite, groupes: garde(ce[1].groupes), vacants: garde(ce[1].vacants) } } };
-  return { meta, champs: d.champs, reo, permisRegles: d.permisRegles };
+  const releves = (d.releves || []).map(r => ({ m: r.m, g: Object.fromEntries(Object.entries(r.g).filter(([k]) => { const [e, p] = k.split("|");
+    return memeRattachement({ escadron: e, peloton: p }, a); })) }));
+  return { meta, champs: d.champs, reo, permisRegles: d.permisRegles, releves };
 }
 /* Sépare les données : reste (administrateur) + une partie par peloton qui a un accès. Logique pure. */
 function decouper(d) {
@@ -1642,7 +1654,7 @@ async function decryptFile(text, pw, opts) {
 function emptyData(titre) {
   return { meta: { titre, alerteJours: 30, verrouMinutes: 15, schema: SCHEMA, reglesPermisV: REGLES_PERMIS_V, cree: new Date().toISOString(), modifie: null },
     champs: defaultChamps(), personnes: [], listes: [], reo: defaultReo(), permisRegles: defaultReglesPermis(),
-    archives: [], journal: [] };
+    archives: [], journal: [], releves: [] };
 }
 /* Schéma 3 : groupe Habillement (béret, veste, pantalon + gants et chaussures sortis de NRBC), Eryx.
    Idempotent : sans effet sur un fichier déjà à jour. */
@@ -1735,6 +1747,7 @@ function normalize(d) {
   d.reo.noms ||= {}; d.reo.postes ||= {};
   d.archives = (Array.isArray(d.archives) ? d.archives : []).map(p => ({ ...p, v: p.v && typeof p.v === "object" ? p.v : {} }));
   d.journal = Array.isArray(d.journal) ? d.journal : [];
+  d.releves = Array.isArray(d.releves) ? d.releves : [];
   if (d.meta.verrouMinutes === undefined) d.meta.verrouMinutes = 15;
   d.permisRegles = d.permisRegles && typeof d.permisRegles === "object" ? d.permisRegles : defaultReglesPermis();
   const vRegles = d.meta.reglesPermisV || (d.meta.reglesPermis2 ? 2 : 1);
@@ -2518,6 +2531,48 @@ function statFormation(P, f) {
 const statutTaux = t => t === null ? ["none", "—", "Pas de donnée"] : t >= 0.75 ? ["ok", "✓", "Bon"] : t >= 0.5 ? ["warn", "⚠", "Moyen"] : ["bad", "✗", "Critique"];
 const pct = t => t === null ? "—" : Math.round(t * 100) + " %";
 
+/* ---------- Évolution dans le temps (relevés mensuels) ---------- */
+/* data.releves = [{ m: "AAAA-MM", g: { "escadron|peloton": { n: effectif, f: { champId: [à jour, à prévoir, expirés] } } } }] :
+   un relevé par mois sur les FORMATIONS (jamais fait = n - les trois), refait à chaque enregistrement de l'administrateur
+   dans le mois : il garde l'état de la fin du mois. Formation que personne du groupe n'a faite : absente. ~3 Ko par mois. */
+const RELEVES_MAX = 60;
+const moisDe = t => isoLocal(t).slice(0, 7);
+/* État d'une date au jour ref : 0 à jour, 1 à prévoir, 2 expiré, -1 jamais fait. Une date postérieure à ref (relevé
+   reconstitué) est prise comme l'échéance de la précédente. */
+function etatAu(f, v, ref, seuil) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(v || "")) return -1;
+  const exp = v > isoLocal(ref) ? addMonths(v, 0) : expiration(f, v), j = Math.round((exp - ref) / 864e5);
+  return j < 0 ? 2 : j <= seuil ? 1 : 0;
+}
+function releve(d, ref = today()) {
+  const F = FORMATIONS.map(([id]) => d.champs.find(c => c.id === id)).filter(f => f && aEcheance(f)), g = {};
+  d.personnes.forEach(p => {
+    const G = g[(p.v.escadron || "") + "|" + (p.v.peloton || "")] ||= { n: 0, f: {} };
+    G.n++;
+    F.forEach(f => { const e = etatAu(f, p.v[f.id], ref, f.alerte ?? d.meta.alerteJours ?? 30); if (e >= 0) (G.f[f.id] ||= [0, 0, 0])[e]++; });
+  });
+  return { m: moisDe(ref), g };
+}
+/* Relevés L avec r à la place du relevé du même mois, dans l'ordre, RELEVES_MAX au plus */
+const avecReleve = (L, r) => [...(L || []).filter(x => x.m !== r.m), r].sort((a, b) => a.m.localeCompare(b.m)).slice(-RELEVES_MAX);
+/* Cumul d'un relevé sur les groupes retenus (garder(escadron, peloton)) : { n, f: { champId: [ok, warn, bad] } } */
+function cumulReleve(r, garder) {
+  const t = { n: 0, f: {} };
+  Object.entries(r.g).forEach(([k, G]) => {
+    const [e, p] = k.split("|");
+    if (!garder(e, p)) return;
+    t.n += G.n;
+    Object.entries(G.f).forEach(([id, x]) => { const s = t.f[id] ||= [0, 0, 0]; x.forEach((v, i) => { s[i] += v; }); });
+  });
+  return t;
+}
+/* Taux de validité (à jour + à prévoir) / formés, sur une formation ou sur plusieurs (ids) */
+function tauxReleve(c, ids) {
+  let v = 0, f = 0;
+  ids.forEach(id => { const x = c.f[id]; if (x) { v += x[0] + x[1]; f += x[0] + x[1] + x[2]; } });
+  return f ? v / f : null;
+}
+
 /* ---------- Journal des modifications ---------- */
 const JOURNAL_MAX = 3000;
 /* Accès utilisé (déduit du mot de passe qui a ouvert le fichier, pas saisi) : inscrit dans chaque entrée du journal */
@@ -2697,6 +2752,9 @@ function fusionner(A, B, C) {
   // Journal : toutes les entrées des deux côtés, dans l'ordre chronologique
   const cle = j => j.t + "|" + j.qui + "|" + j.quoi, vus = new Set();
   R.journal = [...C.journal, ...B.journal].filter(j => !vus.has(cle(j)) && vus.add(cle(j))).sort((x, y) => x.t.localeCompare(y.t)).slice(-JOURNAL_MAX);
+
+  // Relevés mensuels : tous les mois des deux côtés, le mien si les deux ont le même mois
+  R.releves = (C.releves || []).reduce(avecReleve, cloner(B.releves || []));
   return { data: R, conflits, repris };
 }
 
@@ -2820,6 +2878,8 @@ function donneesDemo(titre = "Unité de démonstration") {
   d.reo.postes["PCL|3"] = 3;
   d.archives.push({ ...personne("5ESC", "P2", 1, "BRI", pick(SPE)), archive: { date: ilYa(3), motif: "Fin de contrat" } });
   journaliser(d, "", "Création des données de démonstration (noms fictifs)");
+  // Douze relevés mensuels reconstitués, pour montrer l'évolution dans les statistiques
+  for (let i = 12; i >= 1; i--) { const t = today(); t.setDate(1); t.setMonth(t.getMonth() - i + 1); t.setDate(0); d.releves = avecReleve(d.releves, releve(d, t)); }
   return d;
 }
 
@@ -5341,6 +5401,27 @@ function stLignesPeloton() {
     .map(pl => ({ label: stEsc ? pl : `${e} · ${pl}`, P: P.filter(p => p.v.escadron === e && p.v.peloton === pl) })))
     .filter(l => l.P.length);
 }
+/* Évolution : 12 derniers relevés (le mois en cours recalculé en direct), cumulés sur la sélection ; formations
+   qui ont au moins une date dans l'un des relevés. Renvoie { S: [{ m, c }], F: [{ id, label }] } */
+function stEvolution() {
+  const cur = releve(state.data), garder = (e, p) => (!stEsc || e === stEsc) && (!stPel || p === stPel);
+  const S = [...(state.data.releves || []).filter(r => r.m < cur.m), cur].slice(-12).map(r => ({ m: r.m, c: cumulReleve(r, garder) }));
+  const F = FORMATIONS.filter(([id]) => S.some(s => s.c.f[id])).map(([id, label]) => ({ id, label }));
+  return { S, F };
+}
+const libMois = m => { const [y, n] = m.split("-").map(Number); return new Date(y, n - 1, 1).toLocaleDateString("fr-FR", { month: "short", year: "2-digit" }); };
+/* Courbe du taux de validité global (SVG), seuils 75 % et 50 % en pointillé */
+function courbeEvolution(S, ids) {
+  const W = 640, H = 170, g = 34, d = 12, x = i => g + (S.length > 1 ? i * (W - g - d) / (S.length - 1) : (W - g - d) / 2), y = t => d + (1 - t) * (H - 2 * d - 14);
+  const pts = S.map((s, i) => ({ i, s, t: tauxReleve(s.c, ids) })).filter(p => p.t !== null);
+  const ligne = pts.map(p => `${x(p.i).toFixed(1)},${y(p.t).toFixed(1)}`).join(" ");
+  const seuil = (t, cls) => `<line class="ev-seuil ${cls}" x1="${g}" x2="${W - d}" y1="${y(t)}" y2="${y(t)}"/><text class="ev-ax" x="${g - 6}" y="${y(t) + 4}" text-anchor="end">${t * 100}</text>`;
+  return `<svg class="ev-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Taux de validité global, mois par mois">
+    <line class="ev-base" x1="${g}" x2="${W - d}" y1="${y(0)}" y2="${y(0)}"/>${seuil(0.75, "s-ok")}${seuil(0.5, "s-warn")}
+    ${pts.length > 1 ? `<polyline class="ev-ligne" points="${ligne}"/>` : ""}
+    ${pts.map(p => `<circle class="ev-pt t-${statutTaux(p.t)[0]}" cx="${x(p.i)}" cy="${y(p.t)}" r="5" data-tip="${esc(`${libMois(p.s.m)} : ${pct(p.t)} de dates valides`)}"/>`).join("")}
+    ${S.map((s, i) => `<text class="ev-ax" x="${x(i)}" y="${H - 2}" text-anchor="middle">${esc(libMois(s.m))}</text>`).join("")}</svg>`;
+}
 const segment = (cls, n, total, tip) => n ? `<div class="vseg ${cls}" style="flex:${n} 1 0" data-tip="${esc(tip)}">${n / total >= 0.07 ? n : ""}</div>` : "";
 
 function renderStats() {
@@ -5386,6 +5467,18 @@ function renderStats() {
       L.map(l => `<tr><td>${esc(l.label)}</td><td>${l.P.length}</td>${F.map(x => cellule(l.P, x.f)).join("")}</tr>`).join("")}
       <tr class="tot"><td>Total</td><td>${P.length}</td>${F.map(x => cellule(P, x.f)).join("")}</tr></tbody></table></div></section>` : "";
 
+  // Évolution mois par mois
+  const E = stEvolution(), ids = E.F.map(x => x.id);
+  const caseEv = (c, id_) => { const t = id_ ? tauxReleve(c, [id_]) : tauxReleve(c, ids), [k] = statutTaux(t), x = id_ && c.f[id_];
+    return `<td class="t-${k}"${x ? ` data-tip="${esc(`${x[0] + x[1]} valides sur ${x[0] + x[1] + x[2]} formés · effectif ${c.n}`)}"` : ""}>${pct(t)}</td>`; };
+  const evolution = `<section class="st-card"><h2>Évolution du taux de validité</h2><p class="hint">${E.S.length > 1
+    ? "Un relevé par mois, fait automatiquement à chaque enregistrement (il garde l'état de la fin du mois) ; le mois en cours est calculé en direct."
+    : "Le premier relevé est celui de ce mois-ci : un point s'ajoutera chaque mois, à l'enregistrement du fichier."}</p>
+    ${courbeEvolution(E.S, ids)}
+    <div class="st-scroll"><table class="st-tbl"><thead><tr><th>Taux de validité</th>${E.S.map(s => `<th>${esc(libMois(s.m))}</th>`).join("")}</tr></thead><tbody>${
+      E.F.map(x => `<tr><td>${esc(x.label)}</td>${E.S.map(s => caseEv(s.c, x.id)).join("")}</tr>`).join("")}
+      <tr class="tot"><td>Global</td>${E.S.map(s => caseEv(s.c)).join("")}</tr></tbody></table></div></section>`;
+
   // Permis
   const R = state.data.permisRegles, PF = permisChamps(C);
   const permis = `<section class="st-card"><h2>Permis</h2><p class="hint">Titulaires et éligibles (personnes qui ont déjà un permis permettant de le passer), sur l'effectif de la sélection.</p>
@@ -5420,7 +5513,7 @@ function renderStats() {
     <div class="st-scroll"><table class="st-tbl"><thead><tr><th>Personne</th><th>Esc. / Pel.</th><th>Entrée en service</th><th>Ancienneté</th><th>FGE</th></tr></thead><tbody>${
       G.eligibles.map(x => ligneFGE(x, "ok")).join("")}${G.bientot.map(x => ligneFGE(x, "warn")).join("")}${G.sansDate.map(x => ligneFGE(x, "none")).join("")}</tbody></table></div></section>` : "";
 
-  $("#stats").innerHTML = kpis + armement + grille + fge + permis + blocTailles;
+  $("#stats").innerHTML = kpis + armement + grille + evolution + fge + permis + blocTailles;
 }
 $("#stats").addEventListener("click", e => { const t = e.target.closest("[data-fiche]"); if (t) openPerson(t.dataset.fiche); });
 $("#st-esc").addEventListener("change", e => { stEsc = e.target.value; stPel = ""; renderStats(); });
@@ -5439,7 +5532,7 @@ $("#st-export").addEventListener("click", () => {
   if (!confirm(AVERT_EXPORT)) return;
   const P = stPopulation(), F = stFormations(), C = state.data.champs, R = state.data.permisRegles;
   const portee = `${stEsc ? titreEscadron(stEsc) : "Tous les escadrons"}${stPel ? " · " + stPel : ""}`;
-  const W = Math.max(10, F.length + 2), X_ = feuille("Statistiques");
+  const W = Math.max(13, F.length + 2), X_ = feuille("Statistiques");
   const sts = { ok: "okT", warn: "warnT", bad: "badT", none: "noneT" };
   titreXlsx(X_, "STATISTIQUES", `${portee} · ${P.length} personnes · exporté le ${dateJour()} · version ${VERSION}`, W);
   const section = t => { X_.ajout([]); const r = X_.ajout([X(t, "bande"), ...Array(W - 1).fill(X("", "bande"))], 22); X_.fusion(r, 0, r, W - 1); };
@@ -5454,6 +5547,11 @@ $("#st-export").addEventListener("click", () => {
     X_.ajout(["Peloton", "Effectif", ...F.map(x => x.label)].map(t => X(t, "entete2")), 30);
     [...L, { label: "Total", P }].forEach(l => X_.ajout([X(l.label, "nom"), X(l.P.length, "ctr"), ...F.map(x => { const s = statFormation(l.P, x.f); return X(pct(s.tauxV), sts[statutTaux(s.tauxV)[0]]); })]));
   }
+  const E = stEvolution(), ids = E.F.map(x => x.id);
+  section("ÉVOLUTION DU TAUX DE VALIDITÉ (RELEVÉS MENSUELS)");
+  X_.ajout(["Taux de validité", ...E.S.map(s => libMois(s.m))].map(t => X(t, "entete2")), 22);
+  [...E.F.map(x => [x.label, [x.id]]), ["Global", ids]].forEach(([label, I]) =>
+    X_.ajout([X(label, "nom"), ...E.S.map(s => { const t = tauxReleve(s.c, I); return X(pct(t), sts[statutTaux(t)[0]]); })]));
   const G = statFGE(P), FG = [...G.eligibles.map(x => [x, "Éligible", "okT"]), ...G.bientot.map(x => [x, "Le " + x.le.toLocaleDateString("fr-FR"), "warnT"]),
     ...G.sansDate.map(x => [x, "Entrée en service à renseigner", "noneT"])];
   if (FG.length) {

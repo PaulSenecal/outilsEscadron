@@ -17,7 +17,7 @@ const L = vm.runInContext(`({ state, emptyData, normalize, donneesDemo, encryptD
   permisEtat, defaultReglesPermis, seanceChangements, echeances, diffFiche, journaliser, JOURNAL_MAX, statFormation, statutTaux,
   statusOf, reoBlocs, groupesPeloton, defaultChamps, SCHEMA, fusionner, ITER, forceMotDePasse, controleQualite, historiquePersonne,
   seuilAlerte, isoLocal, today, lireCartec, planCartec, appliquerCartec, escadronPropose, reoBlocs, lireUIR, planUIR, appliquerUIR,
-  duree, aEcheance, clesNeuves, creerSecours, toB64, creerAcces, decouper, assembler, empreinte, dernierTirDe, majDernierTir, statFGE, addMonths, lireNouveaux, creerNouveaux })`, ctx);
+  duree, aEcheance, clesNeuves, creerSecours, toB64, creerAcces, decouper, assembler, empreinte, dernierTirDe, majDernierTir, statFGE, addMonths, lireNouveaux, creerNouveaux, releve, avecReleve, cumulReleve, tauxReleve, RELEVES_MAX })`, ctx);
 
 let ok = 0, ko = 0;
 /* Fichier au format 1 (ancien) : données chiffrées directement par la clé dérivée du mot de passe */
@@ -693,6 +693,41 @@ await test("CARTEC : rapprochement par SAP", () => {
   g[0][10] = "SAP";
   const U = L.lireCartec(g), plan = L.planCartec(U, d, { "00C99AA": "4ESC" });
   egal(plan.lignes.find(x => x.e.nom === "Alpha").p?.id, "s");
+});
+
+await test("Relevés mensuels : comptes, cumul, fusion, partie d'un chef", () => {
+  const d = L.emptyData("t"); L.state.data = d;
+  const il = j => { const t = L.today(); t.setDate(t.getDate() - j); return L.isoLocal(t); };
+  d.personnes = [{ id: "a", v: { escadron: "5ESC", peloton: "P1", famas_tir: il(10), psc1: il(400) } },
+    { id: "b", v: { escadron: "5ESC", peloton: "P1", famas_tir: il(350) } },
+    { id: "c", v: { escadron: "5ESC", peloton: "P2" } }];
+  const r = L.releve(d);
+  egal(r.m, L.isoLocal(L.today()).slice(0, 7));
+  egal(r.g["5ESC|P1"], { n: 2, f: { famas_tir: [1, 1, 0], psc1: [0, 0, 1] } }, "à jour / à prévoir / expiré, jamais fait non compté");
+  egal(r.g["5ESC|P2"], { n: 1, f: {} }, "formation que personne n'a faite : absente");
+  const c = L.cumulReleve(r, e => e === "5ESC");
+  egal(c.n, 3); egal(L.tauxReleve(c, ["famas_tir", "psc1"]), 2 / 3);
+  egal(L.tauxReleve(L.cumulReleve(r, (e, p) => p === "P2"), ["famas_tir"]), null, "aucun formé");
+  // Date postérieure au relevé (relevé reconstitué) : l'échéance précédente tombe à cette date
+  const avant = L.today(); avant.setDate(avant.getDate() - 30);
+  egal(L.releve(d, avant).g["5ESC|P1"].f.famas_tir, [1, 1, 0], "tir fait après le relevé : à prévoir ; l’autre encore à jour il y a 30 j");
+  // Un relevé par mois, le plus récent remplace celui du même mois, RELEVES_MAX au plus
+  let Lr = [];
+  for (let i = 0; i < L.RELEVES_MAX + 5; i++) Lr = L.avecReleve(Lr, { m: `${2000 + Math.floor(i / 12)}-${String(i % 12 + 1).padStart(2, "0")}`, g: {} });
+  egal(Lr.length, L.RELEVES_MAX); egal(L.avecReleve(Lr, { m: Lr[3].m, g: { x: 1 } }).filter(x => x.m === Lr[3].m).length, 1);
+  // Fusion : mois des deux côtés réunis
+  const A = L.normalize(L.emptyData("t")), B = L.normalize(L.emptyData("t")), C = L.normalize(L.emptyData("t"));
+  B.releves = [{ m: "2026-01", g: { b: 1 } }, { m: "2026-02", g: { b: 1 } }]; C.releves = [{ m: "2026-02", g: { c: 1 } }, { m: "2026-03", g: {} }];
+  const f = L.fusionner(A, B, C);
+  egal(f.data.releves.map(x => x.m), ["2026-01", "2026-02", "2026-03"]); egal(f.data.releves[1].g, { c: 1 }, "le mien pour le même mois");
+  egal(f.conflits.length, 0);
+  // Chef de peloton : seulement les groupes de son peloton
+  d.releves = [r]; d.meta.acces = [{ id: "A", escadron: "5esc", peloton: "p1" }];
+  const { reste, parts } = L.decouper(d);
+  egal(Object.keys(parts.A.releves[0].g), ["5ESC|P1"]); egal(Object.keys(reste.releves[0].g).length, 2);
+  egal(Object.keys(L.assembler(reste, parts).releves[0].g).length, 2, "rassemblé : relevé complet, sans doublon");
+  egal(L.normalize(L.emptyData("x")).releves, []);
+  egal(L.donneesDemo().releves.length, 12, "démo : douze mois reconstitués");
 });
 
 console.log(`\n${ok} réussi(s), ${ko} échoué(s)`);

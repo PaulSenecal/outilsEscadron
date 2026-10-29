@@ -127,6 +127,9 @@ const valeur = (sel, v) => { const e = document.querySelector(sel); e.value = v;
   verif("Statistiques : tableau FGE", $("#stats").textContent.includes("FGE") && document.querySelectorAll('#stats tr[data-fiche]').length > 0);
   document.querySelector('#stats tr[data-fiche]').click();
   verif("FGE : clic = fiche", $("#dlg-person").open); $("#dlg-person").close();
+  verif("Statistiques : évolution sur 12 mois (11 relevés de la démo + mois en cours)",
+    $("#stats").textContent.includes("Évolution du taux de validité") && document.querySelectorAll("#stats .ev-pt").length === 12,
+    document.querySelectorAll("#stats .ev-pt").length);
 
   // Journal
   clic("#btn-journal");
