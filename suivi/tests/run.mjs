@@ -357,6 +357,8 @@ await test("Qualité des données : doublons, mails, téléphones, dates, rattac
   egal([de("tel", "a"), de("tel", "e"), de("mail", "a")], [0, 0, 0], "formats valides acceptés");
   egal([de("futur", "d"), de("ancienne", "d"), de("rattachement", "d")], [1, 1, 1], "Paul Martin (fin de contrat future acceptée)");
   vrai(L.controleQualite(demo()).filter(x => x.type !== "doublon").length === 0, "démo sans erreur de saisie");
+  const dc = demo(), pc = dc.personnes[0]; pc.v.cim_validite = "2031-05-01"; pc.v.vmp = "2031-05-01";
+  vrai(!L.controleQualite(dc).some(x => x.type === "futur" && x.p.id === pc.id), "validité CIM et date limite (VMP) dans le futur : normal");
 });
 
 await test("Historique d'une personne", () => {

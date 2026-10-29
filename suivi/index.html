@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <!-- Politique de sécurité : aucune requête réseau (sauf Google Fonts), seul le script de ce fichier peut s'exécuter
      (empreinte sha256 : après toute modification du script, lancer « node tests/csp.mjs » pour la mettre à jour). -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-dGOdodJsJCpcwZ2pR2CXZy3s9zv6v8NCziiNDADuPa0='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-hUKtwtJo4SWvtJ4OTwrRPzgGe7kVdK+Hpy7O03goSi0='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
 <title>Suivi du personnel</title>
 <meta name="theme-color" content="#0B1629">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%2313233F'/%3E%3Cpath d='M32 9l18 7v13c0 12-8 21-18 26-10-5-18-14-18-26V16z' fill='none' stroke='%23C9A227' stroke-width='4'/%3E%3Ccircle cx='32' cy='27' r='6' fill='%23C9A227'/%3E%3Cpath d='M21 44c2-7 6-10 11-10s9 3 11 10' fill='%23C9A227'/%3E%3C/svg%3E">
@@ -1143,10 +1143,12 @@ const enc = new TextEncoder(), dec = new TextDecoder();
 const FORMAT = "suivi-personnel";
 const ITER = 600000;          // PBKDF2 (OWASP 2023). Un fichier plus ancien est relu avec ses itérations et mis à niveau au prochain enregistrement
 const SCHEMA = 6;
-const VERSION = "3.21";
+const VERSION = "3.22";
 /* Historique affiché par le bouton « Nouveautés » : à chaque évolution, incrémenter VERSION
    et ajouter une entrée EN TÊTE de cette liste. */
 const NOUVEAUTES = [
+  { v: "3.22", date: "29/10/2026", items: [
+    "Qualité des données : la validité de la carte d'identité militaire (et toute date de validité ou de péremption) n'est plus signalée comme « date dans le futur »."] },
   { v: "3.21", date: "29/10/2026", items: [
     "Téléphones : le 0 du début perdu par Excel (612345678) est remis tout seul, à l'import Excel, au complément depuis le fichier UIR et à la saisie d'une fiche ; un numéro mal écrit en +33 (0)6… ou 33 6… devient 06 12 34 56 78. Les numéros étrangers ne sont pas touchés.",
     "Qualité des données : bouton « Réparer N numéros de téléphone » pour corriger d'un coup ceux déjà dans le fichier (annulable)."] },
@@ -2681,7 +2683,7 @@ function controleQualite(d) {
     champsTel.forEach(f => { const t = v[f.id]; if (t && !telValide(t)) out.push({ type: "tel", p, f, detail: `${f.label} : « ${t} »${reparerTel(t) !== t ? ` → ${reparerTel(t)} (réparable)` : ""}` }); });
     champsDate.forEach(f => {
       const x = v[f.id]; if (!/^\d{4}-\d{2}-\d{2}$/.test(x || "")) return;
-      if (x > auj && !/\b(fin|prochaine?|echeance|expiration|limite)\b/.test(norm(f.label))) out.push({ type: "futur", p, f, detail: `${f.groupe} › ${f.label} : ${fmtIso(x)}` });
+      if (x > auj && !f.limite && !/\b(fin|prochaine?|echeance|expiration|limite|validite|peremption)\b/.test(norm(f.label))) out.push({ type: "futur", p, f, detail: `${f.groupe} › ${f.label} : ${fmtIso(x)}` });
       else if (x < "1950-01-01") out.push({ type: "ancienne", p, f, detail: `${f.groupe} › ${f.label} : ${fmtIso(x)}` });
     });
   });

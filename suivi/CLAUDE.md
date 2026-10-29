@@ -257,7 +257,7 @@ Statuts : expiré (bad), à prévoir si moins de seuilAlerte(f) jours (warn),
   Autre mot de passe : signalé une fois (state.ivSignale), fusion à l'enregistrement. Historique « Annuler » vidé.
 - Page « Qualité des données » (controleQualite, logique pure) : doublons probables (nom + prénom, prénom
   préfixe, même mail), mail / téléphone mal formés, date dans le futur (sauf libellés « fin », « échéance »…),
-  date avant 1950, sans escadron / peloton, nom ou prénom manquant, grade hors GRADES. Clic = fiche ; export Excel.
+  date avant 1950 (futur permis pour un champ limite ou un libellé « fin », « échéance », « validité », « péremption »…), sans escadron / peloton, nom ou prénom manquant, grade hors GRADES. Clic = fiche ; export Excel.
 - Téléphones (v3.21) : reparerTel(t) (logique pure) remet le 0 perdu par Excel (9 chiffres), corrige +33 (0)6… / 0033 0… / 33 6…
   → « 06 12 34 56 78 » ; numéro déjà valide (telValide, +33612345678 compris), étranger ou irréparable : inchangé. Appliqué par
   parseCell (import Excel / CSV), lireUIR et lireFiche ; memeValeur compare après réparation. Qualité : détail « → … (réparable) »
