@@ -104,13 +104,13 @@ crypto.subtle.generateKey = async (alg, ...r) => alg.name === "RSA-OAEP" ? (pair
   verif("Lot : personne déjà dans le suivi non cochée", $("#lot-ok").disabled && $("#lot-apercu").textContent.includes("Déjà dans le suivi"));
   $("#dlg-lot").close();
 
-  // Numéros de téléphone par catégorie
-  clic("#btn-tels"); valeur("#tels-cat", "sof");
-  const telsAttendus = state.data.personnes.filter(p => ["SGT", "MDL", "SCH", "MCH", "ADJ", "ADC", "MAJ"].includes(p.v.grade) && p.v.contactable === "oui" && p.v.tel).length;
-  verif("Téléphones : sous-officiers contactables", $("#dlg-tels").open && telsAttendus > 0 && document.querySelectorAll("#tels-liste tbody tr").length === telsAttendus, $("#tels-resume").textContent);
-  $("#tels-contactables").click();
-  verif("Téléphones : tous les sous-officiers", document.querySelectorAll("#tels-liste tbody tr").length > telsAttendus);
-  $("#dlg-tels").close();
+  // Adresses mail par catégorie
+  clic("#btn-mails"); valeur("#mails-cat", "sof");
+  const mailsAttendus = state.data.personnes.filter(p => ["SGT", "MDL", "SCH", "MCH", "ADJ", "ADC", "MAJ"].includes(p.v.grade) && p.v.contactable === "oui" && (p.v.mail || "").includes("@")).length;
+  verif("Mails : sous-officiers contactables", $("#dlg-mails").open && mailsAttendus > 0 && document.querySelectorAll("#mails-liste tbody tr").length === mailsAttendus, $("#mails-resume").textContent);
+  $("#mails-contactables").click();
+  verif("Mails : tous les sous-officiers", document.querySelectorAll("#mails-liste tbody tr").length > mailsAttendus);
+  $("#dlg-mails").close();
 
   // Fiche : couleurs et archivage
   openPerson(state.data.personnes[0].id);

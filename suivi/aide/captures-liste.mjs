@@ -43,9 +43,9 @@ export const CAPTURES = [
     encadres: [["#td-esc", 1, { cote: "dessus" }], ["#td-jours", 2, { cote: "dessus" }], ["#td-type", 3, { cote: "dessus" }], ["#td-mail", 4], ["#todo table", 5, { marge: 2 }]] },
   { nom: "cati", avant: `${demo} setView("cati");`, encadres: [["#view-synth .toolbar", 1], ["#synth table tbody", 2, { marge: 1 }]] },
   { nom: "statistiques", avant: `${demo} setView("stats");`, encadres: [["#st-esc", 1, { cote: "dessus" }], ["#stats .kpis", 2], ["#stats .st-card", 3, { cote: "dessus" }]] },
-  { nom: "telephones", avant: `${demo} setView("perso"); ouvrirTels(); $("#tels-cat").value = "sof"; telsRender();`,
-    encadres: [["#tels-cat", 1], ["#tels-contactables", 2, { marge: 6 }], ["#tels-copier-noms", 3, { cote: "dessus" }], ["#tels-copier", 4, { cote: "dessus" }]] },
-  { nom: "menu-actions", avant: `${demo} setView("perso"); ${menu("#view-perso .dd-btn")}`, encadres: [["#btn-lot", 1], ["#btn-tels", 2]] },
+  { nom: "mails", avant: `${demo} setView("perso"); ouvrirMails(); $("#mails-cat").value = "sof"; mailsRender();`,
+    encadres: [["#mails-cat", 1], ["#mails-contactables", 2, { marge: 6 }], ["#mails-copier-noms", 3, { cote: "dessus" }], ["#mails-copier", 4, { cote: "dessus" }], ["#mails-ecrire", 5, { cote: "dessus" }]] },
+  { nom: "menu-actions", avant: `${demo} setView("perso"); ${menu("#view-perso .dd-btn")}`, encadres: [["#btn-lot", 1], ["#btn-mails", 2]] },
   { nom: "menu-exporter", avant: `${demo} setView("perso"); ${menu("#view-perso .dd:last-of-type .dd-btn")}`, encadres: [["#btn-export", 1]] },
   { nom: "verrouillage", avant: `${demo} await verrouillerSession();`, encadres: [["#pw-session", 1], ["#form-session .btn-gold", 2]], zone: ".lock-panel",
     apres: `$("#pw-session").value = "demonstration"; $("#form-session").requestSubmit(); ${attendre} await quand(() => state.data);` },
@@ -118,6 +118,6 @@ export const CAPTURES = [
   { nom: "chef-fiche", avant: `${chef} setView("perso"); ficheOnglet = "tirs";
       openPerson((state.data.personnes.find(p => statusOf(p, champById("famas_b")).k === "bad") || state.data.personnes[0]).id); $("#p-body").scrollTop = 0;`,
     encadres: [["#p-bandeau", 1], ["#dlg-person [data-close]", 2]], apres: `ficheOnglet = "essentiel";` },
-  { nom: "chef-telephones", avant: `${chef} setView("perso"); ouvrirTels(); $("#tels-cat").value = ""; telsRender();`,
-    encadres: [["#tels-cat", 1], ["#tels-copier", 2, { cote: "dessus" }]], apres: neuf },
+  { nom: "chef-mails", avant: `${chef} setView("perso"); ouvrirMails(); $("#mails-cat").value = ""; mailsRender();`,
+    encadres: [["#mails-cat", 1], ["#mails-ecrire", 2, { cote: "dessus" }]], apres: neuf },
 ];

@@ -777,20 +777,20 @@ await test("Téléphones : 0 perdu par Excel, +33, numéros étrangers", () => {
   egal([L.parseCell(f, 612345678).v, L.parseCell(f, "0612345678").v], ["06 12 34 56 78", "0612345678"], "import Excel : nombre réparé, numéro valide gardé tel quel");
 });
 
-await test("Numéros de téléphone : catégorie de grade, contactables", () => {
+await test("Adresses mail : catégorie de grade, contactables", () => {
   egal(["2CL", "CC1", "SGT", "mdl", "MAJ", "ASP", "COL", "XYZ", ""].map(L.categorie), ["mdr", "mdr", "sof", "sof", "sof", "off", "off", "", ""]);
   const P = [
-    { id: "a", v: { grade: "MDL", nom: "A", escadron: "5ESC", peloton: "P1", tel: "612345678", contactable: "oui" } },
-    { id: "b", v: { grade: "ADC", nom: "B", escadron: "5ESC", peloton: "P2", tel: "07 00 00 00 00", contactable: "oui" } },
-    { id: "c", v: { grade: "SCH", nom: "C", escadron: "5ESC", tel: "06 11 11 11 11", contactable: "non" } },
-    { id: "d", v: { grade: "SGT", nom: "D", escadron: "5ESC", tel: "06 22 22 22 22" } },
-    { id: "e", v: { grade: "MCH", nom: "E", escadron: "5ESC", contactable: "oui" } },
-    { id: "f", v: { grade: "1CL", nom: "F", escadron: "5ESC", tel: "06 33 33 33 33", contactable: "oui" } },
-    { id: "g", v: { grade: "LTN", nom: "G", escadron: "4ESC", tel: "06 44 44 44 44", contactable: "oui" } }];
+    { id: "a", v: { grade: "MDL", nom: "A", escadron: "5ESC", peloton: "P1", mail: " a@x.fr ", contactable: "oui" } },
+    { id: "b", v: { grade: "ADC", nom: "B", escadron: "5ESC", peloton: "P2", mail: "b@x.fr", contactable: "oui" } },
+    { id: "c", v: { grade: "SCH", nom: "C", escadron: "5ESC", mail: "c@x.fr", contactable: "non" } },
+    { id: "d", v: { grade: "SGT", nom: "D", escadron: "5ESC", mail: "d@x.fr" } },
+    { id: "e", v: { grade: "MCH", nom: "E", escadron: "5ESC", mail: "pas de mail", contactable: "oui" } },
+    { id: "f", v: { grade: "1CL", nom: "F", escadron: "5ESC", mail: "f@x.fr", contactable: "oui" } },
+    { id: "g", v: { grade: "LTN", nom: "G", escadron: "4ESC", mail: "g@x.fr", contactable: "oui" } }];
   const r = L.annuaire(P, { cat: "sof" });
-  egal(r.lignes.map(l => [l.p.id, l.tel]), [["b", "07 00 00 00 00"], ["a", "06 12 34 56 78"]], "triés par grade, numéro réparé");
-  egal([r.nonContactables, r.nonRenseignes, r.sansTel], [1, 1, 1]);
-  egal(L.annuaire(P, { cat: "sof", contactables: false }).lignes.length, 4, "tous les sous-officiers avec un numéro");
+  egal(r.lignes.map(l => [l.p.id, l.mail]), [["b", "b@x.fr"], ["a", "a@x.fr"]], "triés par grade, adresse nettoyée");
+  egal([r.nonContactables, r.nonRenseignes, r.sansMail], [1, 1, 1]);
+  egal(L.annuaire(P, { cat: "sof", contactables: false }).lignes.length, 4, "tous les sous-officiers avec une adresse");
   egal(L.annuaire(P, { cat: "sof", peloton: "P1" }).lignes.map(l => l.p.id), ["a"]);
   egal(L.annuaire(P, { escadron: "5ESC" }).lignes.map(l => l.p.id), ["b", "a", "f"]);
   egal(L.annuaire(P, { cat: "off" }).lignes.map(l => l.p.id), ["g"]);
