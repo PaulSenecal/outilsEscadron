@@ -95,17 +95,31 @@ mis à jour sans marquer le fichier comme modifié).
 - Limite : la lecture seule est appliquée par l'outil ; sur Drive, le chef qui a le droit d'écrire le fichier peut encore
   l'abîmer (mais pas lire les autres pelotons) : lui partager le fichier en « Lecteur ».
 
-### Accès capitaine (v3.16)
-- meta.capitaine : même forme que meta.secours (creerSecours : paire RSA, clé privée chiffrée par son mot de passe) ;
-  encryptData écrit l'enveloppe capitaine { kdf, iv, priv, cle } via enveloppeRsa, recalculée à chaque enregistrement :
-  elle suit les changements de clé du fichier. Pas dans META_COMMUNE (les chefs ne la reçoivent pas).
-- ouvrirFichier (option chef) : principal, chefs, capitaine, secours. Capitaine : tout le fichier rassemblé, kek = null,
-  role = { id: "capitaine", capitaine: true } → même lecture seule que les chefs (state.role), libellé « Capitaine ».
-- estChef() = rôle de chef (sa partie seulement) : encryptPartie, lireAvecCle par partie et state.modele ne concernent
-  que lui ; le capitaine relit le fichier entier avec state.lecture (mises à jour en direct).
-- Verrouillage de session du capitaine : encryptData sans state.kek écrit un bloc sans enveloppe principale, rouvert
-  par l'enveloppe capitaine. Fenêtre #dlg-acces : option « capitaine » du select, ligne et data-retirer="capitaine".
-- Mots de passe tous distincts : habituel, secours, capitaine, chefs (estMdpCapitaine).
+### Comptes nommés (v3.24, remplacent l'accès capitaine de la v3.16)
+- meta.comptes : [{ id, type: "admin" | "lecteur", nom, pub, kdf, iv, priv, defini, qui }] = même mécanisme que le secours
+  (creerSecours : paire RSA, clé privée chiffrée par le mot de passe du compte), sel commun meta.comptesKdf (une seule dérivation
+  à l'ouverture). creerCompte(meta, type, nom, pw, qui, id?) crée ou remplace ; compteDuMdp(pw, comptes, sauf). Pas dans META_COMMUNE.
+- encryptData écrit comptes: [{ id, kdf, iv, priv, cle }] (enveloppeRsa, mélangées, sans nom) à chaque enregistrement, par n'importe
+  quel administrateur : un changement de clé les suit. ouvrirFichier : principal, chefs, comptes, ancien capitaine (en-tête d'avant
+  la v3.24), secours. Le type vient de meta.comptes (données chiffrées), jamais de l'en-tête. Admin → via « compte »,
+  compte = { id, nom }, pas de rôle, kek = null. Lecteur → role = { id, capitaine: true, nom } (même lecture seule que l'ancien
+  capitaine ; refusé avec { chef: false }). Migration (normalize) : meta.capitaine → compte lecteur id fixe "capitaine", nom « Capitaine ».
+- Mot de passe commun (ancien « habituel », enveloppe principale, state.kek) : toujours accepté. Un compte nommé ne peut pas le
+  recalculer : state.principalEnv = enveloppe lue sur le disque (r.principal), recopiée par encryptData tant que la clé ne change pas ;
+  changerCleDonnees l'efface (confirmerPerteCommun prévient avant). « Supprimer » (seulement depuis un compte nommé) = nouvelle clé.
+- Nouvelle clé (changerCleDonnees) : mot de passe changé (commun, compte, secours), secours supprimé, compte retiré, compte dont on
+  change le mot de passe. Chef retiré ou changé : sa clé de partie suffit (creerAcces).
+- Fenêtre #dlg-acces « Comptes et accès » : sections Administrateurs (+ ligne « Mot de passe commun »), Lecture complète, Chefs de
+  peloton ; select #acces-pel = new:admin | new:lecteur | compte:<id> | chef:<i>, #acces-nom (obligatoire sauf chef, nom unique).
+  On ne retire pas son propre compte ; il reste au moins un administrateur (ou le mot de passe commun).
+- Chefs : nom facultatif (meta.acces[].nom, aussi dans l'enveloppe → role.nom).
+- Tous les mots de passe distincts : mdpDejaPris(pw, sauf) (commun, secours, comptes, chefs ; sauf = "commun", id ou enveloppe remplacée).
+- Journal : qui = auteurDe(r) (nom du compte ou du chef, AUTEUR_COMMUN = « Mot de passe commun »), jamais saisi ; acces = accesLibelle()
+  = « Administrateur », « Lecture complète » ou « Chef P1 · 5ESC ». Démo : « Démo ». Plus de champ nom sur l'écran de verrouillage ;
+  « Créer un fichier » demande le nom du premier administrateur (le fichier n'a pas de mot de passe commun).
+- Ouverture avec le secours : #dlg-mdp obligatoire, #mdp-compte = compte administrateur à réinitialiser (ou mot de passe commun).
+- Session verrouillée : même rôle ET même compte (session.compte, session.principalEnv). #dlg-cle : son propre mot de passe.
+- Tests UI : une seule paire RSA pour tout le scénario (generateKey remplacé), comptesKdf à 1000 itérations.
 
 ### Format du fichier
 { format: "suivi-personnel", version: 2, cleId,
@@ -113,8 +127,8 @@ mis à jour sans marquer le fichier comme modifié).
   secours?: { kdf, iv, priv, cle (RSA-OAEP) },
   iv (base64), data (base64, JSON chiffré) }
 Format 3 (accès des chefs) : même chose + acces: { kdf, liste: [{ iv, cle }] } + parts: { [id]: { iv, data } }.
-Accès capitaine : + capitaine?: { kdf, iv, priv, cle (RSA-OAEP) } (comme secours) ; principal absent seulement dans
-le bloc d'une session de capitaine verrouillée.
+Comptes nommés (v3.24) : + comptes?: [{ id, kdf, iv, priv, cle (RSA-OAEP) }] ; principal absent si le mot de passe commun a été
+supprimé (ou session verrouillée d'un lecteur sans lui). Ancien : capitaine?: { kdf, iv, priv, cle } (relu seulement).
 Ancien format 1 : { format, version: 1, kdf, iv, data } (relu seulement).
 
 ### Modèle de données (une fois déchiffré, schéma 6)
@@ -155,7 +169,7 @@ Ancien format 1 : { format, version: 1, kdf, iv, data } (relu seulement).
   pas de state.role) refait le relevé du mois courant à chaque enregistrement → état de fin de mois. Fusion : union par mois,
   le mien si les deux côtés ont le même mois. Chefs : communPour ne garde que les groupes de leur peloton ; le reste garde tout
   (assembler ignore les relevés des parties). ~2 Ko par mois pour 230 personnes.
-- journal : [{ t (ISO), qui, acces (v3.14 : accesLibelle() = « Administrateur » ou « Chef P1 · 5ESC », déduit du mot de
+- journal : [{ t (ISO), qui (v3.24 : nom du compte, voir Comptes nommés), acces (accesLibelle(), déduit du mot de
   passe, jamais saisi), quoi, p? (ids des personnes concernées) }] — auteur affiché : auteurJournal / quiHtml ; filtre
   « Accès » dans la fenêtre du journal — 3000 entrées max, chiffré avec le reste.
   modif(label, détails, ids) : passer les ids pour l'historique de la fiche (historiquePersonne : par id, sinon par nom)
@@ -263,8 +277,7 @@ Statuts : expiré (bad), à prévoir si moins de seuilAlerte(f) jours (warn),
   parseCell (import Excel / CSV), lireUIR et lireFiche ; memeValeur compare après réparation. Qualité : détail « → … (réparable) »
   et bouton #qu-tels « Réparer N numéros » (telsReparables : fiches + archives, un seul modif(), journal sans les valeurs).
 - Fiche : section repliable « Historique » (entrées du journal de la personne).
-- Écran de verrouillage : nom de l'utilisateur (facultatif, pour le journal, gardé en mémoire
-  seulement), ouvrir un fichier existant, en créer un nouveau, ou « Essayer avec des données
+- Écran de verrouillage (pas de nom à saisir depuis la v3.24 : il vient du compte) : ouvrir un fichier existant, en créer un nouveau, ou « Essayer avec des données
   fictives » (donneesDemo : générateur reproductible, noms fictifs, mails @example.org ;
   mot de passe si on l'enregistre : demonstration)
 - Verrouillage automatique après meta.verrouMinutes d'inactivité : les données sont chiffrées

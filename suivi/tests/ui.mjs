@@ -33,9 +33,14 @@ const quand = async (cond, maxMs = 20000) => { const t0 = performance.now(); whi
 const verif = (nom, ok, info = "") => { res.push({ nom, ok: !!ok, info: String(info) }); document.body.setAttribute("data-resultats", JSON.stringify(res)); };
 const clic = sel => document.querySelector(sel).click();
 const valeur = (sel, v) => { const e = document.querySelector(sel); e.value = v; e.dispatchEvent(new Event(e.tagName === "SELECT" ? "change" : "input", { bubbles: true })); };
+// Une seule paire RSA pour tout le scénario (secours, comptes) : chaque génération en 3072 bits prend du vrai temps, pendant
+// lequel Chrome consomme le budget de temps virtuel. Les mots de passe restent distincts (clé privée chiffrée par chacun).
+const genererCle = crypto.subtle.generateKey.bind(crypto.subtle); let paireRsa = null;
+crypto.subtle.generateKey = async (alg, ...r) => alg.name === "RSA-OAEP" ? (paireRsa ||= await genererCle(alg, ...r)) : genererCle(alg, ...r);
 (async () => { try {
-  $("#qui").value = "Testeur";
   clic("#btn-demo"); await quand(() => state.data);
+  verif("Démo : auteur sans saisie de nom", state.auteur === "Démo" && !document.querySelector("#qui"));
+  state.auteur = "Testeur";
   // Pendant les calculs de chiffrement (vrai temps), Chrome fait défiler le temps virtuel : pas de verrouillage automatique
   state.data.meta.verrouMinutes = 0;
   verif("Démo ouverte", state.data && state.data.meta.demo && !$("#demo-badge").hidden, state.data?.personnes.length);
@@ -415,36 +420,50 @@ const valeur = (sel, v) => { const e = document.querySelector(sel); e.value = v;
   // déclencher pendant le chiffrement, Chrome accélérant le temps virtuel). Peu d'itérations PBKDF2 : chaque dérivation
   // à 600 000 consomme du temps virtuel, et ce passage en enchaîne une dizaine.
   const cleChef = await clesNeuves("demonstration", 1000), demoChef = normalize(donneesDemo());
-  demoChef.meta.verrouMinutes = 0; demoChef.meta.accesKdf = KDF(1000, toB64(aleatoire(16)));
+  demoChef.meta.verrouMinutes = 0; demoChef.meta.accesKdf = KDF(1000, toB64(aleatoire(16))); demoChef.meta.comptesKdf = KDF(1000, toB64(aleatoire(16)));
   Object.assign(state, { data: demoChef, ...cleChef, lecture: { id: cleChef.cleId, key: cleChef.key }, mdpChange: false, autoSuspendu: "", handle: null, fileName: null,
-    dirty: false, auteur: "Testeur", lastIv: null, role: null, modele: null });
+    dirty: false, auteur: "Testeur", lastIv: null, role: null, modele: null, compte: null, principalEnv: null });
   state.base = JSON.stringify(state.data); showApp();
   const total = state.data.personnes.length, pChef = state.data.personnes[0].v;
   clic("#btn-champs"); clic("#btn-acces");
   const iPel = accesChoix.findIndex(([e, pl]) => e === pChef.escadron && pl === pChef.peloton);
-  valeur("#acces-pel", String(iPel)); valeur("#acces-mdp", "demonstration"); valeur("#acces-mdp2", "demonstration");
+  valeur("#acces-pel", "chef:" + iPel); valeur("#acces-nom", "LTN Chef-Test"); valeur("#acces-mdp", "demonstration"); valeur("#acces-mdp2", "demonstration");
   $("#form-acces").requestSubmit(); await quand(() => $("#err-acces").textContent.includes("différent"), 60000);
-  verif("Accès chef : différent du mot de passe habituel", !state.data.meta.acces);
+  verif("Accès chef : différent du mot de passe commun", !state.data.meta.acces, $("#err-acces").textContent);
   valeur("#acces-mdp", "chef-du-peloton-test"); valeur("#acces-mdp2", "chef-du-peloton-test");
   $("#form-acces").requestSubmit(); await quand(() => state.data.meta.acces, 60000);
-  verif("Accès chef défini", state.data.meta.acces.length === 1 && $("#acces-list").textContent.includes("accès défini") && state.dirty);
-  valeur("#acces-pel", "capitaine"); valeur("#acces-mdp", "chef-du-peloton-test"); valeur("#acces-mdp2", "chef-du-peloton-test");
-  $("#form-acces").requestSubmit(); await quand(() => $("#err-acces").textContent.includes("chef de peloton"), 60000);
-  verif("Accès capitaine : différent de celui d'un chef", !state.data.meta.capitaine);
+  verif("Accès chef défini, nommé", state.data.meta.acces.length === 1 && state.data.meta.acces[0].nom === "LTN Chef-Test" && $("#acces-list").textContent.includes("LTN Chef-Test") && state.dirty);
+  valeur("#acces-pel", "new:lecteur"); valeur("#acces-nom", "");
   valeur("#acces-mdp", "capitaine-du-test"); valeur("#acces-mdp2", "capitaine-du-test");
-  $("#form-acces").requestSubmit(); await quand(() => state.data.meta.capitaine, 60000);
-  verif("Accès capitaine défini", $("#acces-list .acces-row").textContent.includes("Capitaine") && $("#acces-list .acces-row").textContent.includes("accès défini"));
+  $("#form-acces").requestSubmit(); await quand(() => $("#err-acces").textContent.includes("nom"), 60000);
+  verif("Compte : nom obligatoire", !state.data.meta.comptes?.length);
+  valeur("#acces-nom", "CNE Capitaine-Test"); valeur("#acces-mdp", "chef-du-peloton-test"); valeur("#acces-mdp2", "chef-du-peloton-test");
+  $("#form-acces").requestSubmit(); await quand(() => $("#err-acces").textContent.includes("chef de peloton"), 60000);
+  verif("Lecture complète : différent de celui d'un chef", !state.data.meta.comptes?.length);
+  valeur("#acces-mdp", "capitaine-du-test"); valeur("#acces-mdp2", "capitaine-du-test");
+  $("#form-acces").requestSubmit(); await quand(() => state.data.meta.comptes?.length, 60000);
+  valeur("#acces-pel", "new:lecteur"); valeur("#acces-nom", "LTN Adjoint-Test"); valeur("#acces-mdp", "adjoint-du-test"); valeur("#acces-mdp2", "adjoint-du-test");
+  $("#form-acces").requestSubmit(); await quand(() => state.data.meta.comptes.length === 2, 60000);
+  valeur("#acces-pel", "new:admin"); valeur("#acces-nom", "SGT Secrétaire-Test"); valeur("#acces-mdp", "capitaine-du-test"); valeur("#acces-mdp2", "capitaine-du-test");
+  $("#form-acces").requestSubmit(); await quand(() => $("#err-acces").textContent.includes("CNE Capitaine-Test"), 60000);
+  verif("Compte : mot de passe déjà pris par un autre compte", state.data.meta.comptes.length === 2, $("#err-acces").textContent);
+  valeur("#acces-mdp", "secretaire-du-test"); valeur("#acces-mdp2", "secretaire-du-test");
+  $("#form-acces").requestSubmit(); await quand(() => state.data.meta.comptes.length === 3, 60000);
+  const C = state.data.meta.comptes;
+  verif("Comptes créés : deux lectures complètes, un administrateur", C.filter(c => c.type === "lecteur").length === 2 && C.find(c => c.type === "admin")?.nom === "SGT Secrétaire-Test"
+    && $("#acces-list").textContent.includes("LTN Adjoint-Test") && $("#acces-list").textContent.includes("Mot de passe commun")
+    && state.data.journal.at(-1).quoi === "Compte administrateur créé : SGT Secrétaire-Test", state.data.journal.at(-1).quoi);
   $("#dlg-acces").close(); $("#dlg-champs").close();
   const pc = []; const fauxPc = () => ({ getFile: async () => ({ text: async () => pc.at(-1) || "" }), createWritable: async () => ({ write: async c => pc.push(c), close: async () => {} }) });
   state.handle = fauxPc(); state.lastIv = null; await save(); await quand(() => !state.dirty, 60000);
-  verif("Fichier au format 3", JSON.parse(pc.at(-1)).version === 3 && Object.keys(JSON.parse(pc.at(-1)).parts).length === 1);
+  verif("Fichier au format 3", JSON.parse(pc.at(-1)).version === 3 && Object.keys(JSON.parse(pc.at(-1)).parts).length === 1 && JSON.parse(pc.at(-1)).comptes.length === 3);
   lock();
   pending = { text: pc.at(-1), handle: fauxPc(), name: "pc.json", date: Date.now() };
   $("#pw-open").value = "chef-du-peloton-test"; $("#form-open").requestSubmit(); await quand(() => state.data && $("#lock").hidden, 60000);
   state.data.meta.verrouMinutes = 0;
   const miens = state.data.personnes;
   verif("Chef : seulement son peloton", state.role && miens.length > 0 && miens.length < total && miens.every(p => p.v.escadron === pChef.escadron && p.v.peloton === pChef.peloton)
-    && !$("#role-badge").hidden && $("#btn-import").hidden && $("#btn-champs").hidden, miens.length + " / " + total);
+    && !$("#role-badge").hidden && $("#role-badge").textContent.includes("LTN Chef-Test") && state.auteur === "LTN Chef-Test" && $("#btn-import").hidden && $("#btn-champs").hidden, miens.length + " / " + total);
   openPerson(miens[0].id);
   const champFiche = k => document.querySelector('#p-body [data-f="' + k + '"]'), visible = q => getComputedStyle($(q)).display !== "none";
   const fige = k => champFiche(k).readOnly || champFiche(k).disabled;
@@ -461,13 +480,13 @@ const valeur = (sel, v) => { const e = document.querySelector(sel); e.value = v;
   verif("Chef : réglages et imports refusés", !$("#dlg-champs").open && !$("#dlg-import")?.open);
   await verrouillerSession();
   $("#pw-session").value = "demonstration"; $("#form-session").requestSubmit(); await quand(() => $("#err-session").textContent.includes("incorrect"), 60000);
-  verif("Session du chef : le mot de passe habituel ne la change pas de rôle", !state.data);
+  verif("Session du chef : le mot de passe commun ne la change pas de rôle", !state.data);
   $("#pw-session").value = "chef-du-peloton-test"; $("#form-session").requestSubmit(); await quand(() => state.data, 60000);
   verif("Session du chef : reprise avec son mot de passe", state.role && state.data.personnes.length === miens.length);
   lock();
   pending = { text: pc.at(-1), handle: null, name: "pc.json", date: Date.now() };
   $("#pw-open").value = "demonstration"; $("#form-open").requestSubmit(); await quand(() => state.data && $("#lock").hidden, 60000);
-  verif("Administrateur : tout le fichier, sans modification du chef", !state.role && state.data.personnes.length === total
+  verif("Mot de passe commun : tout le fichier, sans modification du chef", !state.role && !state.compte && state.kek && state.auteur === "Mot de passe commun" && state.data.personnes.length === total
     && state.data.personnes.find(p => p.id === miens[0].id).v.gant === gantAvant && $("#role-badge").hidden && !$("#btn-champs").hidden
     && !document.body.classList.contains("lecture-seule") && visible("#btn-add"));
   clic("#btn-journal"); valeur("#journal-acces", "Administrateur");
@@ -475,13 +494,44 @@ const valeur = (sel, v) => { const e = document.querySelector(sel); e.value = v;
   verif("Journal : filtre « Accès »", lignes.length > 0 && lignes.every(l => l.textContent.includes("Administrateur"))
     && state.data.journal.some(j => j.acces === "Administrateur" && j.quoi.startsWith("Accès chef de peloton défini")), lignes.length);
   $("#dlg-journal").close();
-  // Capitaine : tout le fichier, en lecture seule
+  // Administrateur nommé : tous les droits, son nom dans le journal
+  lock();
+  pending = { text: pc.at(-1), handle: fauxPc(), name: "pc.json", date: Date.now() };
+  $("#pw-open").value = "secretaire-du-test"; $("#form-open").requestSubmit(); await quand(() => state.data && $("#lock").hidden, 60000);
+  state.data.meta.verrouMinutes = 0;
+  verif("Administrateur nommé : tout le fichier, modifiable", state.compte?.nom === "SGT Secrétaire-Test" && !state.role && !state.kek && state.principalEnv
+    && state.data.personnes.length === total && !document.body.classList.contains("lecture-seule") && !$("#btn-champs").hidden);
+  const pModif = state.data.personnes.at(-1);
+  modif("Test : fiche modifiée", [], [pModif.id]); pModif.v.gant = "41"; markDirty();
+  verif("Journal : nom de l'administrateur, sans saisie", state.data.journal.at(-1).qui === "SGT Secrétaire-Test" && state.data.journal.at(-1).acces === "Administrateur");
+  await save(); await quand(() => !state.dirty, 60000);
+  verif("Administrateur nommé : enregistré, le mot de passe commun ouvre encore", (await decryptFile(pc.at(-1), "demonstration")).via === "principal"
+    && (await decryptFile(pc.at(-1), "secretaire-du-test")).compte?.nom === "SGT Secrétaire-Test");
+  await verrouillerSession();
+  $("#pw-session").value = "capitaine-du-test"; $("#form-session").requestSubmit(); await quand(() => $("#err-session").textContent.includes("incorrect"), 60000);
+  verif("Session de l'administrateur : un autre compte ne la reprend pas", !state.data);
+  $("#pw-session").value = "secretaire-du-test"; $("#form-session").requestSubmit(); await quand(() => state.data, 60000);
+  verif("Session de l'administrateur : reprise avec son mot de passe", state.compte?.nom === "SGT Secrétaire-Test" && !state.role);
+  // Supprimer le mot de passe commun, retirer un adjoint : nouvelle clé
+  clic("#btn-champs"); clic("#btn-acces");
+  const adj = state.data.meta.comptes.find(c => c.nom === "LTN Adjoint-Test");
+  document.querySelector('#acces-list [data-retirer="commun"]').click(); await quand(() => !state.principalEnv && state.mdpChange, 60000);
+  document.querySelector('#acces-list [data-retirer="' + adj.id + '"]').click(); await quand(() => state.data.journal.at(-1).quoi.includes("LTN Adjoint-Test"), 60000);
+  verif("Comptes : retirer, le mien n'a pas de bouton", !document.querySelector('#acces-list [data-retirer="' + state.compte.id + '"]') && !$("#acces-list").textContent.includes("Mot de passe commun")
+    && state.data.journal.at(-1).quoi === "Compte lecture complète retiré : LTN Adjoint-Test", $("#acces-list").textContent + " | " + state.data.journal.at(-1).quoi);
+  $("#dlg-acces").close(); $("#dlg-champs").close();
+  await save(); await quand(() => !state.dirty, 60000);
+  let refus = 0;
+  for (const mdp of ["demonstration", "adjoint-du-test"]) { try { await decryptFile(pc.at(-1), mdp); } catch { refus++; } }
+  verif("Mot de passe commun supprimé et adjoint retiré : ils n'ouvrent plus", refus === 2 && !JSON.parse(pc.at(-1)).principal
+    && (await decryptFile(pc.at(-1), "secretaire-du-test")).compte && (await decryptFile(pc.at(-1), "chef-du-peloton-test")).role);
+  // Lecture complète (capitaine) : tout le fichier, en lecture seule
   lock();
   pending = { text: pc.at(-1), handle: fauxPc(), name: "pc.json", date: Date.now() };
   $("#pw-open").value = "capitaine-du-test"; $("#form-open").requestSubmit(); await quand(() => state.data && $("#lock").hidden, 60000);
   state.data.meta.verrouMinutes = 0;
-  verif("Capitaine : tout le fichier, en lecture seule", state.role?.capitaine && state.data.personnes.length === total && $("#role-badge").textContent.includes("Capitaine")
-    && document.body.classList.contains("lecture-seule") && $("#btn-champs").hidden && !visible("#btn-add") && !visible("#btn-save"));
+  verif("Capitaine : tout le fichier, en lecture seule", state.role?.capitaine && state.data.personnes.length === total && $("#role-badge").textContent.includes("CNE Capitaine-Test")
+    && document.body.classList.contains("lecture-seule") && $("#btn-champs").hidden && !visible("#btn-add") && !visible("#btn-save"), $("#role-badge").textContent);
   openPerson(state.data.personnes.at(-1).id);
   verif("Capitaine : fiche en lecture seule", fige("gant") && !visible("#p-valider"));
   $("#dlg-person").close();

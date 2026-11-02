@@ -17,7 +17,7 @@ const L = vm.runInContext(`({ state, emptyData, normalize, donneesDemo, encryptD
   permisEtat, defaultReglesPermis, seanceChangements, echeances, diffFiche, journaliser, JOURNAL_MAX, statFormation, statutTaux,
   statusOf, reoBlocs, groupesPeloton, defaultChamps, SCHEMA, fusionner, ITER, forceMotDePasse, controleQualite, historiquePersonne,
   seuilAlerte, isoLocal, today, lireCartec, planCartec, appliquerCartec, escadronPropose, reoBlocs, lireUIR, planUIR, appliquerUIR,
-  duree, aEcheance, clesNeuves, creerSecours, toB64, creerAcces, decouper, assembler, empreinte, dernierTirDe, majDernierTir, statFGE, addMonths, lireNouveaux, creerNouveaux, releve, avecReleve, cumulReleve, tauxReleve, RELEVES_MAX, reparerTel, telsReparables, parseCell, lireUIR, categorie, annuaire })`, ctx);
+  duree, aEcheance, clesNeuves, creerSecours, toB64, creerAcces, decouper, assembler, empreinte, dernierTirDe, majDernierTir, statFGE, addMonths, lireNouveaux, creerNouveaux, releve, avecReleve, cumulReleve, tauxReleve, RELEVES_MAX, reparerTel, telsReparables, parseCell, lireUIR, categorie, annuaire, creerCompte, compteDuMdp, enveloppeRsa, fromB64 })`, ctx);
 
 let ok = 0, ko = 0;
 /* Fichier au format 1 (ancien) : données chiffrées directement par la clé dérivée du mot de passe */
@@ -559,38 +559,71 @@ await test("Accès chef de peloton : il ne déchiffre que son peloton, l'adminis
   egal(L.state.data.meta.acces.length, 2, "un seul accès par peloton");
 });
 
-await test("Accès capitaine : tout le fichier en lecture, suit les changements de clé, session verrouillée", async () => {
+await test("Comptes nommés : administrateurs, lecture complète (ancien capitaine), mot de passe commun", async () => {
   const d = demo(), tri = P => P.map(p => p.id).sort();
-  Object.assign(L.state, await L.clesNeuves("mot-de-passe-habituel", 1000), { role: null, modele: null });
-  await L.creerAcces(d.meta, d.personnes[0].v.escadron, d.personnes[0].v.peloton, "chef-du-peloton-1");
-  d.meta.capitaine = await L.creerSecours("mot-de-passe-capitaine");
+  Object.assign(L.state, await L.clesNeuves("mot-de-passe-habituel", 1000), { role: null, modele: null, compte: null, principalEnv: null });
+  await L.creerAcces(d.meta, d.personnes[0].v.escadron, d.personnes[0].v.peloton, "chef-du-peloton-1", "", "LTN Chef");
+  d.meta.capitaine = await L.creerSecours("mot-de-passe-capitaine");   // ancien accès capitaine (avant la v3.24)
+  L.normalize(d);
+  egal(d.meta.comptes.map(c => [c.id, c.type, c.nom]), [["capitaine", "lecteur", "Capitaine"]], "capitaine migré en compte de lecture");
+  vrai(!d.meta.capitaine);
+  const adm = await L.creerCompte(d.meta, "admin", "SGT Secrétaire", "mot-de-passe-secretaire");
+  await L.creerCompte(d.meta, "lecteur", "LTN Adjoint", "mot-de-passe-adjoint");
+  egal(new Set(d.meta.comptes.map(c => c.kdf.salt)).size, 2, "nouveaux comptes : sel commun (le capitaine migré garde le sien)");
   d.listes.push({ id: "l1", nom: "Liste admin", lignes: [], champs: [], etat: {} });
   L.state.data = d;
-  const fichier = await L.encryptData("2026-01-01T00:00:00.000Z");
+  const fichier = await L.encryptData("2026-01-01T00:00:00.000Z"), o = JSON.parse(fichier);
+  vrai(o.principal && o.comptes.length === 3 && !o.capitaine && !JSON.stringify(o.comptes).includes("Secrétaire"), "en-tête : enveloppes sans nom");
   const r = await L.decryptFile(fichier, "mot-de-passe-capitaine");
-  egal([r.via, r.role.capitaine, r.kek], ["capitaine", true, null]);
+  egal([r.via, r.role.capitaine, r.role.id, r.role.nom, r.kek], ["compte", true, "capitaine", "Capitaine", null]);
   egal(tri(r.data.personnes), tri(d.personnes), "tous les pelotons");
   vrai(r.data.listes.some(l => l.id === "l1"), "listes de l'administrateur visibles");
+  egal([(await L.decryptFile(fichier, "mot-de-passe-adjoint")).role.nom], ["LTN Adjoint"]);
+  const ra = await L.decryptFile(fichier, "mot-de-passe-secretaire");
+  egal([ra.via, ra.role, ra.compte, ra.kek, !!ra.principal], ["compte", undefined, { id: adm.id, nom: "SGT Secrétaire" }, null, true], "administrateur nommé : pas de rôle");
+  let refuse = false; try { await L.decryptFile(fichier, "mot-de-passe-adjoint", { chef: false }); } catch { refuse = true; }
+  vrai(refuse, "lecture complète refusée là où seul un administrateur est attendu");
   const chef = await L.decryptFile(fichier, "chef-du-peloton-1");
-  vrai(!chef.data.meta.capitaine, "enveloppe du capitaine absente de la partie d'un chef");
-  // Nouveau mot de passe habituel = nouvelle clé : le capitaine ouvre toujours
-  Object.assign(L.state, await L.clesNeuves("autre-mot-de-passe", 1000));
-  const apres = await L.encryptData();
-  egal(tri((await L.decryptFile(apres, "mot-de-passe-capitaine")).data.personnes), tri(d.personnes), "après changement de clé");
-  // Session du capitaine verrouillée : bloc sans enveloppe principale, rouvert par son mot de passe
+  vrai(!chef.data.meta.comptes && chef.role.nom === "LTN Chef", "partie d'un chef : pas de comptes, nom du chef");
+  egal((await L.decryptFile(fichier, "mot-de-passe-habituel")).via, "principal", "mot de passe commun");
+  // Enregistré par l'administrateur nommé : l'enveloppe du mot de passe commun est recopiée, tout le monde ouvre
   const sauve = { ...L.state };
-  Object.assign(L.state, { data: L.normalize(r.data), key: r.key, cleId: r.cleId, kek: null, role: r.role, modele: null });
-  const session = await L.encryptData(), os = JSON.parse(session);
-  vrai(!os.principal, "pas d'enveloppe principale");
-  const rs = await L.decryptFile(session, "mot-de-passe-capitaine", { secours: false });
+  Object.assign(L.state, { data: L.normalize(ra.data), key: ra.key, cleId: ra.cleId, kek: null, salt: null, role: null, compte: ra.compte, principalEnv: ra.principal });
+  const parAdm = await L.encryptData();
+  egal((await L.decryptFile(parAdm, "mot-de-passe-habituel")).via, "principal", "commun recopié");
+  egal(tri((await L.decryptFile(parAdm, "chef-du-peloton-1")).data.personnes).length > 0, true);
+  // Nouvelle clé sans le mot de passe commun en mémoire : il n'ouvre plus, les comptes suivent
+  Object.assign(L.state, { key: await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]), cleId: "nouvelle", principalEnv: null });
+  const sansCommun = await L.encryptData();
+  refuse = false; try { await L.decryptFile(sansCommun, "mot-de-passe-habituel"); } catch { refuse = true; }
+  vrai(refuse && !JSON.parse(sansCommun).principal, "mot de passe commun supprimé");
+  egal([(await L.decryptFile(sansCommun, "mot-de-passe-secretaire")).compte.id, (await L.decryptFile(sansCommun, "mot-de-passe-capitaine")).role.id], [adm.id, "capitaine"]);
+  // Session de lecture complète verrouillée : rouverte par son mot de passe
+  Object.assign(L.state, { data: L.normalize(r.data), key: r.key, cleId: r.cleId, kek: null, role: r.role, compte: null, principalEnv: r.principal, modele: null });
+  const rs = await L.decryptFile(await L.encryptData(), "mot-de-passe-capitaine", { secours: false });
   egal([rs.role.id, tri(rs.data.personnes)], ["capitaine", tri(d.personnes)]);
-  let refuse = false; try { await L.decryptFile(session, "mot-de-passe-habituel"); } catch { refuse = true; }
-  vrai(refuse, "le mot de passe habituel n'ouvre pas la session du capitaine");
   Object.assign(L.state, sauve);
-  // Accès retiré : son mot de passe n'ouvre plus les versions suivantes
-  delete L.state.data.meta.capitaine;
+  // Compte retiré : son mot de passe n'ouvre plus les versions suivantes ; mot de passe déjà pris
+  vrai((await L.compteDuMdp("mot-de-passe-adjoint", d.meta.comptes))?.nom === "LTN Adjoint" && !(await L.compteDuMdp("mot-de-passe-adjoint", d.meta.comptes, d.meta.comptes.find(c => c.nom === "LTN Adjoint").id)));
+  d.meta.comptes = d.meta.comptes.filter(c => c.id !== "capitaine");
   refuse = false; try { await L.decryptFile(await L.encryptData(), "mot-de-passe-capitaine"); } catch { refuse = true; }
-  vrai(refuse, "accès retiré");
+  vrai(refuse, "compte retiré");
+});
+
+await test("Ancien fichier avec l'enveloppe capitaine dans l'en-tête : toujours ouvert", async () => {
+  const d = demo();
+  Object.assign(L.state, await L.clesNeuves("mot-de-passe-habituel", 1000), { role: null, compte: null, principalEnv: null, data: d });
+  const C = await L.creerSecours("mot-de-passe-capitaine"), o = JSON.parse(await L.encryptData());
+  // Fichier d'avant la v3.24 : meta.capitaine dans les données (pas encore migré) et enveloppe « capitaine » dans l'en-tête
+  const raw = await crypto.subtle.exportKey("raw", L.state.key);
+  const data = await crypto.subtle.decrypt({ name: "AES-GCM", iv: L.fromB64(o.iv) }, L.state.key, L.fromB64(o.data));
+  const ancien = JSON.parse(new TextDecoder().decode(data)); ancien.meta.capitaine = C;
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  o.iv = L.toB64(iv); o.data = L.toB64(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, L.state.key, new TextEncoder().encode(JSON.stringify(ancien))));
+  o.capitaine = await L.enveloppeRsa(C, raw);
+  const r = await L.decryptFile(JSON.stringify(o), "mot-de-passe-capitaine");
+  egal([r.via, r.role.id, r.role.nom], ["capitaine", "capitaine", "Capitaine"]);
+  egal(L.normalize(r.data).meta.comptes.map(c => c.id), ["capitaine"], "migré à l'ouverture");
 });
 
 await test("Accès chef de peloton : découpage et rassemblement (journal, listes)", () => {
