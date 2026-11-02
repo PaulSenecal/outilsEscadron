@@ -401,6 +401,19 @@ Statuts : expiré (bad), à prévoir si moins de seuilAlerte(f) jours (warn),
 Identité du hub escadron : bleu marine (#13233F / #0B1629) et or (#C9A227).
 Polices Barlow / Barlow Condensed. Couleurs de statut : vert, ambre, rouge, gris.
 
+## Aide (v3.25, dossier suivi/aide/, publique sur GitHub Pages)
+- index.html (choix du rôle) + un guide par rôle : secretariat.html (administrateurs), commandement.html (CDU, adjoints : lecture
+  complète), chef.html (chefs de peloton) ; style commun aide.css (écran + impression A4, une étape par page) ; pdf/guide-*.pdf.
+- Liens « Aide » dans l'outil : écran d'ouverture et bas du menu (target=_blank : le fichier reste ouvert).
+- Captures : `node suivi/aide/captures.mjs [nom…]` (depuis la racine ; sans nom : toutes + les 3 PDF ; --pdf : PDF seuls).
+  Chrome piloté par son protocole de débogage (comme tests/ui.mjs), écran 1440 × 900, DÉMO SEULEMENT (images publiques : jamais
+  de capture d'un vrai fichier). Liste dans captures-liste.mjs : avant (code dans la page), encadres [sélecteur, numéro,
+  { cote: gauche | droite | dessus | dessous | dedans, marge }], zone (recadrage), apres. Les encadrés rouges numérotés sont
+  dessinés dans la page (__aide.box, coupés à la partie visible des zones qui défilent) : ils font partie de l'image.
+  Rôles simulés sur la démo (state.role + appliquerRole). Les numéros des encadrés correspondent aux ol.reperes des guides.
+- APRÈS UNE ÉVOLUTION VISIBLE : relancer les captures (et les PDF), relire le guide concerné.
+- Photos réelles fournies par l'utilisateur : suivi/nePasMettreSurLeRepo/tuto/ (ignoré par git, données réelles : ne jamais publier).
+
 ## Tests (données fictives uniquement, publiables)
 - Depuis la racine du dépôt : `node suivi/tests/run.mjs`, `node suivi/tests/ui.mjs`, `node suivi/tests/csp.mjs`.
 - `node tests/run.mjs` : logique (chiffrement, import/export Excel et CSV aller-retour,

@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Guide du chef de peloton – Suivi du personnel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="aide.css">
+</head>
+<body>
+<header class="entete"><div class="int">
+  <div class="fil"><a href="./">Aide</a> · Chefs de peloton</div>
+  <h1>Guide du chef de peloton</h1>
+  <p>Pour les chefs de peloton (et leurs chefs de groupe) : la situation de votre peloton, en consultation.
+    Les images montrent des données fictives.</p>
+  <div class="actions-haut"><a class="btn" href="pdf/guide-chef.pdf" download>Télécharger le PDF</a><a class="btn clair" href="../">Ouvrir l'outil</a></div>
+</div></header>
+<main>
+
+<nav class="sommaire pas-imprime" aria-label="Sommaire"><h2>Sommaire</h2><ol>
+  <li><a href="#ouvrir">Ouvrir le fichier</a></li>
+  <li><a href="#ecran">Votre peloton en un coup d'œil</a></li>
+  <li><a href="#afaire">Qui doit refaire quoi</a></li>
+  <li><a href="#cati">Les tirs du peloton (CATI)</a></li>
+  <li><a href="#fiche">Consulter une personne</a></li>
+  <li><a href="#telephones">Numéros de téléphone</a></li>
+  <li><a href="#exporter">Imprimer, exporter</a></li>
+  <li><a href="#securite">Verrouiller, corrections</a></li>
+</ol></nav>
+
+<section class="etape" id="ouvrir">
+  <h2>1. Ouvrir le fichier</h2>
+  <p>Le fichier de suivi (<b>.json</b>) est sur le Google Drive. Ouvrez l'outil dans Chrome ou Edge.</p>
+  <figure class="etroit"><img src="img/ouverture.png" alt="Écran d'ouverture : choisir le fichier, mot de passe, déverrouiller"></figure>
+  <ol class="reperes">
+    <li><span class="bouton">Choisir le fichier…</span> : le fichier de suivi dans le Google Drive.</li>
+    <li>Le mot de passe de votre peloton : il n'ouvre <b>que votre peloton</b>. Les autres restent illisibles.</li>
+    <li><span class="bouton">Déverrouiller</span>.</li>
+  </ol>
+  <div class="encart astuce"><strong>Chefs de groupe</strong>Les chefs de groupe utilisent l'accès de leur peloton.</div>
+</section>
+
+<section class="etape" id="ecran">
+  <h2>2. Votre peloton en un coup d'œil</h2>
+  <figure><img src="img/chef-accueil.png" alt="Accueil d'un chef de peloton"></figure>
+  <ol class="reperes">
+    <li>Votre accès : peloton, escadron, lecture seule. Vous ne voyez que les fiches de votre peloton et ne pouvez rien modifier.</li>
+    <li>Les chiffres de votre peloton : effectif, taux de validité, dates expirées, à renouveler. Cliquez pour voir les personnes concernées.</li>
+  </ol>
+</section>
+
+<section class="etape" id="afaire">
+  <h2>3. Qui doit refaire quoi</h2>
+  <p>Page <b>À faire</b> : toutes les échéances de votre peloton.</p>
+  <figure><img src="img/chef-a-faire.png" alt="Page À faire d'un peloton"></figure>
+  <ol class="reperes">
+    <li>Échéance : déjà expirés, ou aussi ce qui expire bientôt. Le filtre « Formation » à côté garde une seule formation (ex. Famas).</li>
+    <li><span class="bouton">Écrire à ces personnes</span> : un mail à tous ceux affichés, en copie cachée.</li>
+    <li>Chaque personne et ses échéances, avec téléphone et mail.</li>
+  </ol>
+  <div class="couleurs">
+    <div class="c-rouge"><b>Rouge : expiré</b>à refaire.</div>
+    <div class="c-orange"><b>Orange : bientôt</b>à prévoir.</div>
+    <div class="c-vert"><b>Vert : à jour</b>valide.</div>
+    <div class="c-gris"><b>Gris : jamais fait</b>aucune date.</div>
+  </div>
+  <p>La fin de contrat et la VMP sont des <b>dates de fin</b> : elles s'affichent en orange quand elles approchent (90 et 60 jours avant).</p>
+</section>
+
+<section class="etape" id="cati">
+  <h2>4. Les tirs du peloton (CATI)</h2>
+  <figure><img src="img/chef-cati.png" alt="CATI d'un peloton"></figure>
+  <ol class="reperes"><li>Un bloc par golf, une colonne par arme et par tir, en couleur. Cliquez sur une ligne pour ouvrir la fiche.</li></ol>
+  <p>Même présentation pour <b>NRBC</b> et <b>Habillement</b> (tailles du peloton) et <b>Permis</b>.</p>
+</section>
+
+<section class="etape" id="fiche">
+  <h2>5. Consulter une personne</h2>
+  <p>Page <b>Personnel</b> (recherche par nom), ou un clic sur une ligne dans À faire ou CATI.</p>
+  <figure><img src="img/chef-fiche.png" alt="Fiche en lecture seule"></figure>
+  <ol class="reperes">
+    <li>Le bandeau : toutes les alertes de la personne (✕ rouge = expiré, ⚠ orange = bientôt).</li>
+    <li><span class="bouton">Fermer</span> : la fiche est en lecture seule.</li>
+  </ol>
+</section>
+
+<section class="etape" id="telephones">
+  <h2>6. Numéros de téléphone</h2>
+  <p>Personnel › <span class="bouton">Actions ▾</span> › <b>Numéros de téléphone</b> : les numéros de votre peloton, par catégorie.</p>
+  <figure><img src="img/chef-telephones.png" alt="Numéros de téléphone du peloton"></figure>
+  <ol class="reperes">
+    <li>Officiers, sous-officiers, militaires du rang ou tout le monde. « Contactables seulement » est coché par défaut.</li>
+    <li><span class="bouton">Copier les numéros</span> : à coller dans les destinataires d'un SMS ou d'un groupe WhatsApp.</li>
+  </ol>
+</section>
+
+<section class="etape" id="exporter">
+  <h2>7. Imprimer, exporter</h2>
+  <p>Chaque page a un menu <span class="bouton">Exporter ▾</span> : Excel mis en forme, ou Imprimer / PDF (pratique pour afficher la situation des tirs du peloton).</p>
+  <div class="encart important"><strong>Un export n'est pas chiffré</strong>Un Excel ou un PDF exporté est lisible par n'importe qui : ne le laissez pas traîner et supprimez-le après usage.</div>
+</section>
+
+<section class="etape" id="securite">
+  <h2>8. Verrouiller, corrections</h2>
+  <ul>
+    <li><span class="bouton">Verrouiller</span> en quittant le poste. Après 15 minutes sans activité, l'écran se verrouille tout seul : retapez votre mot de passe pour reprendre.</li>
+    <li>Ne prêtez pas le mot de passe du peloton en dehors des chefs de groupe, et ne l'écrivez pas dans un mail.</li>
+    <li><b>Une date fausse, un tir pas enregistré, un numéro à changer ?</b> Envoyez la correction au secrétariat (nom, ce qui est faux, la bonne valeur) : vous ne pouvez pas modifier les fiches.</li>
+  </ul>
+  <figure class="etroit"><img src="img/verrouillage.png" alt="Session verrouillée"></figure>
+  <ol class="reperes"><li>Votre mot de passe.</li><li><span class="bouton">Reprendre la session</span>.</li></ol>
+</section>
+
+<p class="pied">Suivi du personnel · guide du chef de peloton · images réalisées avec des données fictives.</p>
+</main>
+</body>
+</html>

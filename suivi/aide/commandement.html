@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Guide du commandement – Suivi du personnel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="aide.css">
+</head>
+<body>
+<header class="entete"><div class="int">
+  <div class="fil"><a href="./">Aide</a> · CDU et adjoints (lecture complète)</div>
+  <h1>Guide du commandement</h1>
+  <p>Pour le commandant d'unité et ses adjoints : tout l'escadron en consultation, sans risque de modifier quoi que ce soit.
+    Les images montrent des données fictives.</p>
+  <div class="actions-haut"><a class="btn" href="pdf/guide-commandement.pdf" download>Télécharger le PDF</a><a class="btn clair" href="../">Ouvrir l'outil</a></div>
+</div></header>
+<main>
+
+<nav class="sommaire pas-imprime" aria-label="Sommaire"><h2>Sommaire</h2><ol>
+  <li><a href="#ouvrir">Ouvrir le fichier</a></li>
+  <li><a href="#ecran">L'écran principal</a></li>
+  <li><a href="#fiche">Consulter une personne</a></li>
+  <li><a href="#couleurs">Les couleurs des dates</a></li>
+  <li><a href="#fin">Les dates de fin (contrat, VMP)</a></li>
+  <li><a href="#afaire">Ce qui est à faire</a></li>
+  <li><a href="#cati">CATI, NRBC, Habillement, Permis</a></li>
+  <li><a href="#stats">Statistiques</a></li>
+  <li><a href="#telephones">Numéros de téléphone</a></li>
+  <li><a href="#liste">Préparer une liste</a></li>
+  <li><a href="#exporter">Exporter et imprimer</a></li>
+  <li><a href="#securite">Verrouiller, mot de passe, corrections</a></li>
+</ol></nav>
+
+<section class="etape" id="ouvrir">
+  <h2>1. Ouvrir le fichier</h2>
+  <p>Le fichier de suivi (<b>.json</b>) est sur le Google Drive. Ouvrez l'outil dans Chrome ou Edge.</p>
+  <figure class="etroit"><img src="img/ouverture.png" alt="Écran d'ouverture : choisir le fichier, mot de passe, déverrouiller"></figure>
+  <ol class="reperes">
+    <li><span class="bouton">Choisir le fichier…</span> : le fichier de suivi dans le Google Drive.</li>
+    <li>Votre mot de passe personnel : il ouvre <b>tout le fichier, en lecture seule</b>.</li>
+    <li><span class="bouton">Déverrouiller</span>.</li>
+  </ol>
+</section>
+
+<section class="etape" id="ecran">
+  <h2>2. L'écran principal</h2>
+  <figure><img src="img/lecteur-accueil.png" alt="Accueil en lecture complète"></figure>
+  <ol class="reperes">
+    <li>Votre accès : « tout le fichier · lecture seule ». Vous voyez tous les escadrons et pelotons, mais rien ne peut être modifié.</li>
+    <li>Pas de bouton « Enregistrer » : seul <span class="bouton">Verrouiller</span> reste. Vous ne pouvez rien abîmer.</li>
+  </ol>
+  <p>Les chiffres clés en haut de l'accueil (effectif, taux de validité, dates expirées, à renouveler) sont cliquables, comme le tableau « À faire » par peloton.</p>
+</section>
+
+<section class="etape" id="fiche">
+  <h2>3. Consulter une personne</h2>
+  <p>Page <b>Personnel</b> : recherchez un nom, filtrez par escadron ou peloton, et cliquez sur une ligne pour ouvrir la fiche.</p>
+  <figure><img src="img/personnel.png" alt="Page Personnel : recherche, filtres, liste"></figure>
+  <ol class="reperes">
+    <li>Rechercher un nom, un grade, un numéro…</li>
+    <li>Escadron et peloton.</li>
+    <li>Champ et état : par exemple « Famas Bravo » + « Expiré ».</li>
+    <li>Les groupes de colonnes à afficher.</li>
+    <li>Cliquez sur une ligne pour ouvrir la fiche.</li>
+  </ol>
+  <figure><img src="img/lecteur-fiche.png" alt="Fiche en lecture seule"></figure>
+  <ol class="reperes">
+    <li>Les dates sont affichées mais pas modifiables.</li>
+    <li><span class="bouton">Fermer</span>.</li>
+  </ol>
+</section>
+
+<section class="etape" id="couleurs">
+  <h2>4. Les couleurs des dates</h2>
+  <p>Pour un tir ou une formation, la date est celle où c'est fait ; l'outil calcule l'échéance (12 mois pour les tirs, le PSC1, le SC1…).</p>
+  <div class="couleurs">
+    <div class="c-rouge"><b>Rouge : expiré</b>à refaire.</div>
+    <div class="c-orange"><b>Orange : bientôt</b>à prévoir.</div>
+    <div class="c-vert"><b>Vert : à jour</b>« Valide jusqu'au… ».</div>
+    <div class="c-gris"><b>Gris : jamais fait</b>aucune date.</div>
+  </div>
+</section>
+
+<section class="etape" id="fin">
+  <h2>5. Les dates de fin : fin de contrat, VMP</h2>
+  <p>Ces dates-là sont <b>des dates de fin</b> (marquées <i>date limite</i>) : l'alerte se déclenche avant l'échéance.</p>
+  <figure><img src="img/fiche-dates-fin.png" alt="Fin de contrat et VMP"></figure>
+  <ol class="reperes">
+    <li><b>Fin de contrat</b> : alerte orange 90 jours avant.</li>
+    <li><b>VMP</b> (fin de validité de la visite médicale) : alerte 60 jours avant.</li>
+  </ol>
+  <div class="encart important"><strong>À surveiller</strong>Les fins de contrat et les VMP qui approchent apparaissent dans la page « À faire », avec les tirs et formations.</div>
+</section>
+
+<section class="etape" id="afaire">
+  <h2>6. Ce qui est à faire</h2>
+  <figure><img src="img/a-faire.png" alt="Page À faire"></figure>
+  <ol class="reperes">
+    <li>Escadron (et peloton).</li>
+    <li>Échéance : déjà expirés, ou aussi ce qui expire bientôt.</li>
+    <li>Formation : toutes ou une seule.</li>
+    <li><span class="bouton">Écrire à ces personnes</span> : un mail à toutes les personnes affichées, en copie cachée.</li>
+    <li>Qui doit refaire quoi, avec téléphone et mail. <span class="bouton">Exporter ▾</span> pour l'imprimer ou l'envoyer.</li>
+  </ol>
+</section>
+
+<section class="etape" id="cati">
+  <h2>7. CATI, NRBC, Habillement, Permis</h2>
+  <figure><img src="img/cati.png" alt="Page CATI : un tableau par peloton"></figure>
+  <ol class="reperes">
+    <li>Escadron, peloton, et <span class="bouton">Exporter ▾</span> (une page par peloton à l'impression).</li>
+    <li>Chaque golf, chaque arme, en couleur.</li>
+  </ol>
+  <p>NRBC et Habillement donnent les tailles (récapitulatif par peloton) ; Permis : titulaires, éligibles et « à vérifier ».</p>
+</section>
+
+<section class="etape" id="stats">
+  <h2>8. Statistiques</h2>
+  <figure><img src="img/statistiques.png" alt="Statistiques"></figure>
+  <ol class="reperes">
+    <li>Escadron et peloton (« Tous » possible).</li>
+    <li>Effectif, taux de validité global, dates expirées, à prévoir.</li>
+    <li>Par arme et formation : à jour / à prévoir / expiré / jamais fait, statut ✓ Bon (≥ 75 %), ⚠ Moyen (≥ 50 %), ✗ Critique. Plus bas : taux par peloton et évolution mois par mois.</li>
+  </ol>
+</section>
+
+<section class="etape" id="telephones">
+  <h2>9. Numéros de téléphone</h2>
+  <p>Personnel › <span class="bouton">Actions ▾</span> › <b>Numéros de téléphone</b> : par exemple tous les sous-officiers contactables, pour un SMS groupé.</p>
+  <figure><img src="img/telephones.png" alt="Numéros de téléphone"></figure>
+  <ol class="reperes">
+    <li>Officiers, sous-officiers, militaires du rang ou tout le monde (et escadron, peloton).</li>
+    <li>Contactables seulement (champ « Contactable : oui » de la fiche).</li>
+    <li><span class="bouton">Copier avec les noms</span> : une ligne par personne.</li>
+    <li><span class="bouton">Copier les numéros</span> : à coller dans les destinataires d'un SMS ou d'un groupe.</li>
+  </ol>
+</section>
+
+<section class="etape" id="liste">
+  <h2>10. Préparer une liste</h2>
+  <p>Vous avez une liste de noms (mission, stage, week-end) et voulez leurs informations : menu <b>Préparer une liste</b>, collez les noms, cochez les informations voulues, puis exportez.
+    En lecture seule, la liste ne peut pas être enregistrée dans le fichier, mais l'export et l'impression fonctionnent.</p>
+  <figure><img src="img/liste-1.png" alt="Préparer une liste : noms collés"></figure>
+  <ol class="reperes"><li>Le nom de la liste.</li><li>Les noms, un par ligne.</li><li><span class="bouton">Rechercher ces personnes</span>.</li><li>Ou un fichier Excel.</li></ol>
+  <figure><img src="img/liste-4.png" alt="Résultat de la liste"></figure>
+  <ol class="reperes"><li>(Enregistrer : réservé au secrétariat.)</li><li><span class="bouton">Écrire à ces personnes</span>.</li><li><span class="bouton">Exporter ▾</span> › Excel.</li><li>Le tableau en couleur.</li></ol>
+</section>
+
+<section class="etape" id="exporter">
+  <h2>11. Exporter et imprimer</h2>
+  <p>Chaque page a un menu <span class="bouton">Exporter ▾</span> : Excel mis en forme, ou Imprimer / PDF.</p>
+  <div class="encart important"><strong>Un export n'est pas chiffré</strong>Un Excel ou un PDF exporté est lisible par n'importe qui : ne le laissez pas traîner (mail, clé USB, bureau) et supprimez-le après usage.</div>
+</section>
+
+<section class="etape" id="securite">
+  <h2>12. Verrouiller, mot de passe, corrections</h2>
+  <ul>
+    <li><span class="bouton">Verrouiller</span> en quittant le poste. Après 15 minutes sans activité, l'écran se verrouille tout seul : retapez votre mot de passe pour reprendre.</li>
+    <li>Votre mot de passe est personnel : ne le prêtez pas et ne l'écrivez pas dans un mail. Pour le changer, demandez au secrétariat.</li>
+    <li>Une erreur dans une fiche ? Signalez-la au secrétariat : vous ne pouvez pas la corriger vous-même.</li>
+  </ul>
+  <figure class="etroit"><img src="img/verrouillage.png" alt="Session verrouillée"></figure>
+  <ol class="reperes"><li>Votre mot de passe.</li><li><span class="bouton">Reprendre la session</span>.</li></ol>
+</section>
+
+<p class="pied">Suivi du personnel · guide du commandement · images réalisées avec des données fictives.</p>
+</main>
+</body>
+</html>
