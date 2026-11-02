@@ -17,7 +17,7 @@ const L = vm.runInContext(`({ state, emptyData, normalize, donneesDemo, encryptD
   permisEtat, defaultReglesPermis, seanceChangements, echeances, diffFiche, journaliser, JOURNAL_MAX, statFormation, statutTaux,
   statusOf, reoBlocs, groupesPeloton, defaultChamps, SCHEMA, fusionner, ITER, forceMotDePasse, controleQualite, historiquePersonne,
   seuilAlerte, isoLocal, today, lireCartec, planCartec, appliquerCartec, escadronPropose, reoBlocs, lireUIR, planUIR, appliquerUIR,
-  duree, aEcheance, clesNeuves, creerSecours, toB64, creerAcces, decouper, assembler, empreinte, dernierTirDe, majDernierTir, statFGE, addMonths, lireNouveaux, creerNouveaux, releve, avecReleve, cumulReleve, tauxReleve, RELEVES_MAX, reparerTel, telsReparables, parseCell, lireUIR })`, ctx);
+  duree, aEcheance, clesNeuves, creerSecours, toB64, creerAcces, decouper, assembler, empreinte, dernierTirDe, majDernierTir, statFGE, addMonths, lireNouveaux, creerNouveaux, releve, avecReleve, cumulReleve, tauxReleve, RELEVES_MAX, reparerTel, telsReparables, parseCell, lireUIR, categorie, annuaire })`, ctx);
 
 let ok = 0, ko = 0;
 /* Fichier au format 1 (ancien) : données chiffrées directement par la clé dérivée du mot de passe */
@@ -742,6 +742,25 @@ await test("Téléphones : 0 perdu par Excel, +33, numéros étrangers", () => {
   vrai(L.controleQualite(d).some(x => x.type === "tel" && x.detail.includes("(réparable)")), "qualité : réparation proposée");
   const f = d.champs.find(c => c.id === "tel");
   egal([L.parseCell(f, 612345678).v, L.parseCell(f, "0612345678").v], ["06 12 34 56 78", "0612345678"], "import Excel : nombre réparé, numéro valide gardé tel quel");
+});
+
+await test("Numéros de téléphone : catégorie de grade, contactables", () => {
+  egal(["2CL", "CC1", "SGT", "mdl", "MAJ", "ASP", "COL", "XYZ", ""].map(L.categorie), ["mdr", "mdr", "sof", "sof", "sof", "off", "off", "", ""]);
+  const P = [
+    { id: "a", v: { grade: "MDL", nom: "A", escadron: "5ESC", peloton: "P1", tel: "612345678", contactable: "oui" } },
+    { id: "b", v: { grade: "ADC", nom: "B", escadron: "5ESC", peloton: "P2", tel: "07 00 00 00 00", contactable: "oui" } },
+    { id: "c", v: { grade: "SCH", nom: "C", escadron: "5ESC", tel: "06 11 11 11 11", contactable: "non" } },
+    { id: "d", v: { grade: "SGT", nom: "D", escadron: "5ESC", tel: "06 22 22 22 22" } },
+    { id: "e", v: { grade: "MCH", nom: "E", escadron: "5ESC", contactable: "oui" } },
+    { id: "f", v: { grade: "1CL", nom: "F", escadron: "5ESC", tel: "06 33 33 33 33", contactable: "oui" } },
+    { id: "g", v: { grade: "LTN", nom: "G", escadron: "4ESC", tel: "06 44 44 44 44", contactable: "oui" } }];
+  const r = L.annuaire(P, { cat: "sof" });
+  egal(r.lignes.map(l => [l.p.id, l.tel]), [["b", "07 00 00 00 00"], ["a", "06 12 34 56 78"]], "triés par grade, numéro réparé");
+  egal([r.nonContactables, r.nonRenseignes, r.sansTel], [1, 1, 1]);
+  egal(L.annuaire(P, { cat: "sof", contactables: false }).lignes.length, 4, "tous les sous-officiers avec un numéro");
+  egal(L.annuaire(P, { cat: "sof", peloton: "P1" }).lignes.map(l => l.p.id), ["a"]);
+  egal(L.annuaire(P, { escadron: "5ESC" }).lignes.map(l => l.p.id), ["b", "a", "f"]);
+  egal(L.annuaire(P, { cat: "off" }).lignes.map(l => l.p.id), ["g"]);
 });
 
 console.log(`\n${ok} réussi(s), ${ko} échoué(s)`);

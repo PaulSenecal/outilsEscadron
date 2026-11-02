@@ -105,6 +105,14 @@ const valeur = (sel, v) => { const e = document.querySelector(sel); e.value = v;
   verif("Lot : personne déjà dans le suivi non cochée", $("#lot-ok").disabled && $("#lot-apercu").textContent.includes("Déjà dans le suivi"));
   $("#dlg-lot").close();
 
+  // Numéros de téléphone par catégorie
+  clic("#btn-tels"); valeur("#tels-cat", "sof");
+  const telsAttendus = state.data.personnes.filter(p => ["SGT", "MDL", "SCH", "MCH", "ADJ", "ADC", "MAJ"].includes(p.v.grade) && p.v.contactable === "oui" && p.v.tel).length;
+  verif("Téléphones : sous-officiers contactables", $("#dlg-tels").open && telsAttendus > 0 && document.querySelectorAll("#tels-liste tbody tr").length === telsAttendus, $("#tels-resume").textContent);
+  $("#tels-contactables").click();
+  verif("Téléphones : tous les sous-officiers", document.querySelectorAll("#tels-liste tbody tr").length > telsAttendus);
+  $("#dlg-tels").close();
+
   // Fiche : couleurs et archivage
   openPerson(state.data.personnes[0].id);
   verif("Fiche : statut des dates", document.querySelectorAll("#p-body .fstat").length > 5);

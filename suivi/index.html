@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <!-- Politique de sécurité : aucune requête réseau (sauf Google Fonts), seul le script de ce fichier peut s'exécuter
      (empreinte sha256 : après toute modification du script, lancer « node tests/csp.mjs » pour la mettre à jour). -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-hUKtwtJo4SWvtJ4OTwrRPzgGe7kVdK+Hpy7O03goSi0='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-3/8EIcguDd7Q1W64jehZ+1+vJZoPtwmYCbPruHYPleQ='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
 <title>Suivi du personnel</title>
 <meta name="theme-color" content="#0B1629">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%2313233F'/%3E%3Cpath d='M32 9l18 7v13c0 12-8 21-18 26-10-5-18-14-18-26V16z' fill='none' stroke='%23C9A227' stroke-width='4'/%3E%3Ccircle cx='32' cy='27' r='6' fill='%23C9A227'/%3E%3Cpath d='M21 44c2-7 6-10 11-10s9 3 11 10' fill='%23C9A227'/%3E%3C/svg%3E">
@@ -645,6 +645,7 @@ details summary{cursor:pointer;font-weight:600;color:var(--navy)}
           <hr>
           <button type="button" role="menuitem" id="btn-mail-affiches">Écrire aux personnes affichées</button>
           <button type="button" role="menuitem" id="btn-copier-affiches">Copier leurs adresses mail</button>
+          <button type="button" role="menuitem" id="btn-tels">Numéros de téléphone (officiers, sous-officiers, MDR)…</button>
         </div>
       </div>
       <div class="dd">
@@ -878,6 +879,28 @@ details summary{cursor:pointer;font-weight:600;color:var(--navy)}
     <div class="dlg-foot">
       <button type="button" class="btn" data-close>Annuler</button>
       <button type="submit" class="btn btn-gold" id="lot-ok" disabled>Créer les fiches</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- ============ Numéros de téléphone ============ -->
+<dialog id="dlg-tels" class="wide">
+  <form method="dialog">
+    <div class="dlg-head"><h2>Numéros de téléphone</h2><p>Tous les numéros d'une catégorie, pour un SMS groupé, un groupe WhatsApp, une liste d'alerte… Par défaut, seulement les personnes dont la fiche indique « Contactable : oui » (onglet Personnel › Divers).</p></div>
+    <div class="dlg-body">
+      <div class="fgrid">
+        <label class="fld"><span>Catégorie</span><select id="tels-cat"></select></label>
+        <label class="fld"><span>Escadron</span><select id="tels-escadron"></select></label>
+        <label class="fld"><span>Peloton</span><select id="tels-peloton"></select></label>
+      </div>
+      <label class="check"><input type="checkbox" id="tels-contactables" checked> Contactables seulement</label>
+      <p class="hint" id="tels-resume"></p>
+      <div id="tels-liste"></div>
+    </div>
+    <div class="dlg-foot">
+      <button type="button" class="btn" id="tels-copier-noms" title="Une ligne par personne (grade, nom, prénom, téléphone) : se colle aussi dans Excel">Copier avec les noms</button>
+      <button type="button" class="btn btn-gold" id="tels-copier">Copier les numéros</button>
+      <button class="btn" value="ok">Fermer</button>
     </div>
   </form>
 </dialog>
@@ -1143,10 +1166,12 @@ const enc = new TextEncoder(), dec = new TextDecoder();
 const FORMAT = "suivi-personnel";
 const ITER = 600000;          // PBKDF2 (OWASP 2023). Un fichier plus ancien est relu avec ses itérations et mis à niveau au prochain enregistrement
 const SCHEMA = 6;
-const VERSION = "3.22";
+const VERSION = "3.23";
 /* Historique affiché par le bouton « Nouveautés » : à chaque évolution, incrémenter VERSION
    et ajouter une entrée EN TÊTE de cette liste. */
 const NOUVEAUTES = [
+  { v: "3.23", date: "02/11/2026", items: [
+    "Personnel › Actions › « Numéros de téléphone » : tous les numéros des officiers, des sous-officiers ou des militaires du rang (ou de tout le monde), par escadron et peloton, seulement les contactables par défaut. Bouton pour copier les numéros d'un coup (SMS groupé, WhatsApp) ou avec les noms (se colle dans Excel)."] },
   { v: "3.22", date: "29/10/2026", items: [
     "Qualité des données : la validité de la carte d'identité militaire (et toute date de validité ou de péremption) n'est plus signalée comme « date dans le futur »."] },
   { v: "3.21", date: "29/10/2026", items: [
@@ -2838,6 +2863,25 @@ function statFGE(P) {
   return r;
 }
 
+/* ---------- Numéros de téléphone par catégorie ---------- */
+/* Catégorie d'un grade : officiers (ASP et au-dessus), sous-officiers (SGT / MDL à MAJ), militaires du rang ; "" = grade inconnu */
+const CATEGORIES = { off: "Officiers", sof: "Sous-officiers", mdr: "Militaires du rang" };
+function categorie(g) {
+  const i = GRADES.indexOf(String(g || "").trim().toUpperCase());
+  return i < 0 ? "" : i >= GRADES.indexOf("ASP") ? "off" : i >= GRADES.indexOf("SGT") ? "sof" : "mdr";
+}
+/* Personnes de la catégorie / escadron / peloton avec un téléphone, triées par grade ; contactables = « Contactable : oui » seulement */
+function annuaire(P, { cat = "", escadron = "", peloton = "", contactables = true } = {}) {
+  const r = { lignes: [], sansTel: 0, nonContactables: 0, nonRenseignes: 0 };
+  P.filter(p => (!cat || categorie(p.v.grade) === cat) && (!escadron || p.v.escadron === escadron) && (!peloton || p.v.peloton === peloton))
+    .sort(parGrade).forEach(p => {
+      if (contactables && p.v.contactable !== "oui") return p.v.contactable === "non" ? r.nonContactables++ : r.nonRenseignes++;
+      const tel = reparerTel(String(p.v.tel || "").trim());
+      tel ? r.lignes.push({ p, tel }) : r.sansTel++;
+    });
+  return r;
+}
+
 /* ---------- Échéances (page « À faire ») ---------- */
 /* Personnes avec des dates expirées ou qui expirent dans `jours` jours (et jamais faites, en option).
    jours = null : seuil d'alerte de chaque champ (statut « à prévoir »). */
@@ -4252,6 +4296,38 @@ async function ecrireA(P, sujet, corps = "") {
 $("#btn-copier-affiches").addEventListener("click", () => copierAdresses(state.data.personnes.filter(matches)));
 $("#btn-mail-affiches").addEventListener("click", () => ecrireA(state.data.personnes.filter(matches), state.data.meta.titre));
 $("#ls-mail").addEventListener("click", () => ecrireA(personnesListe(), $("#ls-nom").value.trim() || state.data.meta.titre));
+
+/* ---------- Numéros de téléphone (catégorie, contactables) ---------- */
+const telsChoix = () => ({ cat: $("#tels-cat").value, escadron: $("#tels-escadron").value, peloton: $("#tels-peloton").value, contactables: $("#tels-contactables").checked });
+function ouvrirTels() {
+  const f = state.filtre;
+  $("#tels-cat").innerHTML = options([["", "Tout le monde"], ...Object.entries(CATEGORIES)], $("#tels-cat").value || "");
+  $("#tels-escadron").innerHTML = options([["", "Tous"], ...valeurs("escadron", true).map(v => [v, v])], f.escadron);
+  $("#tels-peloton").innerHTML = options([["", "Tous"], ...valeurs("peloton", true).map(v => [v, v])], f.peloton);
+  telsRender();
+  $("#dlg-tels").showModal();
+}
+function telsRender() {
+  const c = telsChoix(), r = annuaire(state.data.personnes, c), n = r.lignes.length;
+  const exclus = [r.nonContactables && `${r.nonContactables} non contactable${r.nonContactables > 1 ? "s" : ""}`,
+    r.nonRenseignes && `${r.nonRenseignes} sans « Contactable » renseigné`, r.sansTel && `${r.sansTel} sans numéro`].filter(Boolean);
+  $("#tels-resume").textContent = `${n} numéro${n > 1 ? "s" : ""}${exclus.length ? ` · non comptés : ${exclus.join(", ")}` : ""}.`;
+  $("#tels-liste").innerHTML = !n ? "" : `<table class="ls-tbl"><thead><tr><th>Grade</th><th>Nom</th><th>Prénom</th><th>Escadron</th><th>Peloton</th><th>Téléphone</th></tr></thead><tbody>${
+    r.lignes.map(({ p, tel }) => `<tr><td>${esc(p.v.grade || "")}</td><td>${esc((p.v.nom || "").toUpperCase())}</td><td>${esc(p.v.prenom || "")}</td>
+      <td>${esc(p.v.escadron || "")}</td><td>${esc(p.v.peloton || "")}</td><td class="nowrap"><a href="tel:${esc(tel.replace(/[^\d+]/g, ""))}">${esc(tel)}</a></td></tr>`).join("")}</tbody></table>`;
+  $("#tels-copier").disabled = $("#tels-copier-noms").disabled = !n;
+}
+async function copierTels(avecNoms) {
+  const L = annuaire(state.data.personnes, telsChoix()).lignes; if (!L.length) return;
+  const texte = avecNoms ? L.map(({ p, tel }) => [p.v.grade || "", (p.v.nom || "").toUpperCase(), p.v.prenom || "", tel].join("\t")).join("\n")
+    : [...new Set(L.map(l => l.tel))].join(", ");
+  try { await navigator.clipboard.writeText(texte); adressesCopiees = true; toast(`${L.length} numéro${L.length > 1 ? "s copiés" : " copié"}.`); }
+  catch { prompt("Copiez ces numéros :", texte); }
+}
+$("#btn-tels").addEventListener("click", ouvrirTels);
+["#tels-cat", "#tels-escadron", "#tels-peloton", "#tels-contactables"].forEach(q => $(q).addEventListener("change", telsRender));
+$("#tels-copier").addEventListener("click", () => copierTels(false));
+$("#tels-copier-noms").addEventListener("click", () => copierTels(true));
 
 /* Options « Tout le personnel » groupées par grade (du plus élevé au plus bas), puis par nom */
 function optionsPersonnel() {

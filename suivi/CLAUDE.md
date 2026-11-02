@@ -304,6 +304,10 @@ Statuts : expiré (bad), à prévoir si moins de seuilAlerte(f) jours (warn),
   « Écrire à ces personnes » (mailto: en Cci, objet + texte ; si lien > 1900 caractères,
   adresses copiées dans le presse-papiers), copier les adresses, impression, export Excel
 - Écrire aux personnes affichées (Personnel) et à la liste préparée : même mécanisme mailto
+- Numéros de téléphone (v3.23, Personnel → Actions, #dlg-tels) — logique pure : categorie(grade) = off (ASP et au-dessus) / sof
+  (SGT à MAJ) / mdr / "" (grade inconnu, seulement dans « Tout le monde ») ; annuaire(P, { cat, escadron, peloton, contactables })
+  = champ tel (reparerTel), tri parGrade, contactables = contactable « oui » ; compte nonContactables / nonRenseignes / sansTel.
+  Copier les numéros (« , ») ou avec les noms (tabulations, se colle dans Excel) : presse-papiers vidé au verrouillage (adressesCopiees).
 - Fiche : dates à échéance colorées (fond + « Expiré depuis… / Valide jusqu'au… »), mises à
   jour pendant la saisie ; boutons Archiver (motif) et Supprimer
 - Archives (bouton page Personnel) : restaurer ou supprimer définitivement
