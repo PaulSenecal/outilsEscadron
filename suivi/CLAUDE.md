@@ -119,7 +119,7 @@ mis à jour sans marquer le fichier comme modifié).
   « Créer un fichier » demande le nom du premier administrateur (le fichier n'a pas de mot de passe commun).
 - Ouverture avec le secours : #dlg-mdp obligatoire, #mdp-compte = compte administrateur à réinitialiser (ou mot de passe commun).
 - Session verrouillée : même rôle ET même compte (session.compte, session.principalEnv). #dlg-cle : son propre mot de passe.
-- Tests UI : une seule paire RSA pour tout le scénario (generateKey remplacé), comptesKdf à 1000 itérations.
+- Tests UI : une seule paire RSA pour tout le scénario (generateKey remplacé, gain de temps), comptesKdf à 1000 itérations.
 
 ### Format du fichier
 { format: "suivi-personnel", version: 2, cleId,
@@ -414,10 +414,11 @@ Polices Barlow / Barlow Condensed. Couleurs de statut : vert, ambre, rouge, gris
   Les tests CARTEC et UIR utilisent de faux fichiers (fauxCartec, fauxUIR dans run.mjs, grilles dans ui.mjs), jamais
   les vrais (nePasMettreSurLeRepo/ : CARTEC 2026.xlsx, testData.xlsx = modèle du fichier UIR).
 - `node tests/csp.mjs` : met à jour l'empreinte du script dans la CSP (--verifier : contrôle seul).
-  Dans le scénario, attendre avec quand() (MessageChannel), pas setTimeout : Chrome accélère
-  le temps virtuel alors que PBKDF2 prend du vrai temps (une boucle de messages garde la page occupée ;
-  attendre(ms) la suspend pour laisser passer du temps virtuel). Le test dure ~100 s (limite fin dans ui.mjs) (Chrome est arrêté
-  après le scénario, qui prend ~30 s).
+  Chrome est piloté en temps réel par son protocole de débogage (--remote-debugging-port, WebSocket de Node) : le test attend
+  data-fini sur body (posé à la fin du scénario, même après une erreur), limite LIMITE = 180 s. Plus de temps virtuel
+  (--virtual-time-budget sautait parfois d'un coup à la fin du budget en plein chiffrement : scénario coupé une fois sur deux).
+  Dans le scénario : quand(cond, max) vérifie toutes les 10 ms, attendre(ms) attend vraiment. Durée ~30 s (dont 25 s
+  d'attente de l'enregistrement automatique).
 - Lancer les deux après chaque évolution. Ne jamais mettre de données réelles dans tests/.
 
 ## Limites connues

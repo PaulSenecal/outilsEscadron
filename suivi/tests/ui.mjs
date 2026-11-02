@@ -21,20 +21,14 @@ window.addEventListener("error", e => erreurs.push(e.message));
 window.confirm = () => true; window.alert = () => {}; window.prompt = () => "Fin de contrat";
 window.download = (c, n) => dl.push(n);
 
-// Attend une condition. Le déchiffrement prend du vrai temps alors que Chrome accélère les minuteries :
-// on cède la main par un message (qui ne fait pas avancer le temps virtuel) plutôt que par setTimeout.
-const tick = () => new Promise(r => { const c = new MessageChannel(); c.port1.onmessage = () => r(); c.port2.postMessage(0); });
-// Tant que le scénario tourne, la page reste occupée (messages) : le temps virtuel n'avance pas pendant les
-// calculs de chiffrement. attendre() suspend cette boucle pour laisser passer le temps virtuel voulu.
-let occupe = true, pause = false;
-(async () => { while (occupe) { await tick(); if (pause) await new Promise(r => { const t = setInterval(() => { if (!pause) { clearInterval(t); r(); } }, 0); }); } })();
-const attendre = async ms => { pause = true; await new Promise(r => setTimeout(r, ms)); pause = false; };
-const quand = async (cond, maxMs = 20000) => { const t0 = performance.now(); while (!cond() && performance.now() - t0 < maxMs) await tick(); };
+// Temps réel (pas de temps virtuel) : attendre(ms) attend vraiment, quand(cond) vérifie la condition toutes les 10 ms
+const attendre = ms => new Promise(r => setTimeout(r, ms));
+const quand = async (cond, maxMs = 20000) => { const t0 = performance.now(); while (!cond() && performance.now() - t0 < maxMs) await attendre(10); };
 const verif = (nom, ok, info = "") => { res.push({ nom, ok: !!ok, info: String(info) }); document.body.setAttribute("data-resultats", JSON.stringify(res)); };
 const clic = sel => document.querySelector(sel).click();
 const valeur = (sel, v) => { const e = document.querySelector(sel); e.value = v; e.dispatchEvent(new Event(e.tagName === "SELECT" ? "change" : "input", { bubbles: true })); };
-// Une seule paire RSA pour tout le scénario (secours, comptes) : chaque génération en 3072 bits prend du vrai temps, pendant
-// lequel Chrome consomme le budget de temps virtuel. Les mots de passe restent distincts (clé privée chiffrée par chacun).
+// Une seule paire RSA pour tout le scénario (secours, comptes) : chaque génération en 3072 bits prend une à plusieurs secondes.
+// Les mots de passe restent distincts (clé privée chiffrée par chacun).
 const genererCle = crypto.subtle.generateKey.bind(crypto.subtle); let paireRsa = null;
 crypto.subtle.generateKey = async (alg, ...r) => alg.name === "RSA-OAEP" ? (paireRsa ||= await genererCle(alg, ...r)) : genererCle(alg, ...r);
 (async () => { try {
@@ -416,9 +410,8 @@ crypto.subtle.generateKey = async (alg, ...r) => alg.name === "RSA-OAEP" ? (pair
 
   // Accès chef de peloton : défini par l'administrateur, le chef ne voit que son peloton, en lecture seule
   state.dirty = false; lock();
-  // Démo préparée d'un bloc, verrouillage automatique coupé avant que les données n'existent (sinon il peut se
-  // déclencher pendant le chiffrement, Chrome accélérant le temps virtuel). Peu d'itérations PBKDF2 : chaque dérivation
-  // à 600 000 consomme du temps virtuel, et ce passage en enchaîne une dizaine.
+  // Démo préparée d'un bloc, verrouillage automatique coupé avant que les données n'existent. Peu d'itérations PBKDF2 :
+  // ce passage enchaîne une dizaine de dérivations.
   const cleChef = await clesNeuves("demonstration", 1000), demoChef = normalize(donneesDemo());
   demoChef.meta.verrouMinutes = 0; demoChef.meta.accesKdf = KDF(1000, toB64(aleatoire(16))); demoChef.meta.comptesKdf = KDF(1000, toB64(aleatoire(16)));
   Object.assign(state, { data: demoChef, ...cleChef, lecture: { id: cleChef.cleId, key: cleChef.key }, mdpChange: false, autoSuspendu: "", handle: null, fileName: null,
@@ -545,10 +538,9 @@ crypto.subtle.generateKey = async (alg, ...r) => alg.name === "RSA-OAEP" ? (pair
   verif("Fin du scénario", true);
 } catch (e) { verif("Scénario", false, e.stack); }
 document.body.setAttribute("data-resultats", JSON.stringify(res));
-// Plus aucune minuterie : Chrome atteint tout de suite la fin du temps virtuel et rend la page
-for (let i = 1; i < 100000; i++) { clearInterval(i); clearTimeout(i); }
-occupe = false;
-})();`;
+document.body.dataset.fini = "1";
+})();
+`;
 
 // Le scénario est un second script : on ajoute son empreinte à la politique de sécurité de la page
 const empreinteScenario = "sha256-" + crypto.createHash("sha256").update(scenario, "utf8").digest("base64");
@@ -559,19 +551,43 @@ const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "suivi-ui-"));
 const fichier = path.join(tmp, "page.html");
 fs.writeFileSync(fichier, page);
 
-const chrome = spawn(CHROME, ["--headless=new", "--disable-gpu", `--user-data-dir=${tmp}`, "--virtual-time-budget=1800000", "--dump-dom", "file://" + fichier]);
-let dom = "";
-chrome.stdout.on("data", d => { dom += d; });
-const fin = setTimeout(() => chrome.kill(), 100000);
-chrome.on("close", () => {
-  clearTimeout(fin); fs.rmSync(tmp, { recursive: true, force: true });
-  const m = dom.match(/data-resultats="([^"]*)"/);
-  if (!m) { console.log("Pas de résultats (la page n'a pas terminé le scénario)."); process.exit(1); }
-  const res = JSON.parse(m[1].replace(/&quot;/g, '"').replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&#39;/g, "'"));
+// Chrome piloté par son protocole de débogage, en temps réel : on attend que le scénario ait vraiment fini (data-fini),
+// au lieu d'un budget de temps virtuel qui pouvait s'épuiser d'un coup en plein chiffrement.
+const LIMITE = 180000;
+const chrome = spawn(CHROME, ["--headless=new", "--disable-gpu", "--no-first-run", `--user-data-dir=${tmp}`, "--remote-debugging-port=0", "file://" + fichier],
+  { stdio: "ignore" });
+const pause = ms => new Promise(r => setTimeout(r, ms));
+function fini(res, info) {
+  chrome.kill(); try { fs.rmSync(tmp, { recursive: true, force: true }); } catch { /* Chrome encore en train de fermer */ }
+  if (!res) { console.log(`Pas de résultats : ${info}`); process.exit(1); }
   console.log("Test de l'interface (Chrome headless, données fictives)\n");
   res.forEach(r => console.log(`  ${r.ok ? "✓" : "✗"} ${r.nom}${r.ok || !r.info ? "" : "\n      " + r.info}`));
-  if (!res.some(r => r.nom === "Fin du scénario")) res.push({ nom: "Scénario terminé", ok: false, info: "arrêt après « " + (res.at(-1)?.nom || "?") + " »" });
+  if (!res.some(r => r.nom === "Fin du scénario")) res.push({ nom: "Scénario terminé", ok: false, info: info || "arrêt après « " + (res.at(-1)?.nom || "?") + " »" });
   const ko = res.filter(r => !r.ok).length;
   console.log(`\n${res.length - ko} réussi(s), ${ko} échoué(s)`);
   process.exit(ko ? 1 : 0);
-});
+}
+try {
+  const t0 = Date.now(), portFichier = path.join(tmp, "DevToolsActivePort");
+  while (!fs.existsSync(portFichier) || !fs.readFileSync(portFichier, "utf8").includes("\n")) {
+    if (Date.now() - t0 > 20000) throw new Error("Chrome n'a pas ouvert son port de débogage");
+    await pause(100);
+  }
+  const port = fs.readFileSync(portFichier, "utf8").split("\n")[0];
+  let cible;
+  while (!(cible = (await (await fetch(`http://127.0.0.1:${port}/json/list`)).json()).find(t => t.type === "page" && t.url.startsWith("file:")))) await pause(100);
+  const ws = new WebSocket(cible.webSocketDebuggerUrl), attente = new Map();
+  let n = 0;
+  await new Promise((ok, ko) => { ws.onopen = ok; ws.onerror = () => ko(new Error("connexion au débogueur impossible")); });
+  ws.onmessage = e => { const m = JSON.parse(e.data); attente.get(m.id)?.(m); attente.delete(m.id); };
+  const evaluer = expression => new Promise(r => { const id = ++n; attente.set(id, m => r(m.result?.result?.value)); ws.send(JSON.stringify({ id, method: "Runtime.evaluate", params: { expression, returnByValue: true } })); });
+  let dernier = null;
+  while (Date.now() - t0 < LIMITE) {
+    const v = await evaluer(`document.body ? JSON.stringify({ fini: !!document.body.dataset.fini, res: document.body.getAttribute("data-resultats") }) : null`);
+    const etat = v && JSON.parse(v);
+    if (etat?.res) dernier = JSON.parse(etat.res);
+    if (etat?.fini) { ws.close(); fini(dernier); }
+    await pause(250);
+  }
+  ws.close(); fini(dernier, `délai de ${LIMITE / 1000} s dépassé après « ${dernier?.at(-1)?.nom || "?"} »`);
+} catch (e) { fini(null, e.message); }
