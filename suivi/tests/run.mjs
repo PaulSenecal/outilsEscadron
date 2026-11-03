@@ -371,11 +371,13 @@ await test("Historique d'une personne", () => {
 });
 
 /* Faux fichier CARTEC (noms fictifs), même découpage que le vrai : colonnes B unité, C peloton, D groupe,
-   F libellé, L grade, M nom, N prénom ; un état-major en tête (ignoré) */
+   F libellé, L grade, M nom, N prénom ; le bloc ECL en tête (cellules en colonne C) */
 function fauxCartec() {
   const g = [], L = (c = {}) => { const r = []; Object.entries(c).forEach(([k, v]) => { r["ABCDEFGHIJKLMN".indexOf(k)] = v; }); g.push(r); };
   L({ D: "NIV", E: "CODE", F: "LIBELLE ETR", G: "MILITAIRES", K: "SAP", L: "GRADE", M: "NOM", N: "PRENOM" }); L({ G: "OFF" });
   L({ A: "00C9000 ECL" }); L({ C: "OMT", F: "OFFICIER ADJOINT 5B", L: "LCL", M: "Etat", N: "Major" });
+  L({ C: "FANFARE" }); L({ C: "MUS", F: "CHEF DE FANFARE 3B", L: "ADC", M: "Fanfare", N: "Fabien" });
+  L({ C: "CELL NEB SIMU" }); L({ C: "OMT", F: "MAITRE DE NEB BLINDE NFS" });             // poste à pourvoir
   L({ B: "00C99AA : 1ER REGIMENT DE TEST - ESCADRON DE TEST 4" });
   L({ C: "00C99AB : PELOTON DE COMMANDEMENT" });
   L({ D: "00C99AC : GROUPE DE COMMANDEMENT" });
@@ -400,8 +402,13 @@ function fauxCartec() {
 
 await test("CARTEC : lecture du découpage (unité, peloton, groupe, postes)", () => {
   const U = L.lireCartec(fauxCartec());
-  egal(U.length, 1, "seule l'unité avec un commandant d'unité, sans l'état-major");
-  const u = U[0];
+  egal(U.map(u => u.code), ["00C9000", "00C99AA"], "le bloc ECL et l'unité avec un commandant d'unité, pas celle sans");
+  const e = U[0];
+  egal([e.label, e.ecl, e.entrees.map(x => x.peloton + "/" + x.golf + "/" + x.nom)], ["ECL", true, ["PCL/0/Etat", "PCL/1/Fanfare"]]);
+  egal(e.groupes, { "PCL|0": "Bureau réserve", "PCL|1": "Fanfare", "PCL|2": "Cell NEB simu" }, "cellules = golfs");
+  egal(e.vacants, [{ peloton: "PCL", golf: "2", libelle: "MAITRE DE NEB BLINDE NFS" }]);
+  egal(L.escadronPropose(e, L.emptyData()), "ECL", "escadron proposé pour le bloc ECL");
+  const u = U[1];
   egal([u.code, u.entrees.length, u.vacants.length], ["00C99AA", 8, 1]);
   egal(u.entrees.map(e => e.peloton + "/" + e.golf), ["PCL/0", "PCL/1", "P1/0", "P1/0", "P1/1", "P1/1", "P1/1", "P1/1"]);
   egal(u.entrees[3].spe, "CHEF DE PELOTON 4", "ligne sans libellé = même poste");
@@ -421,7 +428,7 @@ await test("CARTEC : rapprochement, mise à jour, archivage, REO", () => {
   d.personnes.push({ id: "y", v: { nom: "Autre", prenom: "Unite", escadron: "9ESC" } });             // autre escadron : intact
   d.archives.push({ id: "g", v: { nom: "Golfe", prenom: "Gilles", escadron: "4ESC" }, archive: { date: "2025-01-01", motif: "x" } });
   const U = L.lireCartec(fauxCartec());
-  egal(L.escadronPropose(U[0], d), "4ESC", "escadron proposé d'après les fiches retrouvées");
+  egal(L.escadronPropose(U[1], d), "4ESC", "escadron proposé d'après les fiches retrouvées");
   const corresp = { "00C99AA": "4ESC" }, plan = L.planCartec(U, d, corresp);
   const st = n => plan.lignes.find(l => l.e.nom === n).statut;
   egal(["Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot", "Golfe", "Hotel"].map(st),
@@ -436,7 +443,7 @@ await test("CARTEC : rapprochement, mise à jour, archivage, REO", () => {
   egal(d.personnes.find(p => p.id === "y").v, { nom: "Autre", prenom: "Unite", escadron: "9ESC" }, "autre escadron intact");
   // Second passage : tout est à jour, le nom proche validé n'est plus redemandé
   const plan2 = L.planCartec(U, d, corresp);
-  egal([...new Set(plan2.lignes.map(l => l.statut))].sort(), ["ambigu", "identique"]);
+  egal([...new Set(plan2.lignes.filter(l => l.e.escadron).map(l => l.statut))].sort(), ["ambigu", "identique"], "bloc ECL sans escadron : ignoré");
   egal(plan2.absents.length, 0);
   // REO : noms des groupes CARTEC et postes à pourvoir avec leur libellé
   const B = L.reoBlocs(d.personnes, "4ESC", d.reo);
@@ -512,6 +519,22 @@ await test("Schéma 6 : Delta frag et Delta ANP au Famas et au HK, GPB du HK ren
   const e = L.emptyData("v5"); e.champs = e.champs.filter(c => c.id !== "famas_danp");
   e.champs.push({ id: "perso", label: "Delta ANP", groupe: "Famas", type: "date" }); e.meta.schema = 5;
   vrai(!L.normalize(e).champs.some(c => c.id === "famas_danp"), "Delta ANP déjà ajouté à la main : rien en plus");
+});
+
+await test("Schéma 7 : groupe sanguin (sensible) après le n° de sécu, libellés C4 et SAP précisés", () => {
+  const d = L.emptyData("v6");
+  d.champs = d.champs.filter(c => c.id !== "gsang"); d.champs.find(c => c.id === "c4").label = "C4"; d.champs.find(c => c.id === "sap").label = "SAP";
+  d.meta.schema = 6;
+  const n = L.normalize(d), ids = n.champs.map(c => c.id), gs = n.champs.find(c => c.id === "gsang");
+  egal(ids[ids.indexOf("nsecu") + 1], "gsang", "après le n° de sécurité sociale");
+  egal([gs.sensible, gs.options.length, gs.groupe], [true, 8, "Santé"]);
+  egal([n.champs.find(c => c.id === "c4").label, n.champs.find(c => c.id === "sap").label], ["C4 (secourisme au combat)", "SAP (solde)"]);
+  egal(L.normalize(n).champs.length, n.champs.length, "idempotent");
+  const e = L.emptyData("v6"); e.champs = e.champs.filter(c => c.id !== "gsang"); e.champs.find(c => c.id === "c4").label = "Stage C4";
+  e.champs.push({ id: "perso", label: "Groupe sanguin", groupe: "Santé", type: "texte" }); e.meta.schema = 6;
+  const m = L.normalize(e);
+  vrai(!m.champs.some(c => c.id === "gsang"), "déjà ajouté à la main : rien en plus");
+  egal(m.champs.find(c => c.id === "c4").label, "Stage C4", "libellé changé à la main : gardé");
 });
 
 await test("Accès chef de peloton : il ne déchiffre que son peloton, l'administrateur relit tout", async () => {
@@ -724,7 +747,7 @@ await test("Fichier UIR : rapprochement, choix des valeurs, sans création", () 
 await test("CARTEC : rapprochement par SAP", () => {
   const d = L.emptyData("t"); L.state.data = d;
   d.personnes.push({ id: "s", v: { nom: "Nom-Change", prenom: "Autre", escadron: "4ESC", sap: "777" } });
-  const g = fauxCartec(); g[7][10] = 777;   // SAP du commandant d'unité (Alpha Albert)
+  const g = fauxCartec(); g.find(r => r[12] === "Alpha")[10] = 777;   // SAP du commandant d'unité (Alpha Albert)
   g[0][10] = "SAP";
   const U = L.lireCartec(g), plan = L.planCartec(U, d, { "00C99AA": "4ESC" });
   egal(plan.lignes.find(x => x.e.nom === "Alpha").p?.id, "s");

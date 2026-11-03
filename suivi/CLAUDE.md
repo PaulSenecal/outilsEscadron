@@ -148,7 +148,7 @@ Ancien format 1 : { format, version: 1, kdf, iv, data } (relu seulement).
   - champs fixes (non supprimables) : nom, prenom, grade, escadron, peloton
   - groupes : Identité (+ naissance, lieu, matricule, SAP), Contact, Carrière (+ cyber, CPR), Famille (situation,
     nb enfants, conjoint, enfants 1-5), Personne à prévenir (+ lien), Administratif (carte d'identité militaire,
-    diplôme civil), Santé (+ VMP), Permis,
+    diplôme civil), Santé (+ VMP, groupe sanguin sensible ; C4 = stage de secourisme au combat), Permis,
     NRBC (ANP, T3P, atmosphère viciée), Habillement (béret, veste, pantalon, gants,
     chaussures, casque, frag), Famas, HK, Glock, Autres armes (MAG, Minimi, 12,7, SCAR, MMP, Milan, Eryx), Divers
   - stats : true = répartition des valeurs dans le tableau de situation (tailles NRBC par défaut)
@@ -188,6 +188,8 @@ Ancien format 1 : { format, version: 1, kdf, iv, data } (relu seulement).
   schéma 5 → 6 (migrerV6, idempotente) : Delta frag (avec gilet) et Delta ANP (masque à gaz) : famas_d, famas_danp,
   hk_gpb (ancien « GPB » renommé « Delta frag », id et dates gardés), hk_danp, ajoutés après le dernier champ du groupe ;
   pas d'ajout si le groupe a déjà un champ du même libellé fait à la main.
+  schéma 6 → 7 (migrerV7, idempotente) : groupe sanguin (gsang, liste GROUPES_SANGUINS, sensible) après nsecu, sauf champ du
+  même libellé ; libellés « C4 » → « C4 (secourisme au combat) » et « SAP » → « SAP (solde) » s'ils n'ont pas été changés.
 
 ### Règles d'import (fichier Excel de l'escadron, ex. CDCTest.xlsx)
 - .xlsx lu directement (zip + XML, DecompressionStream), ou CSV (UTF-8 ou Windows-1252)
@@ -232,10 +234,12 @@ Statuts : expiré (bad), à prévoir si moins de seuilAlerte(f) jours (warn),
   - lireCartec(grid) : en-tête = ligne NOM + PRENOM ; colonne LIBELLE (emploi), GRADE. En-têtes « CODE : LIBELLÉ »
     sur trois colonnes (les 3 dernières avant LIBELLE) = unité (B), peloton (C), groupe (D). Ligne avec nom = personne,
     sans nom mais avec libellé = poste à pourvoir, sans libellé = même poste que la ligne au-dessus. Seules les unités
-    qui ont un « COMMANDANT D'UNITE » sont gardées (l'état-major en tête est ignoré). idPeloton : commandement → PCL,
+    qui ont un « COMMANDANT D'UNITE » sont gardées, plus (v3.28) le bloc de tête « CODE ECL » (ENTETE_ECL, colonne A, avant
+    la première unité ; u.ecl) : peloton PCL, golf 0 « Bureau réserve » = postes avant la première cellule, puis chaque cellule
+    (ligne sans nom ni libellé, titre en colonne C : FANFARE, SEM, CELL…) = golf 1, 2… idPeloton : commandement → PCL,
     « 1ER / 1ERE / 2E… » → P1, P2… Golf = rang du groupe dans le peloton (0 = commandement). Noms de groupes remis
     en minuscules avec accents courants (ACCENTS_CARTEC). Lignes surlignées en bleu (moins actifs) : importées normalement.
-  - escadronPropose : réglage mémorisé, sinon escadron le plus fréquent des personnes retrouvées (ex. ESCADRON DE TEST 4 → 4ESC).
+  - escadronPropose : réglage mémorisé, sinon « ECL » pour le bloc ECL, sinon escadron le plus fréquent des personnes retrouvées (ex. ESCADRON DE TEST 4 → 4ESC).
   - planCartec(unites, data, corresp) : alias validé, puis nom + prénom (cleNom : accents, casse, tirets ignorés) ;
     homonymes = ambigu (non traité) ; deux lignes CARTEC pour une fiche = doublon ; sinon archives (restaurer), sinon
     nom proche (nomsProches : une partie du nom — « LMIA/ROMEO » = 2 parties — identique ou à distance ≤ 2, et

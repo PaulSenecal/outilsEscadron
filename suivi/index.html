@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <!-- Politique de sécurité : aucune requête réseau (sauf Google Fonts), seul le script de ce fichier peut s'exécuter
      (empreinte sha256 : après toute modification du script, lancer « node tests/csp.mjs » pour la mettre à jour). -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-YQ57JtxX4TMJZB6qlEV0DEnE+XLTzJ+hBjCaF25GWBU='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-CEsLRXYILUxmw/IZyGadbjIXvlxhUY0NccLCCKpO9Zs='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
 <title>Suivi du personnel</title>
 <meta name="theme-color" content="#0B1629">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%2313233F'/%3E%3Cpath d='M32 9l18 7v13c0 12-8 21-18 26-10-5-18-14-18-26V16z' fill='none' stroke='%23C9A227' stroke-width='4'/%3E%3Ccircle cx='32' cy='27' r='6' fill='%23C9A227'/%3E%3Cpath d='M21 44c2-7 6-10 11-10s9 3 11 10' fill='%23C9A227'/%3E%3C/svg%3E">
@@ -1167,11 +1167,16 @@ const $ = s => document.querySelector(s);
 const enc = new TextEncoder(), dec = new TextDecoder();
 const FORMAT = "suivi-personnel";
 const ITER = 600000;          // PBKDF2 (OWASP 2023). Un fichier plus ancien est relu avec ses itérations et mis à niveau au prochain enregistrement
-const SCHEMA = 6;
-const VERSION = "3.26";
+const SCHEMA = 7;
+const VERSION = "3.28";
 /* Historique affiché par le bouton « Nouveautés » : à chaque évolution, incrémenter VERSION
    et ajouter une entrée EN TÊTE de cette liste. */
 const NOUVEAUTES = [
+  { v: "3.28", date: "03/11/2026", items: [
+    "Mise à jour depuis CARTEC : les postes de l'ECL (escadron de commandement et de logistique : bureau réserve, fanfare, SEM, cellules…) en tête du fichier sont maintenant repris, escadron « ECL » proposé. Chaque cellule devient un groupe du REO, le bureau réserve en tête."] },
+  { v: "3.27", date: "02/11/2026", items: [
+    "Santé : nouveau champ « Groupe sanguin » (A+, A−, B+, B−, AB+, AB−, O+, O−), donnée sensible : exclue des exports, sauf « Préparer une liste ».",
+    "Libellés précisés : « C4 (secourisme au combat) » et « SAP (solde) » (identifiant de la solde). Les dates et valeurs déjà saisies sont gardées."] },
   { v: "3.26", date: "02/11/2026", items: [
     "Personnel › Actions : « Numéros de téléphone » devient « Adresses mail » : toutes les adresses des officiers, des sous-officiers ou des militaires du rang (ou de tout le monde), par escadron et peloton, seulement les contactables par défaut. Boutons pour leur écrire directement, copier les adresses (champ Cci) ou les copier avec les noms (se colle dans Excel)."] },
   { v: "3.25", date: "02/11/2026", items: [
@@ -1299,6 +1304,7 @@ const GRADES = ["CHA", "2CL", "1CL", "BRI", "BCH", "BC1", "CPL", "CCH", "CC1", "
   "ASP", "SLT", "LTN", "CNE", "CES", "CBA", "LCL", "COL"];
 const TYPES = { texte: "Texte", long: "Texte long", liste: "Liste (suggestions)", tel: "Téléphone", mail: "Mail",
   date: "Date", permis: "Permis (date ou « oui »)", ouinon: "Oui / Non" };
+const GROUPES_SANGUINS = ["A+", "A−", "B+", "B−", "AB+", "AB−", "O+", "O−"];
 const FIXES = ["nom", "prenom", "grade", "escadron", "peloton"];
 const STATS_DEFAUT = ["anp", "t3p", "beret", "veste", "pantalon", "gant", "chaussure", "casque", "frag"];
 
@@ -1306,7 +1312,7 @@ const STATS_DEFAUT = ["anp", "t3p", "beret", "veste", "pantalon", "gant", "chaus
    « Préparer une liste » ; limite = la date est une fin de validité (pas de durée) ; calcul = âge / ancienneté affichés */
 const IDENTITE_V4 = [["naissance", "Date de naissance", "Identité", "date", { calcul: "age", sensible: true }],
   ["lieu_naissance", "Lieu de naissance", "Identité", "texte", { sensible: true }],
-  ["matricule", "Matricule", "Identité", "texte"], ["sap", "SAP", "Identité", "texte"]];
+  ["matricule", "Matricule", "Identité", "texte"], ["sap", "SAP (solde)", "Identité", "texte"]];
 const CARRIERE_V4 = [["cyber", "Attestation cyber", "Carrière", "date"], ["cpr", "Fin de validité CPR", "Carrière", "date"]];
 const FAMILLE_V4 = [["sitfam", "Situation familiale", "Famille", "liste", { options: ["Célibataire", "Marié(e)", "Pacsé(e)", "Concubinage", "Divorcé(e)", "Veuf(ve)"], sensible: true }],
   ["nb_enfants", "Nombre d'enfants", "Famille", "texte", { sensible: true }],
@@ -1349,9 +1355,10 @@ function defaultChamps() {
     ...ADMIN_V4.map(x => c(...x)),
     c("vmp", "VMP (fin de validité)", "Santé", "date", { limite: true, alerte: 60 }),
     c("nsecu", "N° Sécurité sociale", "Santé", "texte", { sensible: true }),
+    c("gsang", "Groupe sanguin", "Santé", "liste", { options: GROUPES_SANGUINS, sensible: true }),
     c("psc1", "PSC1", "Santé", "date", an),
     c("sc1", "SC1", "Santé", "date", an),
-    c("c4", "C4", "Santé", "date"),
+    c("c4", "C4 (secourisme au combat)", "Santé", "date"),
     c("civil", "Permis civil", "Permis", "ouinon"),
     c("bmc", "BMC", "Permis", "liste", { options: ["À créer"], alias: { creer: "À créer", "a creer": "À créer" } }),
     c("p4", "P4", "Permis", "permis"),
@@ -1396,7 +1403,7 @@ const IMPORT_MAP = {
   "*|date grade": "dategrade", "*|anciennete grade": "anciennete",
   "personne a prevenir|nom": "pap_nom", "personne a prevenir|prenom": "pap_prenom",
   "personne a prevenir|tel": "pap_tel", "personne a prevenir|addr": "pap_adr", "personne a prevenir|adresse": "pap_adr",
-  "*|n secu": "nsecu", "*|psc1": "psc1", "*|sc1": "sc1", "*|c4": "c4",
+  "*|n secu": "nsecu", "*|psc1": "psc1", "*|sc1": "sc1", "*|c4": "c4", "*|groupe sanguin": "gsang", "*|gs": "gsang", "*|sap": "sap",
   "*|civilie": "civil", "*|civil": "civil", "*|bmc": "bmc", "*|p4": "p4", "*|masstech": "masstech", "*|vt4": "vt4",
   "*|pl": "pl", "*|super pl": "superpl", "*|produit dangereux": "pdang", "*|vbl": "vbl", "*|tc": "tc", "permis|autre": "permis_autre",
   "*|anp": "anp", "*|t3p": "t3p", "*|gant": "gant", "*|gants": "gant", "*|chaussure": "chaussure", "*|chaussures": "chaussure",
@@ -1796,6 +1803,19 @@ function migrerV6(C) {
       C.splice(i < 0 ? C.length : i + 1, 0, { ...f });
     });
 }
+/* Schéma 7 : groupe sanguin (Santé, sensible) après le n° de sécurité sociale, sauf si un champ du même libellé existe déjà ;
+   libellés précisés pour C4 (stage de secourisme au combat) et SAP (identifiant solde), s'ils n'ont pas été changés à la main. */
+function migrerV7(C) {
+  const D = defaultChamps(), f = D.find(c => c.id === "gsang");
+  [["c4", "c4"], ["sap", "sap"]].forEach(([id, ancien]) => {
+    const x = C.find(c => c.id === id);
+    if (x && norm(x.label) === ancien) x.label = D.find(c => c.id === id).label;
+  });
+  if (C.some(c => c.id === f.id || norm(c.label) === norm(f.label))) return;
+  let i = C.findIndex(c => c.id === "nsecu");
+  if (i < 0) i = C.map(c => c.groupe).lastIndexOf(f.groupe);
+  C.splice(i < 0 ? C.length : i + 1, 0, { ...f, options: [...f.options] });
+}
 /* Éligibilité aux permis : pour chaque permis, les permis dont il suffit d'avoir l'un pour pouvoir le passer */
 function defaultReglesPermis() {
   return { vt4: ["civil"], p4: ["civil"], masstech: ["civil", "vt4"], vbl: ["civil"], pl: ["civil"],
@@ -1820,6 +1840,7 @@ function normalize(d) {
   if ((d.meta.schema || 2) < 4) migrerV4(d.champs);
   if ((d.meta.schema || 2) < 5) migrerV5(d.champs);
   if ((d.meta.schema || 2) < 6) migrerV6(d.champs);
+  if ((d.meta.schema || 2) < 7) migrerV7(d.champs);
   // Ancienneté de grade calculée depuis la date de grade (le calcul n'est plus affiché sous la date elle-même)
   const anc = d.champs.find(c => c.id === "anciennete"), dg = d.champs.find(c => c.id === "dategrade");
   if (anc && anc.calculDe === undefined) { anc.calculDe = "dategrade"; if (anc.label === "Ancienneté grade") anc.label = "Ancienneté de grade"; if (dg?.calcul === "anciennete") delete dg.calcul; }
@@ -2229,9 +2250,12 @@ function reoBlocs(P, escadron, reo) {
 /* ---------- CARTEC : rattachement et spécialité de chacun ---------- */
 /* Le fichier CARTEC est découpé en en-têtes « CODE : LIBELLÉ » sur trois colonnes : unité (escadron / compagnie),
    peloton (ou section), groupe (ou patrouille). Suivent les postes : libellé de l'emploi, grade, nom, prénom
-   (poste sans nom = poste à pourvoir). Seules les unités qui ont un « commandant d'unité » sont reprises
-   (le haut du fichier, l'état-major, est ignoré). Golf = rang du groupe dans le peloton (0 = commandement). */
+   (poste sans nom = poste à pourvoir). Seules les unités qui ont un « commandant d'unité » sont reprises, plus le bloc
+   de tête « CODE ECL » (escadron de commandement et de logistique : bureau réserve, fanfare, cellules…) : peloton PCL,
+   golf 0 = postes avant la première cellule (« Bureau réserve »), puis une cellule (ligne de titre sans libellé ni nom,
+   colonne C) = un golf. Golf = rang du groupe dans le peloton (0 = commandement). */
 const ENTETE_CARTEC = /^\s*([0-9A-Z]{5,10})\s*:\s*(.+?)\s*$/;
+const ENTETE_ECL = /^\s*([0-9A-Z]{5,10})\s+(ECL\b.*?)\s*$/;
 const cleNom = s => norm(s).replace(/[-'’./]/g, " ").replace(/\s+/g, " ").trim();
 const partiesNom = s => cleNom(s).split(" ").filter(x => x.length > 1);
 function idPeloton(label) {
@@ -2242,9 +2266,10 @@ function idPeloton(label) {
 }
 /* « PATROUILLE D'ECLAIRAGE » → « Patrouille d'éclairage » (les accents absents de CARTEC sont rétablis pour les mots courants) */
 const ACCENTS_CARTEC = { eclairage: "éclairage", echelon: "échelon", sante: "santé", portee: "portée", equipe: "équipe", "1re": "1re",
-  securite: "sécurité", generale: "générale", reserve: "réserve", ravitaillement: "ravitaillement", deminage: "déminage", element: "élément" };
+  securite: "sécurité", generale: "générale", reserve: "réserve", ravitaillement: "ravitaillement", deminage: "déminage", element: "élément",
+  preparation: "préparation", operationnelle: "opérationnelle" };
 const nomGroupeCartec = label => label.toLowerCase().replace(/[a-z0-9]+/g, w => ACCENTS_CARTEC[w] || w)
-  .replace(/\b(sic|ccl|nrbc|mmp|vbl|pc)\b/g, x => x.toUpperCase()).replace(/^./, c => c.toUpperCase());
+  .replace(/\b(sic|ccl|nrbc|mmp|vbl|pc|sem|neb|bld)\b/g, x => x.toUpperCase()).replace(/^./, c => c.toUpperCase());
 function lireCartec(grid) {
   const h = grid.findIndex((r, i) => i < 15 && (r || []).some(c => norm(cellText(c)) === "nom") && (r || []).some(c => norm(cellText(c)).startsWith("prenom")));
   if (h < 0) throw new Error("Fichier CARTEC non reconnu : colonnes « NOM » et « PRENOM » introuvables.");
@@ -2265,24 +2290,30 @@ function lireCartec(grid) {
     const nom = t(cNom), libelle = t(cLib);
     if (!nom && !libelle) {
       let e;
-      if ((e = entete(niv[0]))) { u = { ...e, entrees: [], vacants: [], groupes: {}, cdu: false }; unites.push(u); pel = grp = null; lib = ""; }
+      const ecl = !unites.some(x => !x.ecl) && r.slice(0, cLib).map(c => typeof c === "string" && ENTETE_ECL.exec(c)).find(Boolean);
+      const titre = r.slice(0, cLib).find(c => typeof c === "string" && c.trim());
+      if (ecl) { u = { code: ecl[1], label: ecl[2], ecl: true, entrees: [], vacants: [], groupes: {}, cdu: true }; unites.push(u); pel = { id: "PCL", n: 1 }; grp = null; lib = ""; }
+      else if ((e = entete(niv[0]))) { u = { ...e, entrees: [], vacants: [], groupes: {}, cdu: false }; unites.push(u); pel = grp = null; lib = ""; }
+      else if (u?.ecl && titre) { grp = { golf: String(pel.n++) }; u.groupes["PCL|" + grp.golf] = nomGroupeCartec(titre.trim()); lib = ""; }
       else if (u && (e = entete(niv[1]))) { pel = { ...e, id: idPeloton(e.label), n: 0 }; grp = null; lib = ""; }
       else if (u && pel && (e = entete(niv[2]))) { grp = { ...e, golf: String(pel.n++) }; u.groupes[pel.id + "|" + grp.golf] = nomGroupeCartec(e.label); lib = ""; }
       continue;
     }
     if (!u || !pel) continue;                 // avant la première unité : état-major, ignoré
+    if (u.ecl && !grp) { grp = { golf: "0" }; u.groupes["PCL|0"] = "Bureau réserve"; }   // ECL : postes avant la première cellule
     if (libelle) lib = libelle;               // ligne sans libellé : même poste que la ligne au-dessus
     if (/^commandant d.unite/.test(norm(lib))) u.cdu = true;
     const golf = grp ? grp.golf : "";
     if (nom) u.entrees.push({ nom, prenom: t(cPrenom), grade: t(cGrade).toUpperCase(), peloton: pel.id, golf, spe: lib, sap: t(cSap) });
     else u.vacants.push({ peloton: pel.id, golf, libelle: lib });
   }
-  return unites.filter(x => x.cdu).map(({ cdu, ...x }) => x);
+  return unites.filter(x => x.cdu).map(({ cdu, ecl, ...x }) => ecl ? { ...x, ecl } : x);
 }
 /* Escadron proposé pour une unité CARTEC : réglage mémorisé, sinon l'escadron le plus fréquent parmi les personnes retrouvées */
 function escadronPropose(u, d) {
   const memo = d.meta.cartecUnites?.[u.code];
   if (memo) return memo;
+  if (u.ecl) return "ECL";
   const n = new Map(), idx = new Map(d.personnes.map(p => [cleNom(p.v.nom) + "|" + cleNom(p.v.prenom), p]));
   u.entrees.forEach(e => { const e_ = idx.get(cleNom(e.nom) + "|" + cleNom(e.prenom))?.v.escadron; if (e_) n.set(e_, (n.get(e_) || 0) + 1); });
   return [...n].sort((a, b) => b[1] - a[1])[0]?.[0] || "";
@@ -2412,7 +2443,7 @@ const UIR_COLONNES = [
   ["pap_lien", ([a, , c]) => a.startsWith("personne a prevenir") && c === "lien"], ["pap_nom", ([a, , c]) => a.startsWith("personne a prevenir") && c === "nom"],
   ["pap_adr", ([a, , c]) => a.startsWith("personne a prevenir") && c === "adresse"],
   ["pap_tel", ([a, b, c]) => a.startsWith("personne a prevenir") && !b && (!c || /tel|portable/.test(c))],
-  ["nsecu", ([a]) => /securite sociale/.test(a)], ["cim_num", ([a, b]) => a.startsWith("carte d'identite militaire") && !b],
+  ["nsecu", ([a]) => /securite sociale/.test(a)], ["gsang", ([a]) => a.startsWith("groupe sanguin")], ["cim_num", ([a, b]) => a.startsWith("carte d'identite militaire") && !b],
   ["cim_validite", ([a, b]) => a.startsWith("carte d'identite militaire") && b.startsWith("validite")],
   ["dipl_civil", ([a, b]) => a.startsWith("diplome civil") && b.startsWith("intitule")],
   ["dipl_civil_date", ([a, b]) => a.startsWith("diplome civil") && (b === "date" || b === "annee")]];
@@ -4826,7 +4857,7 @@ $("#ca-input").addEventListener("change", async e => {
   const file = e.target.files[0]; e.target.value = ""; if (!file) return;
   try {
     const unites = lireCartec(await readXlsx(await file.arrayBuffer()));
-    if (!unites.length) throw new Error("Aucune unité avec un « commandant d'unité » dans ce fichier CARTEC.");
+    if (!unites.length) throw new Error("Aucune unité avec un « commandant d'unité » (ni bloc ECL) dans ce fichier CARTEC.");
     ca = { nom: file.name, unites, corresp: Object.fromEntries(unites.map(u => [u.code, escadronPropose(u, state.data)])), liens: {}, refus: new Set() };
     caCalculer();
     $("#dlg-cartec").showModal();
@@ -4854,7 +4885,7 @@ const caLienSelect = l => selectFiche({ cle: l.cle, courant: l.p, premier: ["nou
 function renderCartec() {
   const { plan, unites } = ca, L = plan.lignes, par = st => L.filter(l => l.statut === st);
   const vac = unites.reduce((t, u) => t + (ca.corresp[u.code] ? u.vacants.length : 0), 0);
-  $("#ca-fichier").textContent = `${ca.nom} · ${unites.length} unité(s) à partir du commandant d'unité`;
+  $("#ca-fichier").textContent = `${ca.nom} · ${unites.length} unité(s) : ECL et unités à partir du commandant d'unité`;
   $("#dl-ca-esc").innerHTML = valeurs("escadron").map(v => `<option value="${esc(v)}">`).join("");
   $("#ca-unites").innerHTML = unites.map(u => `<div class="ca-unite"><div><b>${esc(u.label)}</b><small>${esc(u.code)} · ${u.entrees.length} personne(s) · ${u.vacants.length} poste(s) à pourvoir</small></div>
     <label class="fld"><span>Escadron dans le suivi</span><input data-unite="${esc(u.code)}" list="dl-ca-esc" value="${esc(ca.corresp[u.code] || "")}" placeholder="Ex. 5ESC" required></label></div>`).join("");
