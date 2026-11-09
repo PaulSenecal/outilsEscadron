@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <!-- Politique de sécurité : aucune requête réseau (sauf Google Fonts), seul le script de ce fichier peut s'exécuter
      (empreinte sha256 : après toute modification du script, lancer « node tests/csp.mjs » pour la mettre à jour). -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-CEsLRXYILUxmw/IZyGadbjIXvlxhUY0NccLCCKpO9Zs='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-9ZXuzhv4ZmNnXO0wMiowEKVhn95e0lcoeu95ZjdDplw='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
 <title>Suivi du personnel</title>
 <meta name="theme-color" content="#0B1629">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%2313233F'/%3E%3Cpath d='M32 9l18 7v13c0 12-8 21-18 26-10-5-18-14-18-26V16z' fill='none' stroke='%23C9A227' stroke-width='4'/%3E%3Ccircle cx='32' cy='27' r='6' fill='%23C9A227'/%3E%3Cpath d='M21 44c2-7 6-10 11-10s9 3 11 10' fill='%23C9A227'/%3E%3C/svg%3E">
@@ -1167,11 +1167,13 @@ const $ = s => document.querySelector(s);
 const enc = new TextEncoder(), dec = new TextDecoder();
 const FORMAT = "suivi-personnel";
 const ITER = 600000;          // PBKDF2 (OWASP 2023). Un fichier plus ancien est relu avec ses itérations et mis à niveau au prochain enregistrement
-const SCHEMA = 7;
-const VERSION = "3.28";
+const SCHEMA = 8;
+const VERSION = "3.29";
 /* Historique affiché par le bouton « Nouveautés » : à chaque évolution, incrémenter VERSION
    et ajouter une entrée EN TÊTE de cette liste. */
 const NOUVEAUTES = [
+  { v: "3.29", date: "09/11/2026", items: [
+    "Le 7ESC s'appelle désormais 2CIE : fiches, archives, accès des chefs, REO et statistiques sont renommés automatiquement à l'ouverture du fichier."] },
   { v: "3.28", date: "03/11/2026", items: [
     "Mise à jour depuis CARTEC : les postes de l'ECL (escadron de commandement et de logistique : bureau réserve, fanfare, SEM, cellules…) en tête du fichier sont maintenant repris, escadron « ECL » proposé. Chaque cellule devient un groupe du REO, le bureau réserve en tête."] },
   { v: "3.27", date: "02/11/2026", items: [
@@ -1332,7 +1334,7 @@ function defaultChamps() {
     c("nom", "Nom", "Identité", "texte", { fixe: true }),
     c("prenom", "Prénom", "Identité", "texte", { fixe: true }),
     c("grade", "Grade", "Identité", "liste", { fixe: true, options: GRADES }),
-    c("escadron", "Escadron", "Identité", "liste", { fixe: true, options: ["5ESC", "7ESC", "En attente"], alias: { "mort pour la france": "En attente" } }),
+    c("escadron", "Escadron", "Identité", "liste", { fixe: true, options: ["5ESC", "2CIE", "En attente"], alias: { "mort pour la france": "En attente" } }),
     c("peloton", "Peloton", "Identité", "liste", { fixe: true, options: ["P1", "P2", "P3", "P4", "PCL"] }),
     c("golf", "Golf", "Identité", "texte"),
     c("spe", "Spécialité", "Identité", "liste", { options: [] }),
@@ -1706,7 +1708,7 @@ async function ouvrirFichier(o, pw, { secours = true, chef = true } = {}) {
       const k = await importerCle(fromB64(x.k));
       let data;
       try { data = await dechiffrerBloc(o.parts[x.id], k); } catch { throw new Error("Mot de passe incorrect, ou fichier endommagé."); }
-      return { data, key: k, cleId: o.cleId, kek: null, via: "chef", role: { id: x.id, escadron: x.escadron, peloton: x.peloton, nom: x.nom || "" }, lecture: { id: "part:" + x.id, key: k } };
+      return { data, key: k, cleId: o.cleId, kek: null, via: "chef", role: { id: x.id, escadron: escRenomme(x.escadron), peloton: x.peloton, nom: x.nom || "" }, lecture: { id: "part:" + x.id, key: k } };
     }
   }
   let compteId = null;
@@ -1816,6 +1818,23 @@ function migrerV7(C) {
   if (i < 0) i = C.map(c => c.groupe).lastIndexOf(f.groupe);
   C.splice(i < 0 ? C.length : i + 1, 0, { ...f, options: [...f.options] });
 }
+/* Schéma 8 : escadrons renommés (le 7ESC devient la 2CIE) : liste du champ escadron, fiches, archives, accès des chefs,
+   unités CARTEC mémorisées et REO CARTEC, relevés mensuels. Idempotente. */
+const ESCADRONS_RENOMMES = { "7ESC": "2CIE" };
+const escRenomme = e => ESCADRONS_RENOMMES[e] || e;
+function migrerV8(d) {
+  const f = d.champs.find(c => c.id === "escadron");
+  if (Array.isArray(f?.options)) f.options = [...new Set(f.options.map(escRenomme))];
+  [...(d.personnes || []), ...(d.archives || [])].forEach(p => { if (p.v?.escadron) p.v.escadron = escRenomme(p.v.escadron); });
+  (d.meta.acces || []).forEach(a => { a.escadron = escRenomme(a.escadron); });
+  const cu = d.meta.cartecUnites || {};
+  Object.keys(cu).forEach(k => { cu[k] = escRenomme(cu[k]); });
+  const ce = d.reo?.cartec?.escadrons;
+  if (ce) Object.keys(ce).filter(k => escRenomme(k) !== k).forEach(k => { ce[escRenomme(k)] ??= ce[k]; delete ce[k]; });
+  (d.releves || []).forEach(r => {
+    if (r.g) r.g = Object.fromEntries(Object.entries(r.g).map(([k, v]) => { const [e, ...x] = k.split("|"); return [[escRenomme(e), ...x].join("|"), v]; }));
+  });
+}
 /* Éligibilité aux permis : pour chaque permis, les permis dont il suffit d'avoir l'un pour pouvoir le passer */
 function defaultReglesPermis() {
   return { vt4: ["civil"], p4: ["civil"], masstech: ["civil", "vt4"], vbl: ["civil"], pl: ["civil"],
@@ -1869,6 +1888,7 @@ function normalize(d) {
   }
   d.meta.reglesPermisV = REGLES_PERMIS_V; delete d.meta.reglesPermis2;
   d.personnes = (Array.isArray(d.personnes) ? d.personnes : []).map(p => ({ id: p.id || uid(), v: p.v && typeof p.v === "object" ? p.v : {} }));
+  if ((d.meta.schema || 2) < 8) migrerV8(d);
   d.meta.schema = SCHEMA;
   return d;
 }
@@ -3025,7 +3045,7 @@ function donneesDemo(titre = "Unité de démonstration") {
   };
   const SPE = ["CAVALIER BLINDE PILOTE 1A", "CAVALIER BLINDE TIREUR DE PRECISION 1B", "CAVALIER BLINDE TIREUR MISSILE 1A",
     "CHEF DE PATROUILLE DE RECONNAISSANCE ET D'INTERVENTION 2"];
-  for (const esc of ["5ESC", "7ESC"]) {
+  for (const esc of ["5ESC", "2CIE"]) {
     ["CNE", "LTN", "MAJ", "ADC", "BC1"].forEach(g => d.personnes.push(personne(esc, "PCL", 0, g, "COMMANDEMENT D'UNITE")));
     for (let golf = 1; golf <= 5; golf++) ["MDL", "BC1"].forEach(g => d.personnes.push(personne(esc, "PCL", golf, g, "SOUTIEN")));
     for (const pel of ["P1", "P2", "P3", "P4"]) {

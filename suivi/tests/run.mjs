@@ -537,6 +537,24 @@ await test("Schéma 7 : groupe sanguin (sensible) après le n° de sécu, libell
   egal(m.champs.find(c => c.id === "c4").label, "Stage C4", "libellé changé à la main : gardé");
 });
 
+await test("Migration schéma 8 : le 7ESC devient la 2CIE", () => {
+  const d = L.emptyData("v7");
+  d.champs.find(c => c.id === "escadron").options = ["5ESC", "7ESC", "En attente"];
+  d.personnes = [{ id: "a", v: { nom: "A", escadron: "7ESC", peloton: "P1" } }, { id: "b", v: { nom: "B", escadron: "5ESC" } }];
+  d.archives = [{ id: "c", v: { escadron: "7ESC" }, archive: { date: "2026-01-01", motif: "x" } }];
+  d.meta.acces = [{ id: "x", escadron: "7ESC", peloton: "P2" }]; d.meta.cartecUnites = { U1: "7ESC", U2: "5ESC" };
+  d.reo.cartec = { date: "2026-01-01", escadrons: { "7ESC": { unite: "U1" }, "5ESC": { unite: "U2" } } };
+  d.releves = [{ m: "2026-01", g: { "7ESC|P1": { n: 3, f: {} }, "5ESC|P1": { n: 2, f: {} } } }];
+  d.meta.schema = 7;
+  const n = L.normalize(d);
+  egal(n.champs.find(c => c.id === "escadron").options, ["5ESC", "2CIE", "En attente"]);
+  egal([n.personnes[0].v.escadron, n.personnes[1].v.escadron, n.archives[0].v.escadron], ["2CIE", "5ESC", "2CIE"]);
+  egal([n.meta.acces[0].escadron, n.meta.cartecUnites.U1, n.meta.cartecUnites.U2], ["2CIE", "2CIE", "5ESC"]);
+  egal(Object.keys(n.reo.cartec.escadrons).sort(), ["2CIE", "5ESC"]);
+  egal(Object.keys(n.releves[0].g).sort(), ["2CIE|P1", "5ESC|P1"]);
+  egal(JSON.stringify(L.normalize(n)), JSON.stringify(n), "idempotent");
+});
+
 await test("Accès chef de peloton : il ne déchiffre que son peloton, l'administrateur relit tout", async () => {
   const d = demo(), tri = P => P.map(p => p.id).sort();
   Object.assign(L.state, await L.clesNeuves("mot-de-passe-habituel", 1000), { role: null, modele: null });
@@ -720,11 +738,11 @@ await test("Fichier UIR : lecture de l'en-tête sur 3 lignes", () => {
 await test("Fichier UIR : rapprochement, choix des valeurs, sans création", () => {
   const d = L.emptyData("u"); L.state.data = d;
   d.personnes.push({ id: "a", v: { nom: "Alpha", prenom: "Albert", escadron: "5ESC", tel: "06.11.22.33.44", grade: "LTN" } },
-    { id: "b", v: { nom: "Bravo", prenom: "Bernard", escadron: "7ESC", sap: "90000002" } },
+    { id: "b", v: { nom: "Bravo", prenom: "Bernard", escadron: "2CIE", sap: "90000002" } },
     { id: "c", v: { nom: "Charlie", prenom: "Claire", escadron: "5ESC", tel: "0600000000" } },
     { id: "z", v: { nom: "Zoulou", prenom: "Zoé", escadron: "5ESC" } },
     { id: "p", v: { nom: "Ailleurs", prenom: "Paul", escadron: "9ESC" } });
-  const lu = L.lireUIR(fauxUIR(), d.champs), plan = L.planUIR(lu, d, ["5ESC", "7ESC"]);
+  const lu = L.lireUIR(fauxUIR(), d.champs), plan = L.planUIR(lu, d, ["5ESC", "2CIE"]);
   const l = n => plan.lignes.find(x => x.u.nom === n);
   egal(["ALPHA", "Bravo", "Ailleurs", "CHARLY"].map(n => l(n).statut), ["ok", "ok", "hors", "probable"], "SAP, nom, autre escadron, nom proche");
   egal(plan.sansDonnees.map(p => p.id), ["z"]);
@@ -739,10 +757,10 @@ await test("Fichier UIR : rapprochement, choix des valeurs, sans création", () 
   egal(d.personnes.find(p => p.id === "c").v.tel, "0600000000", "ligne décochée");
   egal(d.personnes.length, 5, "aucune création");
   vrai(!r.details.some(x => x.texte.includes("1 99 99")) && r.details.some(x => x.texte.includes("N° Sécurité sociale mis à jour")), "journal sans valeur sensible");
-  const plan2 = L.planUIR(lu, d, ["5ESC", "7ESC"], { [l("CHARLY").cle]: "c" });
+  const plan2 = L.planUIR(lu, d, ["5ESC", "2CIE"], { [l("CHARLY").cle]: "c" });
   egal(plan2.lignes.find(x => x.u.nom === "CHARLY").statut, "manuel");
   L.appliquerUIR(d, plan2);
-  egal(L.planUIR(lu, d, ["5ESC", "7ESC"]).lignes.find(x => x.u.nom === "CHARLY").statut, "ok", "lien mémorisé");
+  egal(L.planUIR(lu, d, ["5ESC", "2CIE"]).lignes.find(x => x.u.nom === "CHARLY").statut, "ok", "lien mémorisé");
 });
 await test("CARTEC : rapprochement par SAP", () => {
   const d = L.emptyData("t"); L.state.data = d;

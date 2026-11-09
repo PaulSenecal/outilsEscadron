@@ -190,6 +190,9 @@ Ancien format 1 : { format, version: 1, kdf, iv, data } (relu seulement).
   pas d'ajout si le groupe a déjà un champ du même libellé fait à la main.
   schéma 6 → 7 (migrerV7, idempotente) : groupe sanguin (gsang, liste GROUPES_SANGUINS, sensible) après nsecu, sauf champ du
   même libellé ; libellés « C4 » → « C4 (secourisme au combat) » et « SAP » → « SAP (solde) » s'ils n'ont pas été changés.
+  schéma 7 → 8 (migrerV8(d), idempotente, sur toutes les données) : escadrons renommés (ESCADRONS_RENOMMES, escRenomme :
+  7ESC → 2CIE) dans les options du champ escadron, fiches, archives, meta.acces, meta.cartecUnites, reo.cartec.escadrons et
+  clés des relevés ; le rôle d'un chef lu dans une ancienne enveloppe est renommé aussi (escRenomme dans ouvrirFichier).
 
 ### Règles d'import (fichier Excel de l'escadron, ex. CDCTest.xlsx)
 - .xlsx lu directement (zip + XML, DecompressionStream), ou CSV (UTF-8 ou Windows-1252)
