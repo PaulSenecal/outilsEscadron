@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <!-- Politique de sécurité : aucune requête réseau (sauf Google Fonts), seul le script de ce fichier peut s'exécuter
      (empreinte sha256 : après toute modification du script, lancer « node tests/csp.mjs » pour la mettre à jour). -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-9ZXuzhv4ZmNnXO0wMiowEKVhn95e0lcoeu95ZjdDplw='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-1o8J40lXyHOBkz5oT+smakhizUnwXCpX5m4tElCx+Kc='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
 <title>Suivi du personnel</title>
 <meta name="theme-color" content="#0B1629">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%2313233F'/%3E%3Cpath d='M32 9l18 7v13c0 12-8 21-18 26-10-5-18-14-18-26V16z' fill='none' stroke='%23C9A227' stroke-width='4'/%3E%3Ccircle cx='32' cy='27' r='6' fill='%23C9A227'/%3E%3Cpath d='M21 44c2-7 6-10 11-10s9 3 11 10' fill='%23C9A227'/%3E%3C/svg%3E">
@@ -5294,7 +5294,8 @@ $("#ls-export").addEventListener("click", () => {
 
 /* ---------- REO ---------- */
 let reoEsc = "";
-const titreEscadron = e => /^\d+\s*ESC$/i.test(e) ? e.replace(/^(\d+)\s*ESC$/i, "$1e escadron") : e || "Sans escadron";
+const titreEscadron = e => /^\d+\s*ESC$/i.test(e) ? e.replace(/^(\d+)\s*ESC$/i, "$1e escadron")
+  : /^\d+\s*CIE$/i.test(e) ? e.replace(/^(\d+)\s*CIE$/i, "$1e compagnie") : e || "Sans escadron";
 function renderReo() {
   const escs = valeurs("escadron", true);
   if (!escs.includes(reoEsc)) reoEsc = escs[0] || "";
