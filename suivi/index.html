@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <!-- Politique de sécurité : aucune requête réseau (sauf Google Fonts), seul le script de ce fichier peut s'exécuter
      (empreinte sha256 : après toute modification du script, lancer « node tests/csp.mjs » pour la mettre à jour). -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-1o8J40lXyHOBkz5oT+smakhizUnwXCpX5m4tElCx+Kc='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-ZYbPbiOpdd53qUwNrz2FIiiKTJVlryPd/QlhU2tZM8I='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
 <title>Suivi du personnel</title>
 <meta name="theme-color" content="#0B1629">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%2313233F'/%3E%3Cpath d='M32 9l18 7v13c0 12-8 21-18 26-10-5-18-14-18-26V16z' fill='none' stroke='%23C9A227' stroke-width='4'/%3E%3Ccircle cx='32' cy='27' r='6' fill='%23C9A227'/%3E%3Cpath d='M21 44c2-7 6-10 11-10s9 3 11 10' fill='%23C9A227'/%3E%3C/svg%3E">
@@ -1167,11 +1167,13 @@ const $ = s => document.querySelector(s);
 const enc = new TextEncoder(), dec = new TextDecoder();
 const FORMAT = "suivi-personnel";
 const ITER = 600000;          // PBKDF2 (OWASP 2023). Un fichier plus ancien est relu avec ses itérations et mis à niveau au prochain enregistrement
-const SCHEMA = 8;
-const VERSION = "3.29";
+const SCHEMA = 9;
+const VERSION = "3.30";
 /* Historique affiché par le bouton « Nouveautés » : à chaque évolution, incrémenter VERSION
    et ajouter une entrée EN TÊTE de cette liste. */
 const NOUVEAUTES = [
+  { v: "3.30", date: "11/11/2026", items: [
+    "La 2CIE a des sections et non des pelotons : ses personnels passent de P1, P2… à S1, S2… (fiches, accès des chefs, REO, CARTEC, exports), titres « Section N » dans les synthèses et les fichiers Excel."] },
   { v: "3.29", date: "09/11/2026", items: [
     "Le 7ESC s'appelle désormais 2CIE : fiches, archives, accès des chefs, REO et statistiques sont renommés automatiquement à l'ouverture du fichier."] },
   { v: "3.28", date: "03/11/2026", items: [
@@ -1335,7 +1337,7 @@ function defaultChamps() {
     c("prenom", "Prénom", "Identité", "texte", { fixe: true }),
     c("grade", "Grade", "Identité", "liste", { fixe: true, options: GRADES }),
     c("escadron", "Escadron", "Identité", "liste", { fixe: true, options: ["5ESC", "2CIE", "En attente"], alias: { "mort pour la france": "En attente" } }),
-    c("peloton", "Peloton", "Identité", "liste", { fixe: true, options: ["P1", "P2", "P3", "P4", "PCL"] }),
+    c("peloton", "Peloton", "Identité", "liste", { fixe: true, options: ["P1", "P2", "P3", "P4", "S1", "S2", "S3", "S4", "PCL"] }),
     c("golf", "Golf", "Identité", "texte"),
     c("spe", "Spécialité", "Identité", "liste", { options: [] }),
     c("patrouille", "Nom patrouille", "Identité", "texte"),
@@ -1708,7 +1710,7 @@ async function ouvrirFichier(o, pw, { secours = true, chef = true } = {}) {
       const k = await importerCle(fromB64(x.k));
       let data;
       try { data = await dechiffrerBloc(o.parts[x.id], k); } catch { throw new Error("Mot de passe incorrect, ou fichier endommagé."); }
-      return { data, key: k, cleId: o.cleId, kek: null, via: "chef", role: { id: x.id, escadron: escRenomme(x.escadron), peloton: x.peloton, nom: x.nom || "" }, lecture: { id: "part:" + x.id, key: k } };
+      return { data, key: k, cleId: o.cleId, kek: null, via: "chef", role: { id: x.id, escadron: escRenomme(x.escadron), peloton: pelotonPour(escRenomme(x.escadron), x.peloton), nom: x.nom || "" }, lecture: { id: "part:" + x.id, key: k } };
     }
   }
   let compteId = null;
@@ -1835,6 +1837,34 @@ function migrerV8(d) {
     if (r.g) r.g = Object.fromEntries(Object.entries(r.g).map(([k, v]) => { const [e, ...x] = k.split("|"); return [[escRenomme(e), ...x].join("|"), v]; }));
   });
 }
+/* Une compagnie (2CIE…) a des sections (S1, S2…), un escadron des pelotons (P1, P2…) : même organisation, autre nom.
+   pelotonPour remet le préfixe qui convient à l'unité (PCL et valeurs libres inchangés). */
+const estCompagnie = e => /^\d+\s*CIE$/i.test(e || "");
+const pelotonPour = (escadron, pel) => !pel ? pel : estCompagnie(escadron) ? pel.replace(/^P(?=\d+$)/, "S")
+  : /^\d+\s*ESC$/i.test(escadron || "") ? pel.replace(/^S(?=\d+$)/, "P") : pel;
+const titrePeloton = pel => /^S\d+$/.test(pel) ? "Section " + pel.slice(1) : /^P\d+$/.test(pel) ? "Peloton " + pel.slice(1) : pel;
+const cleUnite = (escadron, k) => { const [pel, ...x] = k.split("|"); return [pelotonPour(escadron, pel), ...x].join("|"); };
+/* Schéma 9 : pelotons des compagnies renommés en sections (P1 → S1) : options du champ, fiches, archives, accès des chefs,
+   REO CARTEC, relevés ; noms de groupes et postes du REO recopiés de P vers S. Idempotente. */
+function migrerV9(d) {
+  const f = d.champs.find(c => c.id === "peloton");
+  if (Array.isArray(f?.options) && !f.options.some(o => /^S\d+$/.test(o))) {
+    const i = f.options.indexOf("PCL");
+    f.options.splice(i < 0 ? f.options.length : i, 0, "S1", "S2", "S3", "S4");
+  }
+  [...(d.personnes || []), ...(d.archives || [])].forEach(p => { if (p.v?.peloton) p.v.peloton = pelotonPour(p.v.escadron, p.v.peloton); });
+  (d.meta.acces || []).forEach(a => { a.peloton = pelotonPour(a.escadron, a.peloton); });
+  Object.entries(d.reo?.cartec?.escadrons || {}).forEach(([e, c]) => {
+    ["groupes", "vacants"].forEach(t => { if (c[t]) c[t] = Object.fromEntries(Object.entries(c[t]).map(([k, v]) => [cleUnite(e, k), v])); });
+  });
+  ["noms", "postes"].forEach(t => {
+    const o = d.reo?.[t]; if (!o) return;
+    Object.keys(o).filter(k => /^P\d+\|/.test(k)).forEach(k => { o["S" + k.slice(1)] ??= o[k]; });
+  });
+  (d.releves || []).forEach(r => {
+    if (r.g) r.g = Object.fromEntries(Object.entries(r.g).map(([k, v]) => { const [e, pel] = k.split("|"); return [e + "|" + pelotonPour(e, pel), v]; }));
+  });
+}
 /* Éligibilité aux permis : pour chaque permis, les permis dont il suffit d'avoir l'un pour pouvoir le passer */
 function defaultReglesPermis() {
   return { vt4: ["civil"], p4: ["civil"], masstech: ["civil", "vt4"], vbl: ["civil"], pl: ["civil"],
@@ -1889,6 +1919,7 @@ function normalize(d) {
   d.meta.reglesPermisV = REGLES_PERMIS_V; delete d.meta.reglesPermis2;
   d.personnes = (Array.isArray(d.personnes) ? d.personnes : []).map(p => ({ id: p.id || uid(), v: p.v && typeof p.v === "object" ? p.v : {} }));
   if ((d.meta.schema || 2) < 8) migrerV8(d);
+  if ((d.meta.schema || 2) < 9) migrerV9(d);
   d.meta.schema = SCHEMA;
   return d;
 }
@@ -2134,7 +2165,7 @@ function applyImport(res) {
   const idx = new Map(state.data.personnes.map(p => [personKey(p.v), p]));
   for (const v of res.rows) {
     const k = personKey(v), ex = idx.get(k);
-    if (ex) Object.assign(ex.v, v);
+    if (ex) { Object.assign(ex.v, v); if (ex.v.peloton) ex.v.peloton = pelotonPour(ex.v.escadron, ex.v.peloton); }
     else { const p = { id: uid(), v }; state.data.personnes.push(p); idx.set(k, p); }
   }
 }
@@ -2206,6 +2237,7 @@ function creerNouveaux(data, lignes, commun = {}, nouveauxIds = []) {
     const v = {};
     Object.entries({ ...commun, ...l.v }).forEach(([k, x]) => { if (x && ids.has(k)) v[k] = x; });
     if (l.remarque && ids.has("commentaire")) v.commentaire = l.remarque;
+    if (v.peloton) v.peloton = pelotonPour(v.escadron, v.peloton);
     const p = { id: nouveauxIds[i] || uid(), v }; data.personnes.push(p); crees.push(p);
   }
   return crees;
@@ -2216,11 +2248,12 @@ function defaultReo() {
   return { noms: { "PCL|1": "Groupe d'échelon et administration", "PCL|2": "Groupe ravitaillement et soutien du combattant",
     "PCL|3": "Groupe maintenance et logistique", "PCL|4": "Groupe SIC et transmissions", "PCL|5": "Groupe santé" }, postes: {} };
 }
-const ORDRE_PELOTONS = ["PCL", "P1", "P2", "P3", "P4"];
+const ORDRE_PELOTONS = ["PCL", "P1", "P2", "P3", "P4", "S1", "S2", "S3", "S4"];
 function nomParDefaut(pel, golf) {
   if (golf === "") return "Sans groupe";
-  if (golf === "0") return pel === "PCL" ? "Commandement" : "Patrouille de commandement";
-  return (pel === "PCL" ? "Groupe " : "Patrouille ") + golf;
+  const section = /^S\d+$/.test(pel);   // section : des groupes, peloton : des patrouilles
+  if (golf === "0") return pel === "PCL" ? "Commandement" : section ? "Groupe de commandement" : "Patrouille de commandement";
+  return (pel === "PCL" || section ? "Groupe " : "Patrouille ") + golf;
 }
 const nomGroupe = (reo, pel, golf) => reo.noms[pel + "|" + golf] || nomParDefaut(pel, golf);
 /* Organisation d'un escadron issue de CARTEC : { groupes: { "PEL|GOLF": nom }, vacants: { "PEL|GOLF": [libellés] } } */
@@ -2282,7 +2315,7 @@ function idPeloton(label) {
   const n = norm(label);
   if (/commandement/.test(n)) return "PCL";
   const m = /^(\d+)\s*(?:er|ere|re|e|eme)?\b/.exec(n);
-  return m ? "P" + m[1] : label;
+  return m ? (/\bsection\b/.test(n) ? "S" : "P") + m[1] : label;
 }
 /* « PATROUILLE D'ECLAIRAGE » → « Patrouille d'éclairage » (les accents absents de CARTEC sont rétablis pour les mots courants) */
 const ACCENTS_CARTEC = { eclairage: "éclairage", echelon: "échelon", sante: "santé", portee: "portée", equipe: "équipe", "1re": "1re",
@@ -2362,7 +2395,7 @@ function planCartec(unites, d, corresp, liens = {}) {
     .map(([k, label]) => ({ champ: k, label, avant: p.v[k] || "", apres: e[k] || "" }));
   unites.forEach(u => {
     const escadron = corresp[u.code] || ""; if (escadron) escs.add(escadron);
-    u.entrees.forEach((e0, i) => lignes.push({ cle: u.code + "#" + i, e: { ...e0, escadron, unite: u.code } }));
+    u.entrees.forEach((e0, i) => lignes.push({ cle: u.code + "#" + i, e: { ...e0, escadron, peloton: pelotonPour(escadron, e0.peloton), unite: u.code } }));
   });
   // 0. Liens choisis à la main dans l'aperçu
   lignes.forEach(l => {
@@ -2437,8 +2470,9 @@ function appliquerCartec(d, unites, plan, corresp, refus = new Set(), date = iso
   unites.forEach(u => {
     const e = corresp[u.code]; if (!e) return;
     const vacants = {};
-    u.vacants.forEach(x => { (vacants[x.peloton + "|" + x.golf] ||= []).push(x.libelle); });
-    d.reo.cartec.escadrons[e] = { unite: u.label, groupes: { ...u.groupes }, vacants };
+    u.vacants.forEach(x => { (vacants[pelotonPour(e, x.peloton) + "|" + x.golf] ||= []).push(x.libelle); });
+    const groupes = Object.fromEntries(Object.entries(u.groupes).map(([k, v]) => [cleUnite(e, k), v]));
+    d.reo.cartec.escadrons[e] = { unite: u.label, groupes, vacants };
   });
   d.meta.cartecUnites = { ...(d.meta.cartecUnites || {}), ...corresp };
   return r;
@@ -3048,7 +3082,7 @@ function donneesDemo(titre = "Unité de démonstration") {
   for (const esc of ["5ESC", "2CIE"]) {
     ["CNE", "LTN", "MAJ", "ADC", "BC1"].forEach(g => d.personnes.push(personne(esc, "PCL", 0, g, "COMMANDEMENT D'UNITE")));
     for (let golf = 1; golf <= 5; golf++) ["MDL", "BC1"].forEach(g => d.personnes.push(personne(esc, "PCL", golf, g, "SOUTIEN")));
-    for (const pel of ["P1", "P2", "P3", "P4"]) {
+    for (const pel of ["P1", "P2", "P3", "P4"].map(x => pelotonPour(esc, x))) {
       ["LTN", "ADJ", "MDL", "1CL", "1CL", "CHA"].forEach(g => d.personnes.push(personne(esc, pel, 0, g, "CHEF DE PELOTON DE RECONNAISSANCE ET D'INTERVENTION 4")));
       for (let golf = 1; golf <= 3; golf++) ["MDL", "BCH", "1CL", "1CL", "1CL", "CHA"].forEach(g => d.personnes.push(personne(esc, pel, golf, g, pick(SPE))));
     }
@@ -4344,6 +4378,7 @@ function lireFiche() {
     } else x = el.type === "tel" ? reparerTel(el.value) : el.value.trim();
     if (x) v[el.dataset.f] = x;
   });
+  if (v.peloton) v.peloton = pelotonPour(v.escadron, v.peloton);
   return v;
 }
 /* Dates expirées / à prévoir de la fiche : pastilles des onglets et ligne d'alertes du bandeau */
@@ -4383,7 +4418,7 @@ function openPerson(id, preset = {}) {
   $("#p-body").innerHTML = onglets.map(o => `<div class="fiche-panneau" role="tabpanel" id="pan-${o.id}" data-panneau="${o.id}">${o.G.map(([g, fs]) =>
     `<fieldset class="fs"><legend>${esc(g)}</legend><div class="fgrid">${fs.map(f => inputHtml(f, v[f.id] || "", v)).join("")}</div></fieldset>`).join("")}${
     o.id === "personnel" && id ? historiqueHtml(state.data.personnes.find(x => x.id === id)) : ""}</div>`).join("") +
-    C.filter(f => f.type === "liste").map(f => `<datalist id="dl-${esc(f.id)}">${valeurs(f.id).map(o => `<option value="${esc(o)}">`).join("")}</datalist>`).join("");
+    C.filter(f => f.type === "liste").map(f => `<datalist id="dl-${esc(f.id)}">${(f.id === "peloton" ? choixPelotons(v.escadron) : valeurs(f.id)).map(o => `<option value="${esc(o)}">`).join("")}</datalist>`).join("");
   if (state.role) $("#p-body").querySelectorAll("input, select, textarea").forEach(i => {   // lecture seule
     if (i.tagName === "SELECT" || i.type === "checkbox" || i.type === "radio") i.disabled = true; else i.readOnly = true;
   });
@@ -4429,6 +4464,17 @@ function majStatutFiche(t, f) {
   t.parentElement.querySelector("[data-statut]").outerHTML = st.html;
   majAlertesFiche();
 }
+/* Choix du peloton dans la fiche : sections (S1, S2…) pour une compagnie, pelotons (P1, P2…) pour un escadron */
+function choixPelotons(escadron) {
+  const cache = estCompagnie(escadron) ? /^P\d+$/ : /^\d+\s*ESC$/i.test(escadron || "") ? /^S\d+$/ : null;
+  return valeurs("peloton").filter(o => !cache?.test(o));
+}
+$("#p-body").addEventListener("change", e => {
+  if (!e.target.matches('[data-f="escadron"]')) return;
+  const esc_ = e.target.value.trim(), pel = $('#p-body [data-f="peloton"]');
+  if (pel && !pel.readOnly) pel.value = pelotonPour(esc_, pel.value.trim());
+  $("#dl-peloton").innerHTML = choixPelotons(esc_).map(o => `<option value="${esc(o)}">`).join("");
+});
 $("#p-body").addEventListener("change", e => {
   if (!e.target.matches("[data-pmode]")) return;
   const d = e.target.nextElementSibling;
@@ -5436,7 +5482,7 @@ function renderSynth() {
       const vals = [...n].sort((a, b) => a[0].localeCompare(b[0], "fr", { numeric: true }));
       return vals.length ? `<span><b>${esc(c.label)} :</b> ${vals.map(([v, k]) => `${esc(v)} × ${k}`).join(", ")}</span>` : "";
     }).filter(Boolean).join("");
-    return `<div class="reo"><div class="reo-head"><h2>Peloton ${esc(pel.replace(/^P(?=\d)/, ""))}</h2></div>
+    return `<div class="reo"><div class="reo-head"><h2>${esc(titrePeloton(pel))}</h2></div>
       <div class="reo-meta"><span>${esc(S.titre)} · ${esc(titreEscadron(syEsc))}</span><span>${info ? `${esc(info)} : ${montres} / ` : ""}${tous.length} personne${tous.length > 1 ? "s" : ""}</span><span>Mise à jour : ${esc(maj)} · v${esc(VERSION)}</span></div>
       <table class="reo-tbl sy-tbl"><thead>
         <tr class="sy-tot"><th colspan="3">Totaux</th>${cols.map(c => `<th>${total(tous, c.f)}</th>`).join("")}</tr>
@@ -5477,7 +5523,7 @@ $("#sy-export").addEventListener("click", () => {
     const { groupes, tous } = syGroupes(pel);
     if (!groupes.length) return null;
     const F = feuille(`${S.titre} ${pel}`);
-    titreXlsx(F, `PELOTON ${pel.replace(/^P(?=\d)/, "")}`, `${S.titre} · ${titreEscadron(syEsc)}${info ? " · " + info : ""} · ${tous.length} personnes · mise à jour : ${maj} · version ${VERSION}`, W);
+    titreXlsx(F, titrePeloton(pel).toUpperCase(), `${S.titre} · ${titreEscadron(syEsc)}${info ? " · " + info : ""} · ${tous.length} personnes · mise à jour : ${maj} · version ${VERSION}`, W);
     const t = F.ajout([X("Totaux", "total"), X("", "total"), X("", "total"), ...cols.map(c => X(tt(tous, c.f), "total"))], 30); F.fusion(t, 0, t, 2);
     if (avecTitres) {
       const r = F.ajout([X("", "entete"), X("", "entete"), X("", "entete"), ...G.flatMap(g => g.cols.map((c, i) => X(i ? "" : g.titre.toUpperCase(), "entete")))], 20);

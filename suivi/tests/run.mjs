@@ -12,7 +12,7 @@ const logique = html.split("<script>")[1].split("/* ===== Interface ===== */")[0
 const ctx = vm.createContext({ console, TextEncoder, TextDecoder, crypto, btoa, atob, Blob, Response, DecompressionStream, URL, Map, Set, Date, Intl, JSON, Math });
 vm.runInContext(logique + ";globalThis.L = this;", ctx);
 // Les déclarations « const » ne sont pas des propriétés du global : on les expose explicitement
-const L = vm.runInContext(`({ state, emptyData, normalize, donneesDemo, encryptData, decryptFile, deriveKey, readXlsx, parseCsv, decodeText,
+const L = vm.runInContext(`({ state, pelotonPour, titrePeloton, idPeloton, emptyData, normalize, donneesDemo, encryptData, decryptFile, deriveKey, readXlsx, parseCsv, decodeText,
   planImport, computeImport, applyImport, personKey, xlsxPersonnel, csvPersonnel, lignesDepuisTexte, rapprocher, permisChamps,
   permisEtat, defaultReglesPermis, seanceChangements, echeances, diffFiche, journaliser, JOURNAL_MAX, statFormation, statutTaux,
   statusOf, reoBlocs, groupesPeloton, defaultChamps, SCHEMA, fusionner, ITER, forceMotDePasse, controleQualite, historiquePersonne,
@@ -551,8 +551,34 @@ await test("Migration schéma 8 : le 7ESC devient la 2CIE", () => {
   egal([n.personnes[0].v.escadron, n.personnes[1].v.escadron, n.archives[0].v.escadron], ["2CIE", "5ESC", "2CIE"]);
   egal([n.meta.acces[0].escadron, n.meta.cartecUnites.U1, n.meta.cartecUnites.U2], ["2CIE", "2CIE", "5ESC"]);
   egal(Object.keys(n.reo.cartec.escadrons).sort(), ["2CIE", "5ESC"]);
-  egal(Object.keys(n.releves[0].g).sort(), ["2CIE|P1", "5ESC|P1"]);
+  egal(Object.keys(n.releves[0].g).sort(), ["2CIE|S1", "5ESC|P1"], "schéma 9 enchaîné : sections");
   egal(JSON.stringify(L.normalize(n)), JSON.stringify(n), "idempotent");
+});
+
+await test("Migration schéma 9 : la 2CIE a des sections (S1…), les escadrons des pelotons", () => {
+  const d = L.emptyData("v8");
+  d.champs.find(c => c.id === "peloton").options = ["P1", "P2", "P3", "P4", "PCL"];
+  d.personnes = [{ id: "a", v: { nom: "A", escadron: "2CIE", peloton: "P1" } }, { id: "b", v: { nom: "B", escadron: "5ESC", peloton: "P2" } },
+    { id: "c", v: { nom: "C", escadron: "2CIE", peloton: "PCL" } }];
+  d.archives = [{ id: "z", v: { escadron: "2CIE", peloton: "P3" }, archive: { date: "2026-01-01", motif: "x" } }];
+  d.meta.acces = [{ id: "x", escadron: "2CIE", peloton: "P2" }, { id: "y", escadron: "5ESC", peloton: "P2" }];
+  d.reo.noms["P1|1"] = "Patrouille lourde";
+  d.reo.cartec = { date: "2026-01-01", escadrons: { "2CIE": { unite: "U1", groupes: { "P1|1": "Groupe 1", "PCL|0": "Cdt" }, vacants: { "P2|0": ["CDS"] } } } };
+  d.releves = [{ m: "2026-01", g: { "2CIE|P1": { n: 3, f: {} }, "5ESC|P1": { n: 2, f: {} } } }];
+  d.meta.schema = 8;
+  const n = L.normalize(d);
+  egal(n.champs.find(c => c.id === "peloton").options, ["P1", "P2", "P3", "P4", "S1", "S2", "S3", "S4", "PCL"]);
+  egal(n.personnes.map(p => p.v.peloton), ["S1", "P2", "PCL"]);
+  egal(n.archives[0].v.peloton, "S3");
+  egal(n.meta.acces.map(a => a.peloton), ["S2", "P2"]);
+  egal(Object.keys(n.reo.cartec.escadrons["2CIE"].groupes).sort(), ["PCL|0", "S1|1"]);
+  egal(Object.keys(n.reo.cartec.escadrons["2CIE"].vacants), ["S2|0"]);
+  egal(n.reo.noms["S1|1"], "Patrouille lourde", "nom de groupe recopié");
+  egal(Object.keys(n.releves[0].g).sort(), ["2CIE|S1", "5ESC|P1"]);
+  egal(JSON.stringify(L.normalize(n)), JSON.stringify(n), "idempotent");
+  egal([L.pelotonPour("2CIE", "P4"), L.pelotonPour("5ESC", "S2"), L.pelotonPour("ECL", "P1"), L.titrePeloton("S2"), L.titrePeloton("P3")],
+    ["S4", "P2", "P1", "Section 2", "Peloton 3"]);
+  egal(L.idPeloton("2E SECTION"), "S2");
 });
 
 await test("Accès chef de peloton : il ne déchiffre que son peloton, l'administrateur relit tout", async () => {

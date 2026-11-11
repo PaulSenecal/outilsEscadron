@@ -193,6 +193,12 @@ Ancien format 1 : { format, version: 1, kdf, iv, data } (relu seulement).
   schéma 7 → 8 (migrerV8(d), idempotente, sur toutes les données) : escadrons renommés (ESCADRONS_RENOMMES, escRenomme :
   7ESC → 2CIE) dans les options du champ escadron, fiches, archives, meta.acces, meta.cartecUnites, reo.cartec.escadrons et
   clés des relevés ; le rôle d'un chef lu dans une ancienne enveloppe est renommé aussi (escRenomme dans ouvrirFichier).
+  schéma 8 → 9 (migrerV9(d), idempotente) : une compagnie (estCompagnie : « 2CIE ») a des SECTIONS S1, S2… au lieu des pelotons
+  P1, P2… (pelotonPour(escadron, pel) remet le bon préfixe, PCL inchangé) : options du champ peloton (+ S1–S4), fiches, archives,
+  meta.acces, clés de reo.cartec, relevés ; reo.noms / postes « P… » recopiés en « S… ». pelotonPour aussi appliqué par lireFiche,
+  applyImport, creerNouveaux, planCartec / appliquerCartec, rôle d'un chef ; idPeloton : « 2E SECTION » → S2. Fiche : datalist du
+  peloton filtrée selon l'escadron (choixPelotons). titrePeloton : « Section N » / « Peloton N » (NRBC, CATI, Excel) ; REO d'une
+  section : « Groupe de commandement », « Groupe N » (au lieu de patrouilles).
 
 ### Règles d'import (fichier Excel de l'escadron, ex. CDCTest.xlsx)
 - .xlsx lu directement (zip + XML, DecompressionStream), ou CSV (UTF-8 ou Windows-1252)
