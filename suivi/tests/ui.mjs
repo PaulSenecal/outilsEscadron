@@ -467,6 +467,20 @@ crypto.subtle.generateKey = async (alg, ...r) => alg.name === "RSA-OAEP" ? (pair
   await save();
   verif("Chef : aucune modification ni enregistrement", miens[0].v.gant === gantAvant && !state.dirty && pc.length === 1
     && !visible("#btn-add") && !visible("#btn-seance") && !visible("#btn-save"));
+  // v3.31 : REO complet (tous les escadrons) et « Préparer une liste » sur tout le personnel, fiches des autres en lecture seule
+  const autreP = state.data.autres.find(p => p.v.escadron !== pChef.escadron);
+  verif("Chef : tout le reste du personnel en lecture", miens.length + state.data.autres.length === total && !!autreP);
+  setView("reo"); renderReo();
+  const escsReo = [...$("#reo-esc").options].map(o => o.value);
+  verif("Chef : REO de tous les escadrons, le sien par défaut", escsReo.includes(autreP.v.escadron) && $("#reo-esc").value === pChef.escadron && document.querySelectorAll("#reo .reo-p").length > miens.length);
+  valeur("#reo-esc", autreP.v.escadron);
+  verif("Chef : REO d'un autre escadron", !!document.querySelector('#reo .reo-p[data-id="' + CSS.escape(autreP.id) + '"]'));
+  setView("liste"); resetListe();
+  $("#ls-texte").value = [autreP.v, pChef].map(v => v.grade + " " + v.nom + " " + v.prenom).join("\\n"); clic("#ls-go");
+  verif("Chef : liste préparée avec tout le personnel", personnesListe().map(p => p.id).includes(autreP.id) && personnesListe().length === 2);
+  openPerson(autreP.id);
+  verif("Chef : fiche d'un autre peloton en lecture seule", $("#dlg-person").open && fige("gant") && !visible("#p-valider"));
+  $("#dlg-person").close(); resetListe(); setView("accueil");
   clic("#btn-seance"); openPerson(null); clic("#btn-lot");
   verif("Chef : séance et nouvelle fiche refusées", !$("#dlg-seance").open && !$("#dlg-person").open && !$("#dlg-lot").open && !visible("#btn-lot"));
   clic("#btn-champs"); clic("#btn-import");

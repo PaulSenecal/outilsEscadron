@@ -708,6 +708,14 @@ await test("Accès chef de peloton : découpage et rassemblement (journal, liste
   const R = L.assembler(reste, parts);
   egal(R.personnes.length, d.personnes.length); egal(R.journal.map(j => j.quoi), d.journal.map(j => j.quoi));
   egal(R.listes[0].part, "A");
+  // v3.31 : le chef reçoit aussi toutes les autres fiches et le REO complet, jamais rassemblés en double
+  egal(parts.A.autres.length + parts.A.personnes.length, d.personnes.length, "autres = tout le reste du personnel");
+  vrai(parts.A.autres.some(x => x.id === autre.id) && !parts.A.autres.some(x => x.id === p.id));
+  egal(parts.A.reo, d.reo, "REO complet");
+  vrai(!("autres" in reste) && !("autres" in R), "pas d'« autres » chez l'administrateur");
+  const n = L.normalize(JSON.parse(JSON.stringify(parts.A)));
+  egal(n.autres.length, parts.A.autres.length, "autres conservés à l'ouverture");
+  vrai(!("autres" in L.normalize(JSON.parse(JSON.stringify(reste)))), "rien si vide");
 });
 
 await test("Date limite (VMP, fin de contrat), âge et ancienneté", () => {

@@ -77,7 +77,11 @@ mis à jour sans marquer le fichier comme modifié).
 - encryptData (administrateur) : decouper(data) → reste (bloc principal, clé state.key) + une partie par accès (parts[id],
   clé du peloton) = personnes et archives du peloton (memeRattachement : escadron + peloton, accents / casse ignorés),
   listes et journal étiquetés part (ou journal dont toutes les personnes sont du peloton), + communPour : meta limitée à
-  META_COMMUNE (jamais acces, secours, alias), champs, règles de permis, REO filtré sur son peloton / escadron.
+  META_COMMUNE (jamais acces, secours, alias), champs, règles de permis, REO COMPLET (v3.31).
+- v3.31 : chaque partie contient aussi autres = toutes les autres fiches (complètes, sensibles compris, choix de l'utilisateur),
+  jamais rassemblées par assembler, vidées par encryptPartie, migrées par normalize (state.data.autres, absent sinon).
+  toutLePersonnel() = personnes + autres : utilisé SEULEMENT par le REO (tous les escadrons, celui du chef par défaut),
+  « Préparer une liste » (rapprochement, résultat, export) et openPerson (lecture seule). Les autres pages restent sur son peloton.
   Version 3 seulement s'il y a des accès, sinon version 2 comme avant.
 - ouvrirFichier : principal, puis enveloppes des chefs (ouvrirAcces, option chef), puis secours. Principal / secours :
   assemblerFichier rassemble toutes les parties (étiquette part sur listes et journal). Chef : sa partie seulement,

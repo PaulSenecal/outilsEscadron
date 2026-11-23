@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <!-- Politique de sécurité : aucune requête réseau (sauf Google Fonts), seul le script de ce fichier peut s'exécuter
      (empreinte sha256 : après toute modification du script, lancer « node tests/csp.mjs » pour la mettre à jour). -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-ZYbPbiOpdd53qUwNrz2FIiiKTJVlryPd/QlhU2tZM8I='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-+kvtruUTzrdw8D02bpyvhnd0ABN5zLzHDhwhGUhYjVQ='; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
 <title>Suivi du personnel</title>
 <meta name="theme-color" content="#0B1629">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%2313233F'/%3E%3Cpath d='M32 9l18 7v13c0 12-8 21-18 26-10-5-18-14-18-26V16z' fill='none' stroke='%23C9A227' stroke-width='4'/%3E%3Ccircle cx='32' cy='27' r='6' fill='%23C9A227'/%3E%3Cpath d='M21 44c2-7 6-10 11-10s9 3 11 10' fill='%23C9A227'/%3E%3C/svg%3E">
@@ -1168,10 +1168,14 @@ const enc = new TextEncoder(), dec = new TextDecoder();
 const FORMAT = "suivi-personnel";
 const ITER = 600000;          // PBKDF2 (OWASP 2023). Un fichier plus ancien est relu avec ses itérations et mis à niveau au prochain enregistrement
 const SCHEMA = 9;
-const VERSION = "3.30";
+const VERSION = "3.31";
 /* Historique affiché par le bouton « Nouveautés » : à chaque évolution, incrémenter VERSION
    et ajouter une entrée EN TÊTE de cette liste. */
 const NOUVEAUTES = [
+  { v: "3.31", date: "23/11/2026", items: [
+    "Chefs de peloton : la page REO montre maintenant tous les escadrons et la compagnie (choix de l'escadron en haut de la page), pas seulement leur peloton.",
+    "Chefs de peloton : « Préparer une liste » retrouve les noms dans tout le personnel, quel que soit le peloton ; les fiches des autres pelotons s'ouvrent en lecture seule et leurs données peuvent être exportées dans la liste.",
+    "Les autres pages (Personnel, À faire, statistiques…) restent limitées au peloton du chef. Il faut que le fichier soit enregistré une fois par un administrateur pour que les chefs voient tout le monde."] },
   { v: "3.30", date: "11/11/2026", items: [
     "La 2CIE a des sections et non des pelotons : ses personnels passent de P1, P2… à S1, S2… (fiches, accès des chefs, REO, CARTEC, exports), titres « Section N » dans les synthèses et les fichiers Excel."] },
   { v: "3.29", date: "09/11/2026", items: [
@@ -1598,20 +1602,17 @@ const empreinte = o => o ? [o.iv, ...Object.keys(o.parts || {}).sort().map(k => 
 /* ---------- Accès des chefs de peloton (format 3) ----------
    Chaque peloton qui a un accès a sa propre clé de données (meta.acces[i].cle, connue du seul administrateur) : ses
    fiches, archives, listes et entrées de journal sont chiffrées à part (parts[id]), avec une copie des réglages communs
-   (champs, règles de permis, REO de son peloton). L'enveloppe du chef (acces.liste) contient { id, k, escadron, peloton },
+   (champs, règles de permis, REO complet) et, depuis la v3.31, toutes les autres fiches (autres, lecture seule : REO, listes). L'enveloppe du chef (acces.liste) contient { id, k, escadron, peloton },
    chiffrée par son mot de passe (PBKDF2, sel commun meta.accesKdf). Un chef ne peut donc déchiffrer que son peloton ;
    il réécrit sa partie et recopie le reste du fichier tel quel. Le mot de passe habituel ouvre tout. */
 const META_COMMUNE = ["titre", "alerteJours", "verrouMinutes", "enregAuto", "schema", "reglesPermisV", "cree", "modifie", "demo"];
 const memeRattachement = (v, a) => norm(v.escadron) === norm(a.escadron) && norm(v.peloton) === norm(a.peloton);
 function communPour(d, a) {
   const meta = Object.fromEntries(META_COMMUNE.filter(k => k in d.meta).map(k => [k, d.meta[k]]));
-  const R = d.reo || {}, garde = o => Object.fromEntries(Object.entries(o || {}).filter(([k]) => norm(k.split("|")[0]) === norm(a.peloton)));
-  const reo = { noms: garde(R.noms), postes: garde(R.postes) };
-  const ce = Object.entries(R.cartec?.escadrons || {}).find(([e]) => norm(e) === norm(a.escadron));
-  if (ce) reo.cartec = { date: R.cartec.date, escadrons: { [ce[0]]: { unite: ce[1].unite, groupes: garde(ce[1].groupes), vacants: garde(ce[1].vacants) } } };
+  const reo = d.reo;   // REO complet (v3.31) : tous les escadrons
   const releves = (d.releves || []).map(r => ({ m: r.m, g: Object.fromEntries(Object.entries(r.g).filter(([k]) => { const [e, p] = k.split("|");
     return memeRattachement({ escadron: e, peloton: p }, a); })) }));
-  return { meta, champs: d.champs, reo, permisRegles: d.permisRegles, releves };
+  return { meta, champs: d.champs, reo, permisRegles: d.permisRegles, releves, autres: [] };
 }
 /* Sépare les données : reste (administrateur) + une partie par peloton qui a un accès. Logique pure. */
 function decouper(d) {
@@ -1620,6 +1621,8 @@ function decouper(d) {
   const reste = { ...d, personnes: [], archives: [], listes: [], journal: [] };
   const de = p => A.find(a => memeRattachement(p.v, a));
   ["personnes", "archives"].forEach(k => d[k].forEach(p => { const a = de(p); (a ? parts[a.id] : reste)[k].push(p); if (a) idPart.set(p.id, a.id); }));
+  // v3.31 : chaque chef reçoit aussi tout le reste du personnel (fiches complètes, lecture seule) pour le REO et « Préparer une liste »
+  A.forEach(a => { parts[a.id].autres = d.personnes.filter(p => idPart.get(p.id) !== a.id); });
   d.listes.forEach(l => (parts[l.part] ? parts[l.part].listes.push(sans(l)) : reste.listes.push(l)));
   d.journal.forEach(j => {
     let id = parts[j.part] ? j.part : null;
@@ -1677,7 +1680,8 @@ async function ouvrirAcces(A, pw, sauf) {
 async function encryptPartie(stamp) {
   const o = JSON.parse(state.modele || "null"), id = state.role.id;
   if (!o?.parts?.[id]) throw new Error("votre accès a été modifié par l'administrateur : verrouillez puis rouvrez le fichier avec le nouveau mot de passe");
-  o.parts[id] = await chiffrerBloc(state.key, JSON.stringify({ ...state.data, meta: { ...state.data.meta, modifie: stamp } }));
+  const { autres, ...partie } = state.data;   // « autres » vient de l'administrateur, jamais du chef
+  o.parts[id] = await chiffrerBloc(state.key, JSON.stringify({ ...partie, autres: [], meta: { ...state.data.meta, modifie: stamp } }));
   return JSON.stringify(o);
 }
 /* Déchiffre un fichier avec le mot de passe habituel ou, si secours (par défaut), avec le mot de passe de secours.
@@ -1918,8 +1922,14 @@ function normalize(d) {
   }
   d.meta.reglesPermisV = REGLES_PERMIS_V; delete d.meta.reglesPermis2;
   d.personnes = (Array.isArray(d.personnes) ? d.personnes : []).map(p => ({ id: p.id || uid(), v: p.v && typeof p.v === "object" ? p.v : {} }));
-  if ((d.meta.schema || 2) < 8) migrerV8(d);
-  if ((d.meta.schema || 2) < 9) migrerV9(d);
+  // Partie d'un chef (v3.31) : le reste du personnel, migré comme ses propres fiches
+  const autres = Array.isArray(d.autres) ? d.autres.map(p => ({ id: p.id || uid(), v: p.v && typeof p.v === "object" ? p.v : {} })) : null;
+  delete d.autres;
+  const mig = { ...d, personnes: [...d.personnes, ...(autres || [])] };
+  if ((d.meta.schema || 2) < 8) migrerV8(mig);
+  if ((d.meta.schema || 2) < 9) migrerV9(mig);
+  Object.assign(d, { ...mig, personnes: d.personnes });
+  if (autres?.length) d.autres = autres;
   d.meta.schema = SCHEMA;
   return d;
 }
@@ -4101,6 +4111,9 @@ function valeurs(id, presentesSeulement) {
   P.forEach(p => p.v[id] && s.add(p.v[id]));
   return presentesSeulement ? [...s].filter(x => P.some(p => p.v[id] === x)) : [...s];
 }
+/* Tout le personnel : un chef de peloton (v3.31) lit aussi les fiches des autres pelotons (state.data.autres, lecture seule),
+   utilisées seulement par le REO, « Préparer une liste » et la fiche ouverte depuis ces pages */
+const toutLePersonnel = () => state.data.autres?.length ? [...state.data.personnes, ...state.data.autres] : state.data.personnes;
 function population() {
   const f = state.filtre;
   return state.data.personnes.filter(p => (!f.escadron || p.v.escadron === f.escadron) && (!f.peloton || p.v.peloton === f.peloton));
@@ -4404,7 +4417,7 @@ function choisirOnglet(o) {
 function openPerson(id, preset = {}) {
   if (!id && lectureSeule()) return;
   editingId = id;
-  const v = id ? state.data.personnes.find(x => x.id === id).v : { ...preset };
+  const fiche = id ? toutLePersonnel().find(x => x.id === id) : null, v = fiche ? fiche.v : { ...preset };
   $("#dlg-person-title").textContent = id ? `${v.grade ? v.grade + " " : ""}${(v.nom || "").toUpperCase()} ${v.prenom || ""}`.trim() : "Nouvelle personne";
   const C = state.data.champs, G = groupesFiche(C);
   const rat = [v.escadron, v.peloton, v.golf !== undefined && v.golf !== "" ? "golf " + v.golf : ""].filter(Boolean).join(" · ");
@@ -4417,7 +4430,7 @@ function openPerson(id, preset = {}) {
   $("#p-onglets").innerHTML = onglets.map(o => `<button type="button" role="tab" data-onglet="${o.id}" aria-controls="pan-${o.id}">${esc(o.label)}<span class="pastille" hidden></span></button>`).join("");
   $("#p-body").innerHTML = onglets.map(o => `<div class="fiche-panneau" role="tabpanel" id="pan-${o.id}" data-panneau="${o.id}">${o.G.map(([g, fs]) =>
     `<fieldset class="fs"><legend>${esc(g)}</legend><div class="fgrid">${fs.map(f => inputHtml(f, v[f.id] || "", v)).join("")}</div></fieldset>`).join("")}${
-    o.id === "personnel" && id ? historiqueHtml(state.data.personnes.find(x => x.id === id)) : ""}</div>`).join("") +
+    o.id === "personnel" && id ? historiqueHtml(fiche) : ""}</div>`).join("") +
     C.filter(f => f.type === "liste").map(f => `<datalist id="dl-${esc(f.id)}">${(f.id === "peloton" ? choixPelotons(v.escadron) : valeurs(f.id)).map(o => `<option value="${esc(o)}">`).join("")}</datalist>`).join("");
   if (state.role) $("#p-body").querySelectorAll("input, select, textarea").forEach(i => {   // lecture seule
     if (i.tagName === "SELECT" || i.type === "checkbox" || i.type === "radio") i.disabled = true; else i.readOnly = true;
@@ -5168,7 +5181,7 @@ function resetListe() {
   if (state.data) renderListe();
 }
 function personnesListe() {
-  const byId = new Map(state.data.personnes.map(p => [p.id, p])), vus = new Set();
+  const byId = new Map(toutLePersonnel().map(p => [p.id, p])), vus = new Set();
   return ls.lignes.map(l => l.choix).filter(id => id && !vus.has(id) && vus.add(id)).map(id => byId.get(id)).filter(Boolean);
 }
 function renderListe() {
@@ -5183,7 +5196,7 @@ function renderListe() {
 }
 
 function renderMatch() {
-  const P = state.data.personnes, byId = new Map(P.map(p => [p.id, p]));
+  const P = toutLePersonnel(), byId = new Map(P.map(p => [p.id, p]));
   // Tout le personnel : regroupé par grade (du plus élevé au plus bas), puis par ordre alphabétique
   const parGradeNom = new Map();
   [...P].sort(parGrade).forEach(p => {
@@ -5256,7 +5269,7 @@ $("#ls-result").addEventListener("click", e => { const tr = e.target.closest("tr
 function lancerRecherche() {
   const lignes = lignesDepuisTexte($("#ls-texte").value);
   if (!lignes.length) { toast("Collez d'abord une liste de personnes."); $("#ls-texte").focus(); return; }
-  ls.lignes = lignes.map(brut => Object.assign({ brut }, rapprocher(brut, state.data.personnes)));
+  ls.lignes = lignes.map(brut => Object.assign({ brut }, rapprocher(brut, toutLePersonnel())));
   renderListe();
   $("#ls-match-card").scrollIntoView({ behavior: "smooth", block: "start" });
 }
@@ -5280,7 +5293,7 @@ $("#ls-new").addEventListener("click", () => {
 });
 $("#ls-saved").addEventListener("change", e => {
   const l = state.data.listes.find(x => x.id === e.target.value); if (!l) return;
-  const P = state.data.personnes, ids = new Set(P.map(p => p.id));
+  const P = toutLePersonnel(), ids = new Set(P.map(p => p.id));
   ls.id = l.id;
   $("#ls-nom").value = l.nom; $("#ls-texte").value = l.lignes.map(x => x.brut).join("\n"); $("#ls-etat").checked = l.etat !== false;
   ls.lignes = l.lignes.map(x => {
@@ -5343,10 +5356,10 @@ let reoEsc = "";
 const titreEscadron = e => /^\d+\s*ESC$/i.test(e) ? e.replace(/^(\d+)\s*ESC$/i, "$1e escadron")
   : /^\d+\s*CIE$/i.test(e) ? e.replace(/^(\d+)\s*CIE$/i, "$1e compagnie") : e || "Sans escadron";
 function renderReo() {
-  const escs = valeurs("escadron", true);
-  if (!escs.includes(reoEsc)) reoEsc = escs[0] || "";
+  const T = toutLePersonnel(), escs = valeurs("escadron").filter(e => T.some(p => p.v.escadron === e));
+  if (!escs.includes(reoEsc)) reoEsc = escs.includes(state.role?.escadron) ? state.role.escadron : escs[0] || "";
   $("#reo-esc").innerHTML = options(escs.map(e => [e, e]), reoEsc);
-  const blocs = reoBlocs(state.data.personnes, reoEsc, state.data.reo);
+  const blocs = reoBlocs(T, reoEsc, state.data.reo);
   let z = 0, n = 0, vac = 0;
   const lignes = blocs.map(b => {
     const r = [];
@@ -5387,7 +5400,7 @@ $("#reo").addEventListener("keydown", e => { if (e.key === "Enter") reoOuvrir(e)
 $("#reo-print").addEventListener("click", () => window.print());
 $("#reo-export").addEventListener("click", () => {
   if (!confirm(AVERT_EXPORT)) return;
-  const blocs = reoBlocs(state.data.personnes, reoEsc, state.data.reo);
+  const blocs = reoBlocs(toutLePersonnel(), reoEsc, state.data.reo);
   const n = blocs.reduce((t, b) => t + b.groupes.reduce((u, g) => u + g.personnes.length, 0), 0);
   const vac = blocs.reduce((t, b) => t + b.groupes.reduce((u, g) => u + g.vacants, 0), 0);
   const F = feuille("REO " + reoEsc);
